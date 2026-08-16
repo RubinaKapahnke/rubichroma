@@ -1,0 +1,106 @@
+@use '@angular/material' as mat;
+@use '@fontsource/sora/400.css' as sora400;
+@use '@fontsource/sora/500.css' as sora500;
+@use '@fontsource/sora/600.css' as sora600;
+@use '@fontsource/sora/700.css' as sora700;
+@use './styles/tokens';
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$rose-palette,
+        tertiary: mat.$violet-palette,
+        theme-type: color-scheme,
+      ),
+      typography: (
+        plain-family: Sora,
+        brand-family: Sora,
+        regular-weight: 400,
+        medium-weight: 500,
+        bold-weight: 700,
+      ),
+      density: 0,
+    )
+  );
+
+  @include mat.theme-overrides(
+    (
+      primary: #f7496e,
+      on-primary: #1d1930,
+      primary-container: #ffe8ed,
+      on-primary-container: #3d293d,
+      surface: #fffdfb,
+      surface-container: #f0eef3,
+      surface-container-low: #f7f6f9,
+      surface-container-high: #e8e5ec,
+      on-surface: #1d1930,
+      on-surface-variant: #625c6f,
+      outline: #77717e,
+      outline-variant: #c8c2ce,
+      error: #a6283f,
+      on-error: #ffffff,
+      error-container: #ffe8eb,
+      on-error-container: #5c0b1e,
+    )
+  );
+
+  min-width: 0;
+  background: var(--rc-canvas);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    @include mat.theme-overrides(
+      (
+        primary: #f7496e,
+        on-primary: #1d1930,
+        primary-container: #4b2230,
+        on-primary-container: #ffd9e2,
+        surface: #1c1a22,
+        surface-container: #27242e,
+        surface-container-low: #211f27,
+        surface-container-high: #322f38,
+        on-surface: #f7f3fa,
+        on-surface-variant: #c9c2d0,
+        outline: #a39ca9,
+        outline-variant: #625c69,
+        error: #ffb3be,
+        on-error: #5c0b1e,
+        error-container: #4b2029,
+        on-error-container: #ffd9df,
+      )
+    );
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 0;
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  color: var(--rc-ink);
+  background: var(--rc-canvas);
+  font-family: Sora, 'Helvetica Neue', Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+::selection {
+  color: var(--rc-ink);
+  background: var(--rc-brand-pink-soft);
+}
+
+:focus-visible {
+  outline: 0.1875rem solid var(--rc-focus);
+  outline-offset: 0.1875rem;
+}

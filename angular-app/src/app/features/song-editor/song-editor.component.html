@@ -1,0 +1,118 @@
+<mat-toolbar class="topbar">
+  <div class="brand-lockup" aria-label="RubiChroma, Kalimba-Editor">
+    <strong class="wordmark" aria-hidden="true"
+      ><span class="wordmark-rubi">Rubi</span><span>Chroma</span></strong
+    >
+    <span class="module-name">Kalimba-Editor</span>
+  </div>
+  <span class="spacer"></span>
+  <span class="save-state" role="status" aria-live="polite" [attr.data-status]="store.status()">
+    @switch (store.status()) {
+      @case ('loading') {
+        Wird geladen …
+      }
+      @case ('saving') {
+        Speichert …
+      }
+      @case ('saved') {
+        Lokal gespeichert
+      }
+      @case ('error') {
+        Aktion erforderlich
+      }
+    }
+  </span>
+</mat-toolbar>
+
+<main>
+  <section class="hero">
+    <p class="kicker" lang="en">Your colors. Your music.</p>
+    <h1>Musik wird sichtbar – in deinen Farben.</h1>
+    <p>
+      Bearbeite Liedtext und Kalimba-Notation in einer klaren, persönlichen Arbeitsfläche. Die
+      Originalnotation bleibt erhalten und Änderungen werden automatisch gespeichert.
+    </p>
+  </section>
+
+  @if (store.error(); as error) {
+    <div class="error" role="alert" data-testid="error-message">{{ error }}</div>
+  }
+
+  @if (store.hasDocument()) {
+    <mat-card class="editor-card">
+      <mat-card-header>
+        <mat-card-title>Song</mat-card-title>
+        <mat-card-subtitle
+          >{{ lines.length }} Zeilen · Rohnotation als Primärquelle</mat-card-subtitle
+        >
+      </mat-card-header>
+      <mat-card-content>
+        <mat-form-field appearance="outline" class="title-field">
+          <mat-label>Titel</mat-label>
+          <input matInput data-testid="song-title" [formControl]="title" autocomplete="off" />
+        </mat-form-field>
+
+        <div class="song-lines">
+          @for (line of lines.controls; track $index; let lineIndex = $index) {
+            <section class="song-line" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">
+              <span class="line-number">{{ lineIndex + 1 }}</span>
+              <div class="words">
+                @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
+                  <article class="word-card">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Worttext</mat-label>
+                      <input
+                        matInput
+                        [attr.data-testid]="'word-' + lineIndex + '-' + wordIndex"
+                        [formControl]="word.controls.text"
+                        autocomplete="off"
+                      />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Rohe Notation</mat-label>
+                      <input
+                        matInput
+                        class="notation-input"
+                        [attr.data-testid]="'notation-' + lineIndex + '-' + wordIndex"
+                        [formControl]="word.controls.notation"
+                        autocomplete="off"
+                      />
+                      <mat-hint>{{ projectionSummary(word.controls.notation.value) }}</mat-hint>
+                    </mat-form-field>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <input
+          #fileInput
+          hidden
+          type="file"
+          accept="application/json,.json"
+          (change)="importFile($event)"
+        />
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="import-button"
+          (click)="fileInput.click()"
+        >
+          JSON importieren
+        </button>
+        <button mat-flat-button type="button" data-testid="export-button" (click)="exportFile()">
+          JSON exportieren
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  } @else if (store.status() === 'loading') {
+    <div class="loading" aria-live="polite">Song wird vorbereitet …</div>
+  }
+
+  <p class="privacy-note">
+    Nur dieser Browser: IndexedDB und ein vorhandener Legacy-Stand desselben Origins werden
+    verwendet.
+  </p>
+</main>
