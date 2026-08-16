@@ -16,11 +16,20 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { SongDocument } from '../../domain/song-document';
+import {
+  createMusicSelectionClipboard,
+  EMPTY_SONG_SELECTION,
+  MusicSelectionClipboard,
+  normalizeSongSelection,
+  SongSelectionMode,
+  SongSelectionState,
+  updateSongSelection,
+} from '../../domain/song-selection-editing';
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
 import { ThemeService } from '../../infrastructure/theme.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
 import { EditorValue, SongEditorStore } from './song-editor.store';
-import { SongSheetComponent } from './song-sheet.component';
+import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component';
 import { KalimbaKeyView, WordEditorComponent } from './word-editor.component';
 
 @Component({
@@ -44,7 +53,14 @@ export class SongEditorComponent {
   readonly theme = inject(ThemeService);
   readonly title = new FormControl('', { nonNullable: true });
   readonly lines = signal<FormArray<LineForm>>(new FormArray<LineForm>([]));
-  readonly selection = signal<WordSelection | null>(null);
+  readonly selectionState = signal<SongSelectionState>({
+    ...EMPTY_SONG_SELECTION,
+    positions: [],
+  });
+  readonly selection = computed(() => this.selectionState().active);
+  readonly selectedPositions = computed(() => this.selectionState().positions);
+  readonly musicClipboard = signal<MusicSelectionClipboard | null>(null);
+  readonly clipboardCount = computed(() => this.musicClipboard()?.sequences.length ?? 0);
   readonly actionNotice = signal<string | null>(null);
   readonly kalimbaKeys = computed(() => {
     const keys = this.store.document()?.keys ?? [];
@@ -87,7 +103,8 @@ export class SongEditorComponent {
     const file = input.files?.[0];
     if (!file) return;
     try {
-      this.selection.set(null);
+      this.clearSelection();
+      this.musicClipboard.set(null);
       await this.store.importJson(await file.text());
     } catch (error) {
       this.store.setError(error);
@@ -115,11 +132,69 @@ export class SongEditorComponent {
   }
 
   changeSelection(selection: WordSelection | null): void {
-    this.selection.set(selection);
+    if (!selection) {
+      this.clearSelection();
+      return;
+    }
+    this.setSingleSelection(selection);
+  }
+
+  handleWordSelection(gesture: WordSelectionGesture): void {
+    const document = this.store.document();
+    if (!document) return;
+    const mode: SongSelectionMode = gesture.shiftKey
+      ? 'range'
+      : gesture.toggleKey
+        ? 'toggle'
+        : 'single';
+    this.selectionState.set(
+      updateSongSelection(document, this.selectionState(), gesture.position, mode),
+    );
   }
 
   closeWordEditor(): void {
-    this.selection.set(null);
+    this.clearSelection();
+  }
+
+  copyMusicSelection(): void {
+    const document = this.store.document();
+    const active = this.selection();
+    if (!document || !active) return;
+    const clipboard = createMusicSelectionClipboard(document, this.selectedPositions());
+    if (!clipboard) {
+      this.actionNotice.set('Die Auswahl konnte nicht kopiert werden.');
+      return;
+    }
+    this.musicClipboard.set(clipboard);
+    this.actionNotice.set(
+      `${clipboard.sequences.length} ${clipboard.sequences.length === 1 ? 'Block' : 'Blöcke'} mit Noten/Akkorden kopiert`,
+    );
+    this.focusSelection(active);
+  }
+
+  pasteMusicSelection(): void {
+    const clipboard = this.musicClipboard();
+    const active = this.selection();
+    if (!clipboard || !active) return;
+    const result = this.store.applyMusicSelectionPaste(clipboard, this.selectedPositions(), active);
+    if (!result.ok) {
+      this.actionNotice.set(selectionPasteFailureMessage(result.reason));
+      this.focusSelection(active);
+      return;
+    }
+
+    this.selectionState.set(normalizeSongSelection(result.document, this.selectionState()));
+    this.actionNotice.set(result.message);
+    this.focusSelection(active);
+  }
+
+  canPasteMusicSelection(): boolean {
+    return this.clipboardCount() > 0 && this.clipboardCount() === this.selectedPositions().length;
+  }
+
+  selectionCountLabel(): string {
+    const count = this.selectedPositions().length;
+    return `${count} ${count === 1 ? 'Block ausgewählt' : 'Blöcke ausgewählt'}`;
   }
 
   applyStructureAction(action: SongStructureAction): void {
@@ -131,15 +206,30 @@ export class SongEditorComponent {
       return;
     }
 
-    this.selection.set(result.state.selection);
+    this.setSingleSelection(result.state.selection, result.state.document);
     this.actionNotice.set(result.message);
     this.focusSelection(result.state.selection);
   }
 
   undoStructure(): void {
+    const previousSelectionState = this.selectionState();
     const selection = this.store.undoStructure();
     if (!selection) return;
-    this.selection.set(selection);
+    const document = this.store.document();
+    if (
+      document &&
+      previousSelectionState.positions.length > 1 &&
+      previousSelectionState.positions.some(
+        (position) =>
+          position.lineIndex === selection.lineIndex && position.wordIndex === selection.wordIndex,
+      )
+    ) {
+      this.selectionState.set(
+        normalizeSongSelection(document, { ...previousSelectionState, active: selection }),
+      );
+    } else {
+      this.setSingleSelection(selection, document ?? undefined);
+    }
     this.actionNotice.set('Letzte Strukturaktion rückgängig gemacht');
     this.focusSelection(selection);
   }
@@ -175,12 +265,12 @@ export class SongEditorComponent {
 
   private hydrate(document: SongDocument): void {
     this.formSubscription?.unsubscribe();
-    const previousSelection = this.selection();
+    const previousSelectionState = this.selectionState();
     this.title.setValue(document.song.title, { emitEvent: false });
     const lines = createSongLinesForm(document);
     this.lines.set(lines);
 
-    this.selection.set(normalizeSelection(previousSelection, document));
+    this.selectionState.set(normalizeSongSelection(document, previousSelectionState));
 
     this.formSubscription = new Subscription();
     this.formSubscription.add(
@@ -231,17 +321,17 @@ export class SongEditorComponent {
         ?.focus();
     });
   }
-}
 
-function normalizeSelection(
-  selection: WordSelection | null,
-  document: SongDocument,
-): WordSelection | null {
-  if (!selection) return null;
-  const lineIndex = Math.min(selection.lineIndex, document.song.lines.length - 1);
-  const line = document.song.lines[lineIndex];
-  if (!line?.words.length) return null;
-  return { lineIndex, wordIndex: Math.min(selection.wordIndex, line.words.length - 1) };
+  private setSingleSelection(selection: SongPosition, document = this.store.document()): void {
+    if (!document) return;
+    this.selectionState.set(
+      updateSongSelection(document, EMPTY_SONG_SELECTION, selection, 'single'),
+    );
+  }
+
+  private clearSelection(): void {
+    this.selectionState.set({ ...EMPTY_SONG_SELECTION, positions: [] });
+  }
 }
 
 function structureFailureMessage(reason: string): string {
@@ -257,5 +347,18 @@ function structureFailureMessage(reason: string): string {
       return 'Der Zielblock enthält unbekannte Legacy-Fragmente und wurde deshalb nicht verändert.';
     default:
       return 'Die Strukturaktion konnte nicht ausgeführt werden.';
+  }
+}
+
+function selectionPasteFailureMessage(reason: string): string {
+  switch (reason) {
+    case 'selection-count-mismatch':
+      return 'Wähle genauso viele Zielblöcke wie zuvor kopierte Quellblöcke.';
+    case 'target-has-unknown-legacy-fragments':
+      return 'Mindestens ein Zielblock enthält unbekannte Legacy-Fragmente und wurde nicht verändert.';
+    case 'empty-clipboard':
+      return 'Kopiere zuerst Noten/Akkorde aus einer Auswahl.';
+    default:
+      return 'Die Noten/Akkorde konnten nicht eingefügt werden.';
   }
 }

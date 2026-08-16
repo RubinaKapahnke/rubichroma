@@ -53,6 +53,45 @@
   }
 
   @if (store.hasDocument()) {
+    @if (selectedPositions().length > 0) {
+      <div
+        class="selection-toolbar"
+        role="toolbar"
+        aria-label="Aktionen für ausgewählte Liedblöcke"
+        data-testid="selection-toolbar"
+      >
+        <strong data-testid="selection-count">{{ selectionCountLabel() }}</strong>
+        @if (clipboardCount() > 0) {
+          <span data-testid="clipboard-count">{{ clipboardCount() }} kopiert</span>
+        }
+        <span class="selection-spacer"></span>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="copy-selection"
+          (click)="copyMusicSelection()"
+        >
+          Noten/Akkorde kopieren
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          data-testid="paste-selection"
+          [disabled]="!canPasteMusicSelection()"
+          (click)="pasteMusicSelection()"
+        >
+          In Auswahl einfügen
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="clear-selection"
+          (click)="closeWordEditor()"
+        >
+          Auswahl beenden
+        </button>
+      </div>
+    }
     <mat-card class="editor-card">
       <mat-card-header>
         <mat-card-title>Song</mat-card-title>
@@ -86,7 +125,9 @@
           <app-song-sheet
             [lines]="lines()"
             [selection]="selection()"
+            [selectedPositions]="selectedPositions()"
             (selectionChange)="changeSelection($event)"
+            (wordSelect)="handleWordSelection($event)"
             (structureAction)="applyStructureAction($event)"
           />
 

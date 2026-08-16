@@ -6,6 +6,11 @@ import {
 } from '../../domain/legacy-notation-codec';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import {
+  MusicSelectionClipboard,
+  MusicSelectionPasteResult,
+  pasteMusicSelection,
+} from '../../domain/song-selection-editing';
+import {
   editSongStructure,
   SongPosition,
   SongStructureAction,
@@ -73,6 +78,23 @@ export class SongEditorStore {
     this.canUndoState.set(true);
     this.applyStructureSnapshot(result.state.document);
     void this.persistSnapshot(result.state.document);
+    return result;
+  }
+
+  applyMusicSelectionPaste(
+    clipboard: MusicSelectionClipboard,
+    targets: readonly SongPosition[],
+    selection: SongPosition,
+  ): MusicSelectionPasteResult {
+    const current = this.documentState();
+    if (!current) return { ok: false, reason: 'invalid-target' };
+    const result = pasteMusicSelection(current, clipboard, targets);
+    if (!result.ok) return result;
+
+    this.structureHistory.record({ document: current, selection });
+    this.canUndoState.set(true);
+    this.applyStructureSnapshot(result.document);
+    void this.persistSnapshot(result.document);
     return result;
   }
 

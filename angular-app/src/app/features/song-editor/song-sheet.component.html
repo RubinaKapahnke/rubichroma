@@ -34,6 +34,7 @@
             class="word-card"
             type="button"
             [class.is-selected]="isSelected(lineIndex, wordIndex)"
+            [class.is-active]="isActive(lineIndex, wordIndex)"
             [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
             [attr.aria-pressed]="isSelected(lineIndex, wordIndex)"
             [attr.aria-label]="
@@ -44,7 +45,7 @@
               (wordIndex + 1) +
               ', bearbeiten'
             "
-            (click)="selectWord(lineIndex, wordIndex)"
+            (click)="selectWord($event, lineIndex, wordIndex)"
             (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
           >
             <span class="event-preview" aria-hidden="true">

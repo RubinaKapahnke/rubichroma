@@ -30,7 +30,8 @@
         "words": [
           {
             "text": "zweite",
-            "notation": "2 4"
+            "notation": "2 4",
+            "unknownPasteTarget": { "mustSurvive": true }
           },
           {
             "text": "Zeile",
