@@ -3,6 +3,7 @@ import Dexie from 'dexie';
 import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
+import { createMusicSelectionClipboard } from '../../domain/song-selection-editing';
 import { LEGACY_STORAGE_KEY } from '../../infrastructure/legacy/legacy-v0.adapter';
 import { KalimbaDatabase } from '../../infrastructure/persistence/kalimba.database';
 import {
@@ -108,6 +109,35 @@ describe('SongEditorStore structure persistence', () => {
     expect(store.undoStructure()).toBeNull();
     expect(store.document()?.song.title).toBe('Neuerer Titel');
     await expectSaved(store);
+  });
+
+  it('persists a multi-selection paste and restores the exact previous snapshot with undo', async () => {
+    await store.initialize();
+    const original = structuredClone(store.document()!);
+    const clipboard = createMusicSelectionClipboard(original, [{ lineIndex: 0, wordIndex: 0 }])!;
+
+    const result = store.applyMusicSelectionPaste(clipboard, [{ lineIndex: 0, wordIndex: 1 }], {
+      lineIndex: 0,
+      wordIndex: 1,
+    });
+    expect(result.ok).toBe(true);
+    expect(store.canUndo()).toBe(true);
+    expect(store.document()?.song.lines[0].words[1].text).toBe('♪');
+    expect(store.document()?.song.lines[0].words[1].events.map((event) => event.kind)).toEqual([
+      'note',
+      'separator',
+      'note',
+      'note',
+      'chord',
+    ]);
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(store.document());
+
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(store.document()).toEqual(original);
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(original);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
   });
 });
 

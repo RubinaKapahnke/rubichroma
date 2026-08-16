@@ -44,6 +44,29 @@ describe('SongEditorComponent hydration', () => {
     await fixture.whenStable();
     const initialReference = fixture.componentInstance.lines();
 
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: false,
+    });
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 1 },
+      shiftKey: true,
+      toggleKey: false,
+    });
+    expect(fixture.componentInstance.selectedPositions()).toHaveLength(2);
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: true,
+    });
+    expect(fixture.componentInstance.selectedPositions()).toEqual([{ lineIndex: 0, wordIndex: 1 }]);
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: true,
+    });
+
     const imported = cloneDocument(DEFAULT_DOCUMENT);
     imported.song.title = 'Prüflied ÄÖÜ';
     imported.song.lines[0].words[0].text = 'Grüße';
@@ -62,5 +85,10 @@ describe('SongEditorComponent hydration', () => {
     expect(titleInput.value).toBe('Prüflied ÄÖÜ');
     expect(renderedText).toContain('Grüße');
     expect(renderedText).not.toContain('Willkommen');
+    expect(fixture.componentInstance.selectedPositions()).toEqual([
+      { lineIndex: 0, wordIndex: 0 },
+      { lineIndex: 0, wordIndex: 1 },
+    ]);
+    expect(fixture.componentInstance.selection()).toEqual({ lineIndex: 0, wordIndex: 0 });
   });
 });

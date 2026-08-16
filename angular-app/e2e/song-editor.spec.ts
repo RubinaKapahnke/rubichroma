@@ -256,6 +256,91 @@ test('keeps selection and focus stable during keyboard navigation', async ({ pag
   await expect(page.getByTestId('word-editor')).toBeHidden();
 });
 
+test('selects desktop ranges, copies notes and chords, pastes with undo and persists after reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
+  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+
+  const sourceFirst = page.getByTestId('word-card-0-0');
+  const sourceMiddle = page.getByTestId('word-card-0-1');
+  const sourceLast = page.getByTestId('word-card-0-2');
+  await sourceFirst.click();
+  await sourceLast.click({ modifiers: ['Shift'] });
+  await expect(page.getByTestId('selection-count')).toHaveText('3 Blöcke ausgewählt');
+  await expect(sourceMiddle).toHaveAttribute('aria-pressed', 'true');
+
+  await sourceMiddle.click({ modifiers: ['Control'] });
+  await expect(page.getByTestId('selection-count')).toHaveText('2 Blöcke ausgewählt');
+  await expect(sourceMiddle).toHaveAttribute('aria-pressed', 'false');
+
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const toolbar = page.getByTestId('selection-toolbar');
+  await expect(toolbar).toBeVisible();
+  const toolbarBox = await toolbar.boundingBox();
+  expect(toolbarBox).not.toBeNull();
+  expect(toolbarBox!.y).toBeGreaterThanOrEqual(0);
+  expect(toolbarBox!.y + toolbarBox!.height).toBeLessThanOrEqual(
+    await page.evaluate(() => window.innerHeight),
+  );
+
+  await page.getByTestId('copy-selection').click();
+  await expect(page.getByTestId('clipboard-count')).toHaveText('2 kopiert');
+
+  const targetFirst = page.getByTestId('word-card-1-0');
+  const targetLast = page.getByTestId('word-card-1-1');
+  await targetFirst.click();
+  await targetLast.click({ modifiers: ['Shift'] });
+  await expect(page.getByTestId('selection-count')).toHaveText('2 Blöcke ausgewählt');
+  await page.getByTestId('paste-selection').click();
+
+  await expect(page.getByTestId('notation-1-1')).toHaveValue('3′ - 4′ (2′5′) 1′');
+  await expect(targetLast).toBeFocused();
+  await expect(targetFirst).toHaveAttribute('aria-pressed', 'true');
+  await expect(targetLast).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+
+  const pastedState = await readPasteState(page);
+  expect(pastedState).toEqual({
+    targetTexts: ['zweite', 'Zeile'],
+    targetKinds: [['chord'], ['note', 'separator', 'note', 'chord', 'note']],
+    unknownRoot: { mustSurvive: true },
+    unknownSource: ['bleibt', 1],
+    unknownTarget: { mustSurvive: true },
+    legacySource: 'user-sentinel',
+  });
+
+  await page.getByTestId('undo-structure').click();
+  await expect(page.getByTestId('selection-count')).toHaveText('2 Blöcke ausgewählt');
+  await expect(page.getByTestId('notation-1-1')).toHaveValue('(357)-');
+  await expect(targetLast).toBeFocused();
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+  expect((await readPasteState(page)).targetKinds).toEqual([
+    ['note', 'note'],
+    ['chord', 'separator'],
+  ]);
+
+  await page.getByTestId('paste-selection').click();
+  await expect(page.getByTestId('notation-1-1')).toHaveValue('3′ - 4′ (2′5′) 1′');
+  await expect
+    .poll(async () => (await readPasteState(page)).targetKinds)
+    .toEqual([['chord'], ['note', 'separator', 'note', 'chord', 'note']]);
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+  await page.reload();
+
+  await page.getByTestId('word-card-1-0').click();
+  await expect(page.getByTestId('word-1-0')).toHaveValue('zweite');
+  await expect(page.getByTestId('notation-1-0')).toHaveValue('(13)');
+  await page.getByTestId('word-card-1-1').click();
+  await expect(page.getByTestId('word-1-1')).toHaveValue('Zeile');
+  await expect(page.getByTestId('notation-1-1')).toHaveValue('3′ - 4′ (2′5′) 1′');
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'user-sentinel',
+  );
+  expect((await readPasteState(page)).unknownTarget).toEqual({ mustSurvive: true });
+});
+
 test('stores a manual theme and restores it after reload', async ({ page }) => {
   await page.goto('/');
   const themeSelect = page.getByTestId('theme-select');
@@ -276,3 +361,40 @@ test('stores a manual theme and restores it after reload', async ({ page }) => {
     .poll(() => page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEY))
     .toBeNull();
 });
+
+async function readPasteState(page: import('@playwright/test').Page): Promise<{
+  targetTexts: string[];
+  targetKinds: string[][];
+  unknownRoot: unknown;
+  unknownSource: unknown;
+  unknownTarget: unknown;
+  legacySource: string | null;
+}> {
+  return page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('kalimba-angular-v1');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const document = await new Promise<Record<string, any>>((resolve, reject) => {
+        const request = database.transaction('songs').objectStore('songs').get('current');
+        request.onsuccess = () => resolve(request.result.document as Record<string, any>);
+        request.onerror = () => reject(request.error);
+      });
+      const targets = document['song']['lines'][1]['words'];
+      return {
+        targetTexts: targets.map((word: Record<string, any>) => word['text']),
+        targetKinds: targets.map((word: Record<string, any>) =>
+          word['events'].map((event: Record<string, any>) => event['kind']),
+        ),
+        unknownRoot: document['extra']['unknownRoot'],
+        unknownSource: document['song']['lines'][0]['words'][0]['extra']['unknownWordField'],
+        unknownTarget: targets[0]['extra']['unknownPasteTarget'],
+        legacySource: localStorage.getItem('kalimba-note-tool-v1'),
+      };
+    } finally {
+      database.close();
+    }
+  });
+}

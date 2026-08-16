@@ -5,6 +5,12 @@ import { MusicEvent } from '../../domain/music-event';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 import { LineForm, WordForm, WordSelection } from './song-editor-form';
 
+export interface WordSelectionGesture {
+  position: WordSelection;
+  shiftKey: boolean;
+  toggleKey: boolean;
+}
+
 @Component({
   selector: 'app-song-sheet',
   templateUrl: './song-sheet.component.html',
@@ -14,14 +20,26 @@ import { LineForm, WordForm, WordSelection } from './song-editor-form';
 export class SongSheetComponent {
   readonly lines = input.required<FormArray<LineForm>>();
   readonly selection = input.required<WordSelection | null>();
+  readonly selectedPositions = input.required<readonly WordSelection[]>();
   readonly selectionChange = output<WordSelection | null>();
+  readonly wordSelect = output<WordSelectionGesture>();
   readonly structureAction = output<SongStructureAction>();
 
-  selectWord(lineIndex: number, wordIndex: number): void {
-    this.selectionChange.emit({ lineIndex, wordIndex });
+  selectWord(event: MouseEvent, lineIndex: number, wordIndex: number): void {
+    this.wordSelect.emit({
+      position: { lineIndex, wordIndex },
+      shiftKey: event.shiftKey,
+      toggleKey: event.ctrlKey || event.metaKey,
+    });
   }
 
   isSelected(lineIndex: number, wordIndex: number): boolean {
+    return this.selectedPositions().some(
+      (position) => position.lineIndex === lineIndex && position.wordIndex === wordIndex,
+    );
+  }
+
+  isActive(lineIndex: number, wordIndex: number): boolean {
     const selection = this.selection();
     return selection?.lineIndex === lineIndex && selection.wordIndex === wordIndex;
   }
