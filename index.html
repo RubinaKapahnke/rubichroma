@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f1e7">
+  <title>RubiChroma — Color Your Music</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header no-print">
+      <div>
+        <p class="eyebrow">Color Your Music</p>
+        <h1>RubiChroma</h1>
+      </div>
+      <div class="header-actions" aria-label="Dateiaktionen">
+        <span id="save-status" class="save-status" role="status">Gespeichert</span>
+        <button id="undo-button" type="button" class="button button-secondary" disabled>Rückgängig</button>
+        <button id="export-button" type="button" class="button button-secondary">Sicherung exportieren</button>
+        <button id="import-button" type="button" class="button button-secondary">Sicherung importieren</button>
+        <input id="import-file" type="file" accept="application/json,.json" hidden>
+        <button id="print-button" type="button" class="button button-primary">Drucken / PDF</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="sheet-panel" aria-labelledby="song-title-label">
+        <label id="song-title-label" class="field-label no-print" for="song-title">Liedtitel</label>
+        <input id="song-title" class="song-title-input no-print" type="text" autocomplete="off">
+        <h1 id="print-title" class="print-only"></h1>
+        <p class="sheet-legend">Buchstabe oben · Zahl unten · <sup>R</sup> = rechte Hand · <strong>♪</strong> = Melodie ohne Text · Mehrere Töne in einem Feld werden gleichzeitig gespielt</p>
+        <div id="song-sheet" class="song-sheet" aria-label="Bearbeitbare Kalimba-Noten"></div>
+        <button id="add-line-button" type="button" class="button button-secondary add-line no-print">Neue Liedzeile</button>
+      </section>
+
+      <aside class="editor-panel no-print" aria-label="Bearbeitung">
+        <div class="editor-core editor-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Auswahl</p>
+                <h2 id="selection-heading">Wort bearbeiten</h2>
+              </div>
+              <span id="selection-label" class="selection-label"></span>
+            </div>
+
+            <div class="editor-fields">
+              <div>
+                <label class="field-label" for="word-text">Wort oder Textstück</label>
+                <input id="word-text" class="text-input" type="text" autocomplete="off">
+              </div>
+              <div>
+                <label class="field-label" for="word-notation">Notation</label>
+                <input id="word-notation" class="text-input notation-input" type="text" autocomplete="off" spellcheck="false" placeholder="Beispiel: (13) 5">
+                <p class="field-help editor-notation-help"><code>(13)</code> = Akkord · <code>-</code> = Trenner</p>
+              </div>
+            </div>
+
+            <div id="melody-count-field" hidden>
+              <label class="field-label" for="melody-tone-count">Anzahl der Töne im Melodieblock</label>
+              <input id="melody-tone-count" class="text-input number-input" type="number" min="1" max="64" step="1">
+              <p class="field-help">Noch nicht belegte Töne erscheinen als leere Plätze.</p>
+            </div>
+
+            <button id="assign-sequence-button" type="button" class="button button-primary editor-primary-action" disabled>Tonfolge eingeben</button>
+        </div>
+
+        <section class="editor-section editor-secondary-actions">
+          <div class="word-actions">
+            <button id="move-left-button" type="button" class="button button-secondary">← Nach links</button>
+            <button id="move-right-button" type="button" class="button button-secondary">Nach rechts →</button>
+            <button id="add-word-button" type="button" class="button button-secondary">Wort danach</button>
+            <button id="duplicate-word-button" type="button" class="button button-secondary">Wort + Noten duplizieren</button>
+            <button id="copy-notes-button" type="button" class="button button-secondary">Noten/Akkorde kopieren</button>
+            <button id="paste-notes-button" type="button" class="button button-secondary" disabled>Noten einfügen</button>
+            <button id="split-syllables-button" type="button" class="button button-secondary">Silben teilen</button>
+            <button id="instrumental-button" type="button" class="button button-secondary">♪ Nur Melodie</button>
+            <button id="delete-word-button" type="button" class="button button-danger">Wort löschen</button>
+          </div>
+          <p class="field-help shift-selection-help"><strong>Mehrfachauswahl:</strong> Shift + Klick für einen Bereich, Strg/⌘ + Klick für einzelne Wörter, auf Mobilgeräten lange drücken.</p>
+          <p id="multi-select-status" class="multi-select-status" hidden></p>
+          <p id="notes-clipboard-status" class="notes-clipboard-status">Noch keine Noten kopiert.</p>
+          <p class="field-help drag-help">Notenblöcke können im Lied mit der Maus an eine andere Position oder in eine andere Zeile gezogen werden.</p>
+        </section>
+
+        <section class="editor-section">
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Eingabehilfe</p>
+              <h2>Kalimba-Zungen</h2>
+            </div>
+          </div>
+
+          <fieldset class="mode-picker">
+            <legend class="field-label">Einfügemodus</legend>
+            <label><input type="radio" name="insert-mode" value="single" checked> Einzelton</label>
+            <label><input type="radio" name="insert-mode" value="chord"> Gemeinsam</label>
+          </fieldset>
+
+          <p id="existing-notes-status" class="existing-notes-status">Im ausgewählten Block: keine Noten</p>
+          <p class="field-help existing-notes-help">Umrahmte Töne sind bereits vorhanden und können durch Anklicken entfernt werden.</p>
+
+          <div id="key-palette" class="key-palette" aria-label="Noten auswählen"></div>
+
+          <div id="chord-controls" class="chord-controls" hidden>
+            <p id="chord-draft" class="chord-draft">Noch keine Töne ausgewählt</p>
+            <button id="insert-chord-button" type="button" class="button button-primary" disabled>Akkord einfügen</button>
+            <button id="clear-chord-button" type="button" class="button button-secondary">Auswahl leeren</button>
+          </div>
+
+          <div class="notation-actions">
+            <button id="insert-separator-button" type="button" class="button button-secondary">Trenner –</button>
+            <button id="clear-notation-button" type="button" class="button button-secondary">Notation leeren</button>
+          </div>
+        </section>
+
+        <details class="editor-section help-panel">
+          <summary>Hilfe zur Bedienung</summary>
+          <div class="help-content">
+            <h3>Mehrere Wörter auswählen</h3>
+            <ul>
+              <li>Erstes Wort normal anklicken, danach mit <kbd>Shift</kbd> + Klick einen zusammenhängenden Bereich markieren.</li>
+              <li>Mit <kbd>Strg</kbd> + Klick beziehungsweise <kbd>⌘</kbd> + Klick einzelne Wörter ergänzen oder abwählen.</li>
+              <li>Auf Mobilgeräten einen Block lange drücken und danach weitere Blöcke antippen.</li>
+              <li>„Ganze Zeile markieren“ nimmt die Zeile des zuletzt fokussierten Blocks; <kbd>Esc</kbd> oder „Auswahl beenden“ beendet die Mehrfachauswahl.</li>
+            </ul>
+            <h3>Tonfolgen verteilen</h3>
+            <ul>
+              <li><strong>Je ein Ereignis:</strong> Jedes Wort erhält einen Ton oder Akkord.</li>
+              <li><strong>Gleichmäßig:</strong> Die Ereignisse werden möglichst gleich verteilt.</li>
+              <li><strong>Nach Silben:</strong> Wörter mit mehr erkannten Silben erhalten mehr Ereignisse.</li>
+              <li><strong>Wiederholen:</strong> Jedes Wort erhält die vollständige Tonfolge.</li>
+            </ul>
+            <h3>Tastatur, vorhandene Noten und Fokus</h3>
+            <p>Mit <kbd>←</kbd>/<kbd>→</kbd> wechselst du in Liedreihenfolge zwischen Blöcken. <kbd>Enter</kbd> öffnet die Textbearbeitung; in der Mehrfachauswahl öffnet es „Tonfolge“. <kbd>Esc</kbd> kehrt aus dem Editor zum Block zurück. <kbd>Shift</kbd> + Pfeiltasten erweitert die Auswahl.</p>
+            <p>Bei aktiver Auswahl gelten außerdem <kbd>Strg</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd>, <kbd>V</kbd> und <kbd>Entf</kbd>. Als „vorhanden“ markierte Kalimba-Zungen kommen im Block vor; „Akkord“ kennzeichnet die separate Auswahl für einen neuen Akkord. Anklicken entfernt jeweils die letzte Verwendung. Blöcke lassen sich außerhalb der Mehrfachauswahl per Drag-and-drop verschieben.</p>
+          </div>
+        </details>
+
+        <details class="editor-section key-settings">
+          <summary>Farben und Hände der Kalimba ändern</summary>
+          <p class="field-help">Die Reihenfolge entspricht den Zungen von links nach rechts. Änderungen gelten sofort für das ganze Lied.</p>
+          <div id="key-settings-grid" class="key-settings-grid"></div>
+        </details>
+
+        <section class="editor-section danger-zone">
+          <h2>Beispiel wiederherstellen</h2>
+          <p class="field-help">Setzt Lied, Farben und Handzuordnung auf den Ausgangsstand zurück.</p>
+          <button id="reset-button" type="button" class="button button-danger">Beispiel zurücksetzen</button>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div id="selection-toolbar" class="selection-toolbar no-print" role="toolbar" aria-label="Aktionen für markierte Wörter" hidden>
+    <strong id="selection-toolbar-status">0 Wörter markiert</strong>
+    <span id="selection-toolbar-detail" class="selection-toolbar-detail"></span>
+    <button id="toolbar-line-button" type="button" class="button button-secondary">Ganze Zeile markieren</button>
+    <button id="toolbar-sequence-button" type="button" class="button button-primary">Tonfolge</button>
+    <button id="toolbar-copy-button" type="button" class="button button-secondary">Noten kopieren</button>
+    <button id="toolbar-paste-button" type="button" class="button button-secondary">Noten einfügen</button>
+    <button id="toolbar-remove-last-button" type="button" class="button button-secondary">Letztes Ereignis entfernen</button>
+    <button id="toolbar-clear-button" type="button" class="button button-danger">Noten leeren</button>
+    <button id="toolbar-cancel-button" type="button" class="button button-secondary">Auswahl beenden</button>
+  </div>
+
+  <dialog id="melody-dialog" class="melody-dialog no-print">
+    <form id="melody-form" class="melody-form">
+      <div>
+        <p class="eyebrow">Neuer Abschnitt</p>
+        <h2>Melodie ohne Text</h2>
+      </div>
+      <label class="field-label" for="new-melody-tone-count">Wie viele Töne soll die Melodie haben?</label>
+      <input id="new-melody-tone-count" class="text-input number-input" type="number" min="1" max="64" step="1" value="4" required>
+      <div class="dialog-actions">
+        <button id="cancel-melody-button" type="button" class="button button-secondary">Abbrechen</button>
+        <button type="submit" class="button button-primary">Melodie hinzufügen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="syllable-dialog" class="melody-dialog no-print">
+    <form id="syllable-form" class="melody-form">
+      <div>
+        <p class="eyebrow">Text aufteilen</p>
+        <h2>Wort in Silben teilen</h2>
+      </div>
+      <fieldset class="mode-picker syllable-mode-picker">
+        <legend class="field-label">Trennmethode</legend>
+        <label><input type="radio" name="syllable-mode" value="auto" checked> Automatischer Vorschlag</label>
+        <label><input type="radio" name="syllable-mode" value="manual"> Manuell</label>
+      </fieldset>
+      <label class="field-label" for="syllable-input">Silben mit Bindestrichen trennen</label>
+      <input id="syllable-input" class="text-input" type="text" autocomplete="off" placeholder="Beispiel: Mär-chen" required>
+      <p id="syllable-suggestion-status" class="field-help">Der automatische Vorschlag kann vor dem Erstellen korrigiert werden.</p>
+      <p class="field-help">Aus <code>Mär-chen</code> entstehen die getrennten Textstücke <code>Mär -</code> und <code>chen</code>.</p>
+      <label class="dialog-check">
+        <input id="distribute-notes-checkbox" type="checkbox" checked>
+        Vorhandene Noten gleichmäßig auf die Silben verteilen
+      </label>
+      <div class="dialog-actions">
+        <button id="cancel-syllable-button" type="button" class="button button-secondary">Abbrechen</button>
+        <button type="submit" class="button button-primary">Silben erstellen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sequence-dialog" class="melody-dialog no-print">
+    <form id="sequence-form" class="melody-form">
+      <div>
+        <p class="eyebrow">Mehrfachauswahl</p>
+        <h2>Tonfolge zuweisen</h2>
+      </div>
+      <p id="sequence-target-status" class="field-help sequence-target-status"></p>
+      <label class="field-label" for="sequence-notation">Tonfolge</label>
+      <input id="sequence-notation" class="text-input notation-input" type="text" autocomplete="off" spellcheck="false" placeholder="Beispiel: 1 2 (35) 4 5" required>
+      <p class="field-help">Ein Akkord wie <code>(35)</code> zählt als ein gemeinsames Tonereignis.</p>
+      <fieldset class="mode-picker sequence-options">
+        <legend class="field-label">Verteilung</legend>
+        <label><input type="radio" name="sequence-distribution" value="one"> Je ein Ereignis pro Wort</label>
+        <label><input type="radio" name="sequence-distribution" value="even" checked> Gleichmäßig auf die Wörter verteilen</label>
+        <label><input type="radio" name="sequence-distribution" value="syllables"> Nach erkannten Silben verteilen</label>
+        <label><input type="radio" name="sequence-distribution" value="repeat"> Ganze Folge in jedes Wort kopieren</label>
+      </fieldset>
+      <fieldset class="mode-picker sequence-options">
+        <legend class="field-label">Vorhandene Noten</legend>
+        <label><input type="radio" name="sequence-merge" value="replace" checked> Ersetzen</label>
+        <label><input type="radio" name="sequence-merge" value="prepend"> Davor einfügen</label>
+        <label><input type="radio" name="sequence-merge" value="append"> Anhängen</label>
+        <label><input type="radio" name="sequence-merge" value="empty"> Nur leere Wörter befüllen</label>
+      </fieldset>
+      <section class="sequence-preview-section" aria-labelledby="sequence-preview-title">
+        <h3 id="sequence-preview-title">Vorschau</h3>
+        <p id="sequence-preview-status" class="field-help"></p>
+        <div id="sequence-preview" class="sequence-preview"></div>
+      </section>
+      <div class="dialog-actions">
+        <button id="cancel-sequence-button" type="button" class="button button-secondary">Abbrechen</button>
+        <button type="submit" class="button button-primary">Tonfolge übernehmen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast no-print" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
