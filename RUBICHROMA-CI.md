@@ -227,27 +227,27 @@ Warnungen sollen informativ sein und freie Farbwahl nicht unnötig blockieren. U
 
 ### Default-Palette Version 1
 
-Die Reihenfolge entspricht der physischen Anordnung von links außen über die mittlere Zunge nach rechts außen.
+Die Reihenfolge entspricht der physischen Anordnung von links außen über die mittlere Zunge nach rechts außen. Marker-Farbname und Farbkartennummer dokumentieren die physische Acrylmarker-Referenz, mit der die digitalen Werte abgeglichen wurden. Sie sind Herkunfts- und Reproduktionsmetadaten, keine Namen eines RubiChroma-Presets und keine Markenkooperation. Der Hexwert bleibt für die digitale Darstellung technisch führend.
 
-| Position | Tonwert | Ton | Hand | Farbe |
-|---:|---:|:---:|:---:|:---:|
-| 1 | `2″` | D″ | L | `#7A8CC9` |
-| 2 | `7′` | B′ | L | `#864B9F` |
-| 3 | `5′` | G′ | L | `#F78853` |
-| 4 | `3′` | E′ | L | `#45A953` |
-| 5 | `1′` | C′ | L | `#3CB8A6` |
-| 6 | `6` | A | L | `#F7BD30` |
-| 7 | `4` | F | L | `#E95784` |
-| 8 | `2` | D | L | `#342E38` |
-| 9 | `1` | C | R | `#2E7975` |
-| 10 | `3` | E | R | `#26562A` |
-| 11 | `5` | G | R | `#D41C33` |
-| 12 | `7` | B | R | `#6B1E69` |
-| 13 | `2′` | D′ | R | `#374469` |
-| 14 | `4′` | F′ | R | `#F89FB5` |
-| 15 | `6′` | A′ | R | `#F8D360` |
-| 16 | `1″` | C″ | R | `#A8DDBF` |
-| 17 | `3″` | E″ | R | `#81B07A` |
+| Position | Tonwert | Ton | Hand | Farbe | Marker-Farbname | Farbkarte |
+|---:|---:|:---:|:---:|:---:|:---|:---:|
+| 1 | `2″` | D″ | L | `#7A8CC9` | Denim | `D681` |
+| 2 | `7′` | B′ | L | `#864B9F` | Berry | `B832` |
+| 3 | `5′` | G′ | L | `#F78853` | Ginger | `G604` |
+| 4 | `3′` | E′ | L | `#45A953` | Emerald | `E740` |
+| 5 | `1′` | C′ | L | `#3CB8A6` | Cyan | `C602` |
+| 6 | `6` | A | L | `#F7BD30` | Amber | `A615` |
+| 7 | `4` | F | L | `#E95784` | Fuchsia | `F671` |
+| 8 | `2` | D | L | `#342E38` | Denim | `D611` |
+| 9 | `1` | C | R | `#2E7975` | Cyan | `C695` |
+| 10 | `3` | E | R | `#26562A` | Emerald | `E676` |
+| 11 | `5` | G | R | `#D41C33` | Ginger | `G664` |
+| 12 | `7` | B | R | `#6B1E69` | Berry | `B678` |
+| 13 | `2′` | D′ | R | `#374469` | Denim | `D688` |
+| 14 | `4′` | F′ | R | `#F89FB5` | Fuchsia | `F612` |
+| 15 | `6′` | A′ | R | `#F8D360` | Amber | `A733` |
+| 16 | `1″` | C″ | R | `#A8DDBF` | Cyan | `C627` |
+| 17 | `3″` | E″ | R | `#81B07A` | Emerald | `E696` |
 
 ### Darstellungsregeln
 
