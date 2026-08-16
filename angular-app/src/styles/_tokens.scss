@@ -1,0 +1,50 @@
+:root {
+  color-scheme: light;
+
+  // Corporate Identity tokens. User-defined music colors must not reuse these roles.
+  --rc-brand-primary: #f7496e;
+  --rc-brand-primary-strong: #c7204c;
+  --rc-brand-ink: #171a2b;
+  --rc-brand-plum: #4a2947;
+
+  --rc-color-background: #fff9f6;
+  --rc-color-surface: #ffffff;
+  --rc-color-surface-subtle: #ece8f0;
+  --rc-color-text: #171a2b;
+  --rc-color-text-muted: #686272;
+  --rc-color-border: #d8d2dd;
+  --rc-color-primary: #f7496e;
+  --rc-color-on-primary: #171a2b;
+  --rc-color-primary-text: #c7204c;
+  --rc-color-primary-container: #ffe8ed;
+  --rc-color-focus: #285cb8;
+  --rc-color-success: #147a61;
+  --rc-color-warning: #985500;
+  --rc-color-error: #b42318;
+  --rc-color-error-container: #ffebe8;
+  --rc-color-info: #285cb8;
+
+  --rc-radius-sm: 0.5rem;
+  --rc-radius-control: 0.625rem;
+  --rc-radius-panel: 1rem;
+  --rc-radius-pill: 999px;
+  --rc-focus-width: 0.1875rem;
+  --rc-shadow-sm: 0 0.125rem 0.5rem rgb(23 26 43 / 8%);
+  --rc-shadow-md: 0 0.625rem 1.75rem rgb(23 26 43 / 12%);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --rc-color-background: #11131d;
+  --rc-color-surface: #1c1e2a;
+  --rc-color-surface-subtle: #262837;
+  --rc-color-text: #f8f5fa;
+  --rc-color-text-muted: #c8c1cc;
+  --rc-color-border: #3d3e50;
+  --rc-color-primary-text: #f7496e;
+  --rc-color-primary-container: #4b2230;
+  --rc-color-error: #ffb3be;
+  --rc-color-error-container: #4b2029;
+  --rc-shadow-sm: 0 0.125rem 0.5rem rgb(0 0 0 / 20%);
+  --rc-shadow-md: 0 0.625rem 1.75rem rgb(0 0 0 / 28%);
+}

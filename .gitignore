@@ -1,0 +1,19 @@
+# Dependencies and package caches
+node_modules/
+.pnpm-store/
+
+# Build and test output
+dist/
+.angular/
+coverage/
+test-results/
+playwright-report/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Operating system files
+.DS_Store
+Thumbs.db
