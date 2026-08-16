@@ -29,11 +29,15 @@ Die Web-App wird als statische Angular-Anwendung über Cloudflare Pages mit GitH
 
 Das interne Musikmodell ist unabhängig von Angular, Instrumentprofil, Farbe und sichtbarer Notation. Es beschreibt unter anderem Lied, Takt, Tempo sowie Ton-, Akkord- und Pausenereignisse mit ihren Dauern.
 
+Die musikalische Timeline ist ebenfalls eine darstellungs- und instrumentenunabhängige Fachgrenze. Sie ordnet Ereignisse über stabile Identitäten, musikalische Positionen und Dauern an. Instrumentenspuren, Notation, Flow und Audio sind Projektionen beziehungsweise Verbraucher dieser Timeline und definieren keine eigene konkurrierende Zeitbasis.
+
 Bereits in Phase 0 sind strukturierte `note`-, `chord`- und `separator`-Ereignisse die semantische Quelle. Ton und Akkord tragen eine Tonstufe von 1 bis 7, eine Oktave von 0 bis 2 und zunächst explizit die Standarddauer `quarter`. Die bisherige Textnotation liegt nur in einer versionierten Fidelity-Hülle aus exaktem Legacy-Rohtext, Parser-Version und Event-Fingerprint. Solange der Fingerprint zu den Ereignissen passt, wird der Originaltext exakt exportiert; nach einer strukturellen Änderung entsteht deterministisch kanonische Legacy-Notation. Unbekannte oder fehlerhafte Fragmente erzeugen keine Musikereignisse, bleiben bei einem unveränderten Roundtrip aber erhalten.
 
 Textnotation, Kalimba-Zahlen, Tonbuchstaben und farbige Darstellung sind Projektionen dieses Modells. Keine sichtbare Notationsform ist selbst die führende Datenstruktur.
 
 Instrumentprofile, Farbprofile und Übungszustand bleiben eigenständige fachliche Bereiche. Dadurch können später weitere Instrumente und Darstellungen ergänzt werden, ohne das Musikmodell auszutauschen.
+
+Das Musikmodell erlaubt mehrere musikalische Ebenen wie Melodie und Begleitung von Anfang an, auch wenn der MVP zunächst keine vollständige Mehrspur- oder Mixer-Oberfläche anbietet. Ereigniszuordnung und Speicherung dürfen deshalb keine dauerhaft einzige Stimme voraussetzen.
 
 Ein Farbprofil gehört zu genau einem Instrumentprofil und einer Stimmung. Die Zuordnung referenziert stabile physische Zungen- oder Tasten-IDs und hält die zu dieser Stimmung gehörenden Tonhöhen und Tonstufen als Metadaten vor. Bei einer anderen Stimmung wird eine neue Farbskala angelegt; RubiChroma übernimmt die Zuordnung nicht stillschweigend.
 
@@ -51,7 +55,11 @@ Für jeden vollständigen Dokumenttausch gilt derselbe Abnahmevertrag: repräsen
 
 ### Audio und Synchronisation
 
-Tone.js ist die gemeinsame Zeitgrundlage für Wiedergabe und visuelle Hervorhebung. Die Oberfläche betreibt keinen unabhängigen Timer, der der Audiowiedergabe folgt. Audio wird erst nach einer bewussten Benutzeraktion gestartet und vollständig lokal bereitgestellt.
+Tone.js ist die gemeinsame Zeitgrundlage für Wiedergabe und alle zeitabhängigen Projektionen. Synchrone Notation und Hervorhebung im MVP sowie spätere Flow-, Mehrspur-, Metronom- und Einzählfunktionen leiten ihren Zustand aus derselben musikalischen Timeline und demselben Transport ab. Die Oberfläche betreibt keinen unabhängigen Timer, der der Audiowiedergabe folgt. Tempoänderung, Pause, Fortsetzen, Sprung und Loop werden als gemeinsame Transportoperationen behandelt und nicht getrennt je Darstellung nachgebildet.
+
+Audio wird erst nach einer bewussten Benutzeraktion gestartet und vollständig lokal bereitgestellt. Klangerzeugung und Soundquelle bleiben hinter der Audioanbindung austauschbar, damit der synthetische MVP-Klang später durch Samples ergänzt werden kann, ohne Timeline oder Musikmodell auszutauschen.
+
+Eine zukünftige Spielerkennung wird über eine von Transport und Audioausgabe getrennte Eingabeschnittstelle angebunden. Mikrofon- und MIDI-Adapter liefern normalisierte gespielte Ereignisse; eine davon getrennte Feedbackgrenze vergleicht sie mit erwarteten Timeline-Ereignissen. Weder Eingabe noch Feedback werden zur semantischen Quelle des Liedes.
 
 ### Speicherung und Offlinebetrieb
 
