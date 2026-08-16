@@ -1,6 +1,73 @@
 import { expect, test } from '@playwright/test';
+import { resolve } from 'node:path';
 
 import { THEME_STORAGE_KEY } from '../src/app/infrastructure/theme-preference';
+
+const SYNTHETIC_IMPORT_FIXTURE = resolve('e2e/fixtures/synthetic-structure-song.json');
+
+test('renders an imported multi-line song immediately, then supports structure undo and reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Willkommen');
+
+  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+
+  await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.locator('.song-line')).toHaveCount(3);
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
+  await expect(page.getByTestId('word-card-0-2')).toContainText('Melodieblock ♪');
+  await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
+  await expect(page.getByText('Willkommen')).toHaveCount(0);
+
+  const importedUnknownFields = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('kalimba-angular-v1');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const request = database.transaction('songs').objectStore('songs').get('current');
+        request.onsuccess = () => {
+          const document = request.result.document;
+          resolve({
+            root: document.extra.unknownRoot,
+            song: document.song.extra.unknownSongField,
+            line: document.song.lines[0].extra.unknownLineField,
+            word: document.song.lines[0].words[0].extra.unknownWordField,
+            key: document.keys[0].unknownKeyField,
+          });
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } finally {
+      database.close();
+    }
+  });
+  expect(importedUnknownFields).toEqual({
+    root: { mustSurvive: true },
+    song: 'bleibt erhalten',
+    line: 'Strophe A',
+    word: ['bleibt', 1],
+    key: 0,
+  });
+
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('block-duplicate').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(4);
+  await page.getByTestId('undo-structure').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(3);
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+
+  await page.reload();
+  await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.locator('.song-line')).toHaveCount(3);
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
+  await expect(page.getByTestId('word-card-0-2')).toContainText('Melodieblock ♪');
+  await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
+  await expect(page.getByTestId('undo-structure')).toBeDisabled();
+});
 
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
   await page.goto('/');

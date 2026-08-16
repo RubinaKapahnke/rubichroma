@@ -57,7 +57,7 @@
       <mat-card-header>
         <mat-card-title>Song</mat-card-title>
         <mat-card-subtitle
-          >{{ lines.length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
+          >{{ lines().length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
         >
       </mat-card-header>
       <mat-card-content>
@@ -84,7 +84,7 @@
 
         <div class="editor-layout">
           <app-song-sheet
-            [lines]="lines"
+            [lines]="lines()"
             [selection]="selection()"
             (selectionChange)="changeSelection($event)"
             (structureAction)="applyStructureAction($event)"
