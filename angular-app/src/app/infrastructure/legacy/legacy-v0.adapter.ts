@@ -1,4 +1,8 @@
 import { isJsonObject, JsonObject, JsonValue } from '../../domain/json-value';
+import {
+  encodeLegacyNotation,
+  replaceWithLegacyNotation,
+} from '../../domain/legacy-notation-codec';
 import { SongDocument, SongLine, SongWord } from '../../domain/song-document';
 
 export const LEGACY_STORAGE_KEY = 'kalimba-note-tool-v1';
@@ -44,7 +48,7 @@ export function parseLegacyV0(input: string | unknown): SongDocument {
       }
       return {
         text: requireString(word['text'], `${path}.text`),
-        notation: requireString(word['notation'], `${path}.notation`),
+        ...replaceWithLegacyNotation(requireString(word['notation'], `${path}.notation`)),
         ...(toneCountValue === undefined ? {} : { toneCount: toneCountValue }),
         extra: omit(word, ['text', 'notation', 'toneCount']),
       };
@@ -69,7 +73,7 @@ export function exportVanillaCompatible(document: SongDocument): JsonObject {
       words: line.words.map((word) => ({
         ...word.extra,
         text: word.text,
-        notation: word.notation,
+        notation: encodeLegacyNotation(word.events, word.legacyNotation),
         ...(word.toneCount === undefined ? {} : { toneCount: word.toneCount }),
       })),
     })),

@@ -1,4 +1,5 @@
 import { SongDocument } from './song-document';
+import { replaceWithLegacyNotation } from './legacy-notation-codec';
 
 const values = [
   '2″',
@@ -64,8 +65,8 @@ export const DEFAULT_DOCUMENT: SongDocument = {
     lines: [
       {
         words: [
-          { text: 'Willkommen', notation: '1 2 3 (135)', extra: {} },
-          { text: '♪', notation: '5′-3 1′', toneCount: 3, extra: {} },
+          { text: 'Willkommen', ...replaceWithLegacyNotation('1 2 3 (135)'), extra: {} },
+          { text: '♪', ...replaceWithLegacyNotation('5′-3 1′'), toneCount: 3, extra: {} },
         ],
         extra: {},
       },

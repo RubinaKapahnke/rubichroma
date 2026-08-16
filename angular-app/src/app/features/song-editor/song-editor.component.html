@@ -29,8 +29,9 @@
     <p class="kicker" lang="en">Your colors. Your music.</p>
     <h1>Musik wird sichtbar – in deinen Farben.</h1>
     <p>
-      Bearbeite Liedtext und Kalimba-Notation in einer klaren, persönlichen Arbeitsfläche. Die
-      Originalnotation bleibt erhalten und Änderungen werden automatisch gespeichert.
+      Bearbeite Liedtext und Kalimba-Notation in einer klaren, persönlichen Arbeitsfläche.
+      Vorhandene Legacy-Notation bleibt verlustfrei erhalten; Änderungen werden sofort in
+      Musikereignisse übersetzt und automatisch gespeichert.
     </p>
   </section>
 
@@ -43,7 +44,7 @@
       <mat-card-header>
         <mat-card-title>Song</mat-card-title>
         <mat-card-subtitle
-          >{{ lines.length }} Zeilen · Rohnotation als Primärquelle</mat-card-subtitle
+          >{{ lines.length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
         >
       </mat-card-header>
       <mat-card-content>
@@ -69,7 +70,7 @@
                       />
                     </mat-form-field>
                     <mat-form-field appearance="outline">
-                      <mat-label>Rohe Notation</mat-label>
+                      <mat-label>Legacy-Notation</mat-label>
                       <input
                         matInput
                         class="notation-input"

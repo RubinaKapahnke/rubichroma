@@ -5,6 +5,7 @@ import {
   INVALID_KEYS,
   INVALID_WORD,
 } from '../../../testing/fixtures/legacy-v0.fixtures';
+import { encodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { exportVanillaCompatible, LegacyValidationError, parseLegacyV0 } from './legacy-v0.adapter';
 
 describe('legacy-v0 adapter', () => {
@@ -21,13 +22,26 @@ describe('legacy-v0 adapter', () => {
     const imported = parseLegacyV0(COMPLETE_LEGACY);
     const words = imported.song.lines[0].words;
     expect(imported.song.title).toBe('Die Schöne – Grüße');
-    expect(words.map((word) => word.notation)).toEqual([
+    expect(words.map((word) => encodeLegacyNotation(word.events, word.legacyNotation))).toEqual([
       "1' 2′ 3″ (135)-7′",
       '1-2 (35)-(7′1″)',
       '',
       '5′-3 x(',
     ]);
     expect(words[3].toneCount).toBe(4);
+  });
+
+  it('uses structured events as truth after an edit instead of exporting stale raw notation', () => {
+    const imported = parseLegacyV0(COMPLETE_LEGACY);
+    imported.song.lines[0].words[0].events[0] = {
+      kind: 'note',
+      pitch: { degree: 7, octave: 2 },
+      duration: 'quarter',
+    };
+
+    const exported = exportVanillaCompatible(imported);
+    const song = exported['song'] as { lines: { words: { notation: string }[] }[] };
+    expect(song.lines[0].words[0].notation).toBe('7″ 2′ 3″ (135) - 7′');
   });
 
   it.each([

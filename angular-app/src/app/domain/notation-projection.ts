@@ -8,7 +8,7 @@ export interface NotationToken {
 const notePattern = /^[1-7](?:['′’″]{0,2})?$/u;
 const chordPattern = /^\([^)]*\)$/u;
 
-/** A lossless read-only projection. The raw notation remains the source of truth. */
+/** A lossless lexical inspection helper; semantic consumers use the structured event codec. */
 export function projectNotation(rawNotation: string): NotationToken[] {
   const rawParts =
     rawNotation.match(/\s+|\([^)]*\)|-|[1-7](?:['′’″]{0,2})?|[^()\s-]+|[()]/gu) ?? [];

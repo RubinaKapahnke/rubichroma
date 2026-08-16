@@ -1,8 +1,11 @@
 import { cloneJson, JsonObject } from './json-value';
+import { cloneLegacyNotationFidelity, LegacyNotationFidelity } from './legacy-notation-codec';
+import { cloneMusicEvents, MusicEvent } from './music-event';
 
 export interface SongWord {
   text: string;
-  notation: string;
+  events: MusicEvent[];
+  legacyNotation: LegacyNotationFidelity;
   toneCount?: number;
   extra: JsonObject;
 }
@@ -31,7 +34,8 @@ export function cloneDocument(document: SongDocument): SongDocument {
       lines: document.song.lines.map((line) => ({
         words: line.words.map((word) => ({
           text: word.text,
-          notation: word.notation,
+          events: cloneMusicEvents(word.events),
+          legacyNotation: cloneLegacyNotationFidelity(word.legacyNotation),
           ...(word.toneCount === undefined ? {} : { toneCount: word.toneCount }),
           extra: cloneJson(word.extra),
         })),

@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { debounceTime, Subscription } from 'rxjs';
-import { projectNotation } from '../../domain/notation-projection';
+import { decodeLegacyNotation, encodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { SongDocument } from '../../domain/song-document';
 import { EditorValue, SongEditorStore } from './song-editor.store';
 
@@ -52,10 +52,11 @@ export class SongEditorComponent {
   }
 
   projectionSummary(notation: string): string {
-    const tokens = projectNotation(notation);
-    const notes = tokens.filter((token) => token.kind === 'note' || token.kind === 'chord').length;
-    const unknown = tokens.some((token) => token.kind === 'unknown');
-    return `${notes} Klangbaustein${notes === 1 ? '' : 'e'}${unknown ? ' · Rohtext bleibt unverändert' : ''}`;
+    const decoded = decodeLegacyNotation(notation);
+    const eventCount = decoded.events.length;
+    return `${eventCount} Musikereignis${eventCount === 1 ? '' : 'se'}${
+      decoded.hasUnknownFragments ? ' · unbekannte Fragmente bleiben beim Speichern erhalten' : ''
+    }`;
   }
 
   async importFile(event: Event): Promise<void> {
@@ -101,7 +102,10 @@ export class SongEditorComponent {
               (word) =>
                 new FormGroup({
                   text: new FormControl(word.text, { nonNullable: true }),
-                  notation: new FormControl(word.notation, { nonNullable: true }),
+                  notation: new FormControl(
+                    encodeLegacyNotation(word.events, word.legacyNotation),
+                    { nonNullable: true },
+                  ),
                 }),
             ),
           ),
@@ -112,6 +116,12 @@ export class SongEditorComponent {
 
     this.formSubscription = new Subscription();
     this.formSubscription.add(
+      this.title.valueChanges.subscribe(() => this.store.updateEditorValue(this.editorValue())),
+    );
+    this.formSubscription.add(
+      this.lines.valueChanges.subscribe(() => this.store.updateEditorValue(this.editorValue())),
+    );
+    this.formSubscription.add(
       this.title.valueChanges.pipe(debounceTime(350)).subscribe(() => void this.persist()),
     );
     this.formSubscription.add(
@@ -120,7 +130,11 @@ export class SongEditorComponent {
   }
 
   private persist(): Promise<void> {
-    const value: EditorValue = {
+    return this.store.saveEditorValue(this.editorValue());
+  }
+
+  private editorValue(): EditorValue {
+    return {
       title: this.title.value,
       lines: this.lines.controls.map((line) => ({
         words: line.controls.words.controls.map((word) => ({
@@ -129,6 +143,5 @@ export class SongEditorComponent {
         })),
       })),
     };
-    return this.store.saveEditorValue(value);
   }
 }

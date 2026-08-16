@@ -1,5 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
+import {
+  encodeLegacyNotation,
+  replaceWithLegacyNotation,
+} from '../../domain/legacy-notation-codec';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import {
   LEGACY_STORAGE_KEY,
@@ -45,8 +49,25 @@ export class SongEditorStore {
   }
 
   async saveEditorValue(value: EditorValue): Promise<void> {
+    const candidate = this.updateEditorValue(value);
+    if (!candidate) return;
+
+    try {
+      const saved = await this.repository.save(candidate);
+      // Do not overwrite a newer in-memory edit when an earlier IndexedDB write finishes later.
+      if (this.documentState() === candidate) {
+        this.documentState.set(saved);
+        this.statusState.set('saved');
+      }
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Speichern fehlgeschlagen: ${messageOf(error)}`);
+    }
+  }
+
+  updateEditorValue(value: EditorValue): SongDocument | null {
     const current = this.documentState();
-    if (!current) return;
+    if (!current) return null;
     const candidate = cloneDocument(current);
     candidate.song.title = value.title;
     value.lines.forEach((line, lineIndex) => {
@@ -54,21 +75,17 @@ export class SongEditorStore {
         const target = candidate.song.lines[lineIndex]?.words[wordIndex];
         if (target) {
           target.text = word.text;
-          target.notation = word.notation;
+          if (word.notation !== encodeLegacyNotation(target.events, target.legacyNotation)) {
+            Object.assign(target, replaceWithLegacyNotation(word.notation));
+          }
         }
       });
     });
 
+    this.documentState.set(candidate);
     this.statusState.set('saving');
     this.errorState.set(null);
-    try {
-      const saved = await this.repository.save(candidate);
-      this.documentState.set(saved);
-      this.statusState.set('saved');
-    } catch (error) {
-      this.statusState.set('error');
-      this.errorState.set(`Speichern fehlgeschlagen: ${messageOf(error)}`);
-    }
+    return candidate;
   }
 
   async importJson(json: string): Promise<void> {

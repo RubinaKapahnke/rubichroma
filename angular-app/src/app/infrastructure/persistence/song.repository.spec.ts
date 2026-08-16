@@ -1,6 +1,11 @@
 import 'fake-indexeddb/auto';
+import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
+import {
+  encodeLegacyNotation,
+  replaceWithLegacyNotation,
+} from '../../domain/legacy-notation-codec';
 import { stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
 import { KalimbaDatabase } from './kalimba.database';
 import { SongRepository } from './song.repository';
@@ -52,12 +57,15 @@ describe('SongRepository', () => {
       extra: {},
     });
     imported.song.title = 'Bearbeitet';
-    imported.song.lines[0].words[0].notation = '(13)-x(';
+    Object.assign(imported.song.lines[0].words[0], replaceWithLegacyNotation('(13)-x('));
     const saved = await repo.save(imported);
     const secondRepo = repository();
     const reimported = await secondRepo.migrateLegacy(stringifyVanillaCompatible(saved), saved);
     expect(reimported.song.title).toBe('Bearbeitet');
-    expect(reimported.song.lines[0].words[0].notation).toBe('(13)-x(');
+    const reimportedWord = reimported.song.lines[0].words[0];
+    expect(encodeLegacyNotation(reimportedWord.events, reimportedWord.legacyNotation)).toBe(
+      '(13)-x(',
+    );
     expect(reimported.extra['unknownRoot']).toEqual(COMPLETE_LEGACY['unknownRoot']);
   });
 
@@ -103,4 +111,103 @@ describe('SongRepository', () => {
     expect(() => JSON.parse('{')).toThrow();
     expect((await repo.load())?.song.title).toBe('Die Schöne – Grüße');
   });
+
+  it('atomically upgrades a real Dexie v1 song record to structured events', async () => {
+    const name = `upgrade-${crypto.randomUUID()}`;
+    const legacyDocument = storedV1Document();
+    const v1 = new Dexie(name);
+    v1.version(1).stores({ songs: 'id', meta: 'key' });
+    await v1.table('songs').put({
+      id: 'current',
+      document: legacyDocument,
+      revision: 4,
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+    await v1.table('meta').put({ key: 'legacy-v0-imported', value: 'marker' });
+    v1.close();
+
+    const database = new KalimbaDatabase(name);
+    databases.push(database);
+    const stored = await database.songs.get('current');
+    const marker = await database.meta.get('legacy-v0-imported');
+
+    expect(stored?.revision).toBe(4);
+    expect(stored?.updatedAt).toBe('2025-01-01T00:00:00.000Z');
+    expect(marker?.value).toBe('marker');
+    expect('notation' in (stored?.document.song.lines[0].words[0] ?? {})).toBe(false);
+    expect(stringifyVanillaCompatible(stored!.document)).toContain(
+      JSON.stringify("1' 2′ 3″ (135)-7′"),
+    );
+  });
+
+  it('rolls back the Dexie v1 upgrade if a stored word cannot be migrated', async () => {
+    const name = `upgrade-failure-${crypto.randomUUID()}`;
+    const invalidDocument = storedV1Document();
+    invalidDocument.song.lines[0].words[0].notation = 42 as unknown as string;
+    const v1 = new Dexie(name);
+    v1.version(1).stores({ songs: 'id', meta: 'key' });
+    await v1.table('songs').put({
+      id: 'current',
+      document: invalidDocument,
+      revision: 2,
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+    v1.close();
+
+    const failedUpgrade = new KalimbaDatabase(name);
+    await expect(failedUpgrade.open()).rejects.toThrow(
+      'Dexie-v1-Wort enthält keine gültige Legacy-Notation.',
+    );
+    failedUpgrade.close();
+
+    const verifier = new Dexie(name);
+    verifier.version(1).stores({ songs: 'id', meta: 'key' });
+    const record = await verifier.table('songs').get('current');
+    expect(record.document.song.lines[0].words[0].notation).toBe(42);
+    verifier.close();
+    await Dexie.delete(name);
+  });
 });
+
+function storedV1Document(): {
+  song: {
+    title: string;
+    lines: {
+      words: { text: string; notation: string; toneCount?: number; extra: object }[];
+      extra: object;
+    }[];
+    extra: object;
+  };
+  keys: object[];
+  extra: object;
+} {
+  const song = COMPLETE_LEGACY['song'] as {
+    title: string;
+    customSongField: string;
+    lines: Array<{
+      lineTag: string;
+      words: Array<Record<string, unknown> & { text: string; notation: string }>;
+    }>;
+  };
+  return {
+    song: {
+      title: song.title,
+      lines: song.lines.map((line) => ({
+        words: line.words.map((word) => ({
+          text: word.text,
+          notation: word.notation,
+          ...(word['toneCount'] === undefined ? {} : { toneCount: word['toneCount'] as number }),
+          extra: Object.fromEntries(
+            Object.entries(word).filter(
+              ([key]) => !['text', 'notation', 'toneCount'].includes(key),
+            ),
+          ),
+        })),
+        extra: { lineTag: line.lineTag },
+      })),
+      extra: { customSongField: song.customSongField },
+    },
+    keys: structuredClone(COMPLETE_LEGACY['keys'] as object[]),
+    extra: { unknownRoot: structuredClone(COMPLETE_LEGACY['unknownRoot']) },
+  };
+}
