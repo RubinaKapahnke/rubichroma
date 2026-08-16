@@ -29,6 +29,14 @@ Produkt-, Architektur-, Marken- oder Deploymententscheidungen werden in der jewe
 - Nur freigegebene Änderungen werden über einen Promotion-Branch und Pull Request nach `main` gebracht.
 - Hosting erfolgt über Cloudflare Pages mit GitHub-Integration. Kein Worker-Projekt mit `wrangler deploy` anlegen.
 
+## Abhängigkeiten, Delegation und Status
+
+- Ein Child-Issue erst umsetzen lassen, wenn seine technische Basis im vorgesehenen PR-Zielbranch enthalten ist. Ist ein Parent-PR noch offen, entweder dessen Integration abwarten oder einen ausdrücklich freigegebenen Stacked-PR-Vertrag festlegen; ohne einen dieser Wege keinen Child-Task als vollständig beauftragen.
+- Vor dem Coding eine kompakte Akzeptanzmatrix festlegen: Akzeptanzkriterium → realistischer Nutzerablauf → automatischer Test → erforderlicher CI-Nachweis. Bei Import, Hydration, Restore oder anderem Zustandstausch muss die Matrix den unmittelbar sichtbaren Zustand ohne Reload, eine Folgeaktion, Undo soweit vorhanden und den Zustand nach Reload enthalten.
+- Repräsentative Testdaten vor der Abschlussprüfung bereitstellen. Nur synthetische, gemeinfreie oder eindeutig freigegebene Fixtures committen; lokale Nutzer-Testdaten bleiben außerhalb des Branch-Scopes.
+- In frischen Worktrees Skill-Pfade nur aus dem aktuellen Skill-Katalog auflösen und Abhängigkeiten vor Prüfungen mit dem Lockfile bereitstellen. Keine Cache- oder Skill-Pfade raten und fehlende `node_modules` nicht als Codefehler bewerten.
+- Status strikt staffeln: `implementiert` → `lokal geprüft` → `PR mit CI grün` → `nach dev integriert` → `Issue geschlossen`. `Abgeschlossen` oder `vollständig umgesetzt` nur nach der letzten für das Issue verlangten Stufe verwenden; Blocker und fehlende Stufen immer ausdrücklich nennen.
+
 ## GitHub-Authentifizierung in Codex
 
 - Die verbundene GitHub-App, die `gh`-CLI und Git-Zugangsdaten sind getrennte Authentifizierungskontexte. Eine funktionierende App-Verbindung bedeutet nicht automatisch, dass `gh` angemeldet ist, und umgekehrt.
@@ -56,7 +64,8 @@ pnpm e2e
 
 - Nur Dokumentation: `git diff --check`
 - Angular-Code: `pnpm check:domain-boundary`, `pnpm test` und `pnpm build`
-- UI, Routing, Browser-Speicherung oder Migration: zusätzlich die betroffenen Playwright-Tests mit `pnpm e2e`
+- UI, Routing, Browser-Speicherung, Import, Hydration oder Migration: zusätzlich die betroffenen Playwright-Tests mit `pnpm e2e`. Zustandstausch immer anhand einer repräsentativen Fixture sofort ohne Reload und erneut nach Reload prüfen.
+- Ein grüner lokaler Browserlauf ersetzt keinen CI-Nachweis. PRs mit Angular-Code gelten erst als CI-grün, wenn auch die verpflichtenden Playwright-Tests im Workflow erfolgreich waren.
 - Nur die für den Scope erforderlichen Prüfungen ausführen. Unveränderte Befunde nicht durch zusätzliche breite Audits wiederholen.
 
 Bestehende Nutzeränderungen im Worktree respektieren. Keine fremden Änderungen zurücksetzen und keine offenen Produktentscheidungen durch technische Annahmen ersetzen.
