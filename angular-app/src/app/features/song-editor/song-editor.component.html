@@ -57,10 +57,26 @@
       <mat-card-header>
         <mat-card-title>Song</mat-card-title>
         <mat-card-subtitle
-          >{{ lines.length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
+          >{{ lines().length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
         >
       </mat-card-header>
       <mat-card-content>
+        <div class="structure-toolbar">
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="undo-structure"
+            [disabled]="!store.canUndo()"
+            (click)="undoStructure()"
+          >
+            Rückgängig
+          </button>
+          @if (actionNotice(); as message) {
+            <span role="status" aria-live="polite" data-testid="structure-status">{{
+              message
+            }}</span>
+          }
+        </div>
         <mat-form-field appearance="outline" class="title-field">
           <mat-label>Titel</mat-label>
           <input matInput data-testid="song-title" [formControl]="title" autocomplete="off" />
@@ -68,9 +84,10 @@
 
         <div class="editor-layout">
           <app-song-sheet
-            [lines]="lines"
+            [lines]="lines()"
             [selection]="selection()"
             (selectionChange)="changeSelection($event)"
+            (structureAction)="applyStructureAction($event)"
           />
 
           @if (selectedWord(); as word) {
@@ -86,7 +103,12 @@
               [location]="selectionLocation()"
               [testIdSuffix]="selectionTestId()"
               [keys]="kalimbaKeys()"
+              [canDeleteBlock]="canDeleteSelectedBlock()"
+              [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
+              [canUndo]="store.canUndo()"
               (closed)="closeWordEditor()"
+              (structureAction)="applyStructureAction($event)"
+              (undoRequested)="undoStructure()"
             />
           } @else {
             <aside class="editor-placeholder">

@@ -5,6 +5,7 @@ import { MatInputModule } from '@angular/material/input';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { appendMusicEvent, removeMusicEvent } from '../../domain/music-event-editing';
 import { MusicEvent, Pitch } from '../../domain/music-event';
+import { SongStructureAction } from '../../domain/song-structure-editing';
 
 export interface KalimbaKeyView {
   id: string;
@@ -30,7 +31,12 @@ export class WordEditorComponent {
   readonly location = input.required<string>();
   readonly testIdSuffix = input.required<string>();
   readonly keys = input.required<readonly KalimbaKeyView[]>();
+  readonly canDeleteBlock = input.required<boolean>();
+  readonly canCopyToNextLine = input.required<boolean>();
+  readonly canUndo = input.required<boolean>();
   readonly closed = output<void>();
+  readonly structureAction = output<SongStructureAction>();
+  readonly undoRequested = output<void>();
 
   readonly insertMode = signal<InsertMode>('single');
   readonly chordDraft = signal<Pitch[]>([]);

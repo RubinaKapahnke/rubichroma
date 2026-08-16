@@ -34,7 +34,7 @@ Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus de
 
 ## Aktueller Schnitt
 
-Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, ein mobiles Editor-Bottom-Sheet, Autosave sowie JSON-Import/-Export. Noch nicht enthalten sind vollständige Vanilla-Featureparität, Mehrfachauswahl, Drag-and-drop, Silbentrennung, Undo, Audio/Tone.js, Fotoimport, Backend, NgRx oder Capacitor.
+Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, Block- und Zeilenstrukturaktionen, die Übertragung von Musikereignissen in die nächste Zeile, sitzungsbezogenes Undo, ein mobiles Editor-Bottom-Sheet, Autosave sowie JSON-Import/-Export. Noch nicht enthalten sind vollständige Vanilla-Featureparität, Mehrfachauswahl, Drag-and-drop, Silbentrennung, Audio/Tone.js, Fotoimport, Backend, NgRx oder Capacitor.
 
 ## Ablösung der Alt-App
 
