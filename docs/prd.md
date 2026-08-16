@@ -14,6 +14,16 @@ RubiChroma eröffnet Menschen einen persönlichen, visuellen Zugang zum Instrume
 
 Bis zum geschlossenen MVP-Piloten ermöglicht RubiChroma Kalimba-Anfängern, ihr persönliches Farbsystem zu übernehmen und einen kurzen unbekannten Abschnitt innerhalb einer Übungssitzung mithilfe von Hören, Tempo, Loop und reduzierbarer Farbhilfe selbstständig zu lernen. Langfristig unterstützt RubiChroma dabei, vollständige Lieder selbstständig zu spielen.
 
+## Produktkern und Abgrenzung
+
+RubiChroma ist zuerst ein personalisierbarer farbbasierter Tab- und Notationseditor mit integriertem Übungsplayer. Nutzer erstellen oder übernehmen eigene Tabs und Notationen, wenden ihr persönliches Farbsystem darauf an und können das Ergebnis ansehen, ausdrucken, abspielen und gezielt üben.
+
+Der zentrale Produktfluss ist:
+
+> **Tab erstellen oder importieren → persönliche Farben anwenden → ansehen oder ausdrucken → abspielen → Tempo und Loop nutzen → üben**
+
+Lernpfade, Übungen und Lernspiele bauen auf diesem Kern auf. Sie erschließen vorhandene Musik gezielter, ersetzen aber weder den Editor noch den freien Player- und Übungsablauf und dürfen diese Kernfunktionen nicht in den Hintergrund drängen.
+
 ## Zielgruppe
 
 Primär selbstlernende Anfänger. Lehrkräfte und Musikpädagogen sind eine sekundäre Zielgruppe.
@@ -68,6 +78,120 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 - realistische Samples und Audioexport
 - öffentliche Beta
 
+## Übungen und Lernsystem
+
+RubiChroma soll neben dem freien Üben von Tabs und Liedern kurze interaktive Übungen für Anfänger und Fortgeschrittene anbieten. Eine Übung verfolgt ein konkretes musikalisches Lernziel und führt möglichst unmittelbar zum Spielen auf dem Instrument oder zur Anwendung in einem Liedabschnitt.
+
+Der grundlegende Lernkreislauf lautet:
+
+> **Grundlage verstehen → gezielt üben → in einem Lied anwenden**
+
+Übungen bilden kein separates Produkt oder paralleles Musiksystem. Sie verwenden dieselben musikalischen Inhalte, persönlichen Farbsysteme und grundlegenden Player-Funktionen wie Tabs und Lieder.
+
+### Lernzugänge und Lerneinheiten
+
+Das Zielbild verbindet drei Einstiege:
+
+- einen geführten Lernpfad für Nutzer, die Orientierung wünschen
+- einen Lied-Einstieg mit passenden Vorübungen für einen konkreten Abschnitt
+- einen freien Katalog nach Fähigkeit und Schwierigkeitsgrad
+
+Eine typische kurze Lerneinheit besteht aus drei bis sieben aufeinander abgestimmten Aufgaben und besitzt einen erkennbaren Abschluss. Der erste vollständige Lernsystem-Schnitt soll den Kernkreislauf anhand eines Song-Warm-ups belegen:
+
+1. benötigte Töne und Positionen kennenlernen
+2. typische Tonfolge üben
+3. Rhythmus üben
+4. kurze Folge beziehungsweise ein Begleitmuster spielen
+5. das Gelernte im zugehörigen Liedabschnitt anwenden
+
+### Fähigkeiten und wiederverwendbare Lernspiele
+
+Übungen werden nicht nur als Anfänger- oder Fortgeschritteneninhalt eingeordnet, sondern nach konkreten Fähigkeiten und Schwierigkeitsgraden. Trainierbare Fähigkeiten sind insbesondere:
+
+- Orientierung auf dem Instrument
+- Zuordnung von Farbe, Zahl, Tonbuchstabe, Notation und Instrumentposition
+- Notenlesen und Gehörbildung
+- Rhythmus, Tempo und Spielflüssigkeit
+- Ton-, Positions- und Oktavwechsel
+- Links-/Rechts-Koordination
+- Akkorde, Arpeggien und Begleitmuster
+- Melodie und Begleitung
+
+Eine begrenzte Anzahl wiederverwendbarer Lernspiel-Typen soll viele Übungen tragen können. Dazu gehören insbesondere Ton oder Position finden, Notation auf das Instrument übertragen, Instrumentposition deuten, gehörten Ton erkennen, Darstellungen zuordnen, Rhythmus reproduzieren, fehlende Elemente ergänzen, Reihenfolgen herstellen, kurze Folgen nachspielen, Muster merken, Song-Warm-ups und die anschließende Anwendung im Lied.
+
+Eine Fähigkeit soll aus mehreren Richtungen trainierbar sein: sehen und erkennen, hören und erkennen, Symbol auf Instrument übertragen, Instrumentposition deuten, Rhythmus reproduzieren, Muster spielen und das Ergebnis im Lied anwenden. Das persönliche RubiChroma-Farbsystem ergänzt dabei die Verbindung **Farbe ↔ Ton ↔ Zahl ↔ Notation ↔ Instrumentposition**.
+
+Die grundlegenden Mechaniken bleiben für unterschiedliche Niveaus gleich. Schwierigkeit entsteht unter anderem durch Tonraum, Sprünge, Oktavwechsel, Rhythmus, Geschwindigkeit, Akkorde, Begleitung und den Umfang sichtbarer Hilfen.
+
+### Inhalte und Wiederholungsvarianten
+
+Die Lernlogik und die musikalischen Kerninhalte werden redaktionell festgelegt. Wiederholungsvarianten dürfen innerhalb dieser festgelegten Regeln automatisch entstehen, damit wiederholtes Üben nicht immer identisch abläuft. Automatische Varianten dürfen das fachliche Lernziel, den vorgesehenen Schwierigkeitsgrad und die instrumentelle Spielbarkeit nicht unbeabsichtigt verändern.
+
+Das musikalische Lernziel wird unabhängig von einem einzelnen Instrument beschrieben und auf kompatible Instrument- und Stimmungsprofile abgebildet. Nicht spielbare Übungen werden für die jeweilige Konfiguration nicht angeboten.
+
+### Feedback, Hilfen und Freiheit
+
+- Eine Antwort erhält unmittelbares, wertungsfreies Feedback. Fehler führen nicht zu verlorenen Leben oder einer Bestrafung.
+- Nach einem Fehler kann der Nutzer erneut versuchen, eine Hilfe anfordern oder bewusst überspringen. Keine Aufgabe erzeugt eine Sackgasse.
+- Hilfen werden stufenweise angeboten: zunächst ein neutraler Neuversuch, anschließend ein gezielter Hinweis und schließlich Vormachen beziehungsweise Lösung.
+- Redaktionell definierte Schwierigkeitsstufen geben die Lernprogression vor. Hilfen und Wiederholungen passen sich innerhalb dieser Stufen an den bisherigen Verlauf an; eine vollständig adaptive Aufgabengenerierung ist dafür nicht erforderlich.
+- Inhalte bleiben frei zugänglich. Lernpfad, Voraussetzungen und Song-Bereitschaft erzeugen Empfehlungen, aber keine harten Zugangssperren.
+- Farbe ist auch in Lernspielen niemals das einzige Unterscheidungsmerkmal. Zahl, Tonbuchstabe, Notation, Position und geeignete Beschriftungen halten Aufgaben unabhängig von der Farbwahrnehmung verständlich.
+
+### Abschluss, Beherrschung und Song-Bereitschaft
+
+Das Beenden einer Lerneinheit und die Beherrschung einer Fähigkeit sind getrennte Aussagen. Eine Einheit kann abgeschlossen werden, auch wenn Hilfen, Wiederholungen oder Überspringen nötig waren.
+
+Die sichtbaren Beherrschungsstufen lauten:
+
+> **Neu → In Übung → Sicher → Gefestigt**
+
+Die Beherrschung wird aus mehreren Versuchen abgeleitet. Aktuelle und selbstständig gelöste Aufgaben wiegen stärker als ältere Ergebnisse oder Aufgaben mit Hilfen. Ein erreichter sichtbarer Stand wird nach einer Pause nicht künstlich zurückgestuft; stattdessen kann RubiChroma eine gezielte Auffrischung empfehlen.
+
+Fortschritt bleibt nachvollziehbar über drei verbundene Ebenen:
+
+1. Ergebnis einer konkreten Aufgabe
+2. daraus abgeleitete Beherrschung konkreter Fähigkeiten
+3. daraus abgeleitete Bereitschaft für einen bestimmten Liedabschnitt
+
+Song-Bereitschaft ist keine Prüfung und keine Zugangshürde. Sie erklärt abschnittsbezogen, was bereits sicher gelingt, wo noch Schwierigkeiten bestehen und welche Übungen voraussichtlich helfen. Ein Nutzer darf den Abschnitt oder das vollständige Lied jederzeit trotzdem öffnen und spielen.
+
+### Eingabe und Evidenz
+
+Im ersten Lernsystem-Schnitt liefern Bildschirm-Interaktionen eindeutige, automatisch auswertbare Antworten. Spätere Mikrofon- und MIDI-Erkennung sollen dieselben fachlichen Übungen bewerten können; dabei ändert sich die Eingabequelle, nicht das Lernziel oder die Übungsdefinition.
+
+Reales Spielen kann bis dahin durch den Nutzer selbst eingeschätzt und als Übungsaktivität erfasst werden. Selbst eingeschätzte Aktivität bleibt klar von automatisch gemessener Evidenz unterschieden. Spätere Mikrofon- und MIDI-Daten ergänzen die automatische Evidenz, ohne vorhandene Selbsteinschätzungen umzudeuten.
+
+### Produktstufung des Lernsystems
+
+| Bereich | Erster vollständiger Lernsystem-Schnitt | Langfristiges Zielbild |
+|---|---|---|
+| Lernbogen | ein vollständiger Song-Warm-up vom Grundelement bis zur Anwendung im Abschnitt | Lernpfad, Lied-Einstieg und freier Fähigkeitskatalog |
+| Aufgabenumfang | kurze Einheit mit drei bis sieben zusammenhängenden Bildschirm-Aufgaben | viele Übungen aus wiederverwendbaren Lernspiel-Typen und kontrollierten Varianten |
+| Schwierigkeit | redaktionell definierte Stufen mit angepassten Hilfen und Wiederholungen | breiter Fähigkeits- und Schwierigkeitsraum für Anfänger und Fortgeschrittene |
+| Eingabe | eindeutig auswertbare Bildschirm-Interaktion und getrennte Selbsteinschätzung realen Spielens | zusätzliche objektive Evidenz über Mikrofon und MIDI |
+| Anwendung | unmittelbarer Übergang in den vorbereiteten Liedabschnitt | abschnittsbezogene Empfehlungen und Auffrischungen über viele Lieder und Fähigkeiten |
+
+### Testbare fachliche Anforderungen
+
+- Eine kurze Lerneinheit führt mit drei bis sieben zusammenhängenden Aufgaben von einem benannten Lernziel zu einer erkennbaren Anwendung in einem Liedabschnitt.
+- Nach einer falschen Antwort kann der Nutzer erneut versuchen, die nächste Hilfestufe anfordern oder überspringen und die Einheit in jedem Fall fortsetzen.
+- Abschluss der Einheit, Beherrschungsstufe der beteiligten Fähigkeiten und Song-Bereitschaft werden getrennt angezeigt und nachvollziehbar miteinander verknüpft.
+- Zwei unterschiedliche Aufgaben zum selben Lernziel können als kontrollierte Wiederholungsvarianten erscheinen, ohne Lernziel, Schwierigkeitsgrad oder spielbaren Tonumfang zu verletzen.
+- Eine mit Bildschirm-Eingabe bewertete Übung kann später dieselben erwarteten musikalischen Ereignisse über Mikrofon oder MIDI bewerten, ohne eine zweite fachliche Übung zu benötigen.
+- Selbst eingeschätztes reales Spielen ist im Verlauf als solches erkennbar und wird nicht als automatisch gemessene Leistung ausgegeben.
+- Nach längerer Pause bleibt die erreichte Beherrschungsstufe bestehen; eine Auffrischung wird als Empfehlung angeboten.
+- Ein Nutzer kann trotz geringer Song-Bereitschaft jeden Liedabschnitt öffnen und spielen.
+
+### Noch offene Lernsystem-Entscheidungen
+
+- wie kuratierte Lieder und eigene beziehungsweise importierte Tabs jeweils mit Lernwegen und Übungsvorschlägen verbunden werden
+- ob schwierige Abschnitte ausschließlich vom Nutzer markiert, zusätzlich von RubiChroma vorgeschlagen oder auf beiden Wegen ausgewählt werden
+- welcher Übungsablauf aus einem ausgewählten eigenen Tab-Abschnitt entsteht
+- wie eng automatisch vorgeschlagene Warm-ups am konkreten musikalischen Material bleiben
+- wie stark Übungen persönliche Farben und andere Hilfen reduzieren dürfen und welche Kontrolle Nutzer dabei behalten
+- wie Ergebnisse tabbezogener Übungen zwischen allgemeinem Fähigkeitsfortschritt und konkreter Abschnittsbereitschaft aufgeteilt werden
+
 ## Langfristiges Player-Zielbild
 
 Der RubiChroma Player verbindet Hören, Sehen, Vorauslesen, Wiederholen und Mitspielen in einer gemeinsamen Übungsoberfläche. Sein primärer Nutzen ist geführtes Mitspielen und gezieltes Üben; das reine Anhören und visuelle Nachvollziehen eines Stücks ist darin enthalten.
@@ -108,22 +232,33 @@ Audio und alle Visualisierungen beziehen sich auf dieselbe musikalische Timeline
 - Loop-Auswahl und zugehörige Einstellungen bleiben pro Stück gespeichert. Beim erneuten Öffnen ist der gespeicherte Loop zunächst deaktiviert, damit keine unerwartete Wiederholung startet.
 - Die genaue Rasterung der Loop-Grenzen ist noch offen. Beabsichtigt ist, ausgewählte musikalische Ereignisse einschließlich ihrer vollständigen Dauer eindeutig wiederzugeben.
 
-### Notation, Flow und Hybrid
+### Gemeinsame Playeroberfläche, Flow und Laufnotation
 
-Der vollständige Player bietet drei jederzeit wechselbare Ansichten:
+Der Player ist eine visuell zusammenhängende Oberfläche und kein Dashboard aus vielen gleichgewichtigen Karten. Die aktive Visualisierung bildet die dominante Hauptfläche. Transport, Position, Tempo und Lautstärke stehen in einer kompakten gemeinsamen Steuerleiste; Loop und Mixer bleiben als sekundäre Funktionen platzsparend erreichbar beziehungsweise einklappbar.
 
-- **Notation:** synchronisierte RubiChroma-Notation mit Hervorhebung der aktuell klingenden Note beziehungsweise des Akkords
-- **Flow:** kommende Ereignisse bewegen sich entlang fester Instrumentenspuren auf ihren Spielzeitpunkt zu
-- **Hybrid:** Notation und Flow sind gleichzeitig sichtbar
+Innerhalb desselben Players kann der Visualisierungsbereich zwischen zwei Darstellungen wechseln:
 
-Auf großen Bildschirmen ist Hybrid die bevorzugte Ausgangsansicht; die zuletzt gewählte Ansicht wird respektiert. Auf kleinen Bildschirmen ist jeweils nur Notation oder Flow sichtbar und direkt umschaltbar, damit beide Darstellungen spielbar und lesbar bleiben.
+- **Flow:** kommende Ereignisse bewegen sich auf festen Instrumentenspuren von oben nach unten zu einer Anschlaglinie und zum darunter sichtbaren Instrument.
+- **Laufnotation beziehungsweise Tab:** farbige Ereignisse bewegen sich von rechts nach links zu einer festen vertikalen Spiellinie ungefähr im vorderen Drittel. Rechts liegt die Vorschau, links bereits Gespieltes.
+
+Beide Darstellungen sind Projektionen derselben Timeline. Ein Wechsel unterbricht die Wiedergabe nicht und verändert weder Position noch Geschwindigkeit, Loop, Farbhilfe oder Ebenenzustand. Auf kleinen Bildschirmen ist immer nur eine Visualisierung sichtbar. Eine gleichzeitige Darstellung kann auf großen Bildschirmen später optional angeboten werden, ist aber weder eigener Navigationsbereich noch Standard.
+
+Für die Laufnotation gilt:
+
+- Die Spiellinie bleibt fest, während die Ereignisse auf sie zulaufen.
+- Farbbalken tragen das persönliche RubiChroma-Farbsystem. Kalimba-Zahl und Tonbuchstabe können unabhängig eingeblendet werden; klassische Notensymbole sind eine mögliche spätere Darstellungsoption.
+- Die Balkenlänge zeigt die Haltedauer. Gleichzeitig eintreffende Balken bilden einen Akkord.
+- Die Kalimba-Zungen bleiben unterhalb der laufenden Ereignisse in ihrer physischen Anordnung sichtbar und reagieren beim Erreichen der Spiellinie.
 
 Für die Kalimba gilt in Flow:
 
 - Alle Zungen des persönlichen Instrumentprofils erscheinen als feste Spuren in exakt der physischen Links-rechts-Anordnung. Sie werden nicht nach Tonhöhe umsortiert.
+- Die sichtbaren Zungen sind als Instrumentabbildung eindeutig erkennbar: metallische, unterschiedlich lange Zungen mit kalimbatypischer gerundeter Spielfläche statt gleichförmiger Tasten oder abstrakter Rechtecke.
+- Tonbuchstabe und Kalimba-Zahl beziehungsweise Oktavmarkierung stehen wie eine Prägung oder aufgedruckte Instrumentbeschriftung direkt auf der jeweiligen Zunge. Die Beschriftung bleibt auch bei abgeschwächter oder ausgeschalteter Farbhilfe lesbar.
 - Im Stück unbenutzte Zungen bleiben zur räumlichen Orientierung sichtbar, aber stark zurückgenommen.
 - Der Vorschauzeitraum basiert auf musikalischer statt realer Zeit. Zwei Takte sind der bestätigte Ausgangspunkt; ob weitere Horizonte wählbar werden, ist noch offen.
-- Die Vorderkante eines Notenbalkens markiert den Einsatz, seine Länge die Haltedauer und sein Ende das Loslassen.
+- Kommende Notenbalken erscheinen oben und laufen nach unten zur festen Anschlaglinie. Die darunter sichtbare Zunge reagiert beim Auftreffen.
+- Die Vorderkante eines Notenbalkens markiert den Einsatz, seine Länge in Bewegungsrichtung die Haltedauer und sein Ende das Loslassen.
 - Akkorde werden durch gleichzeitiges Eintreffen und eine dezente visuelle Gruppierung als Einheit kenntlich, ohne die Instrumentenspuren zu verwischen.
 - Pausen erscheinen primär als zeitliche Lücke und bei ausreichendem Platz zusätzlich mit einem dezenten Pausensymbol.
 - Kalimba-Zahl und Tonbuchstabe lassen sich unabhängig voneinander ein- und ausschalten.
@@ -139,7 +274,7 @@ Für die Kalimba gilt in Flow:
 
 ### Zukünftige Spielerkennung
 
-Der Player soll später erkennen können, was ein Nutzer tatsächlich spielt. Mikrofon- und MIDI-Eingaben sowie daraus abgeleitetes Feedback sind nicht Teil des MVP. Das Player- und Timeline-Modell wird jedoch so abgegrenzt, dass diese Eingaben später ergänzt werden können, ohne Wiedergabe, Notation oder Musikmodell auszutauschen. Die späteren Übungsmodi und die genaue Form des Feedbacks sind noch offen.
+Der Player soll später erkennen können, was ein Nutzer tatsächlich spielt. Mikrofon- und MIDI-Eingaben sowie daraus abgeleitetes Feedback sind nicht Teil des MVP. Das Player- und Timeline-Modell wird jedoch so abgegrenzt, dass diese Eingaben später ergänzt werden können, ohne Wiedergabe, Notation oder Musikmodell auszutauschen. Offen bleiben insbesondere Erkennungsqualität, Live-Modi und die genaue visuelle Rückmeldung; die übergeordneten Lern-, Feedback- und Evidenzprinzipien stehen im Abschnitt **Übungen und Lernsystem**.
 
 ### MVP-Schnitt und spätere Ausbaustufen
 
@@ -147,7 +282,7 @@ Der Player soll später erkennen können, was ein Nutzer tatsächlich spielt. Mi
 |---|---|---|
 | Instrument | kuratiertes Profil für eine 17-Zungen-Kalimba in C | weitere Instrumentprofile auf demselben Musik- und Timeline-Modell |
 | Klang | vollständig lokaler synthetischer Kalimba-Klang | austauschbare hochwertige Instrument-Samples |
-| Darstellung | synchronisierte Notation und aktive Hervorhebung | Notation, Flow und Hybrid |
+| Darstellung | synchronisierte Tab-/Laufnotation und aktive Hervorhebung | eine gemeinsame Playeroberfläche mit umschaltbarer Laufnotation und Kalimba-Flow; gleichzeitige Darstellung nur optional |
 | Transport | Start, Pause, Stopp, Lautstärke und sichtbare Position | zusätzlich erweiterte Navigation und persönliche Ansichtspräferenzen |
 | Üben | Bereich, Loop und relative Übungsgeschwindigkeit | zusätzlich Metronom und getrennt steuerbarer Einzähler |
 | Ebenen | mehrere Ebenen im Datenmodell vorbereitet, zunächst ohne vollständigen Mixer | Ein/Aus, Lautstärke und Solo je Ebene |
@@ -162,8 +297,12 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - Ein Nutzer springt während laufender beziehungsweise pausierter Wiedergabe über Timeline und Note; der Player behält den vorherigen Wiedergabestatus bei.
 - Derselbe Bereich lässt sich über Notenauswahl und Timeline-Griffe einstellen. Mehrere Loop-Durchläufe bleiben ohne zeitliche Drift und spielen kein Ereignis außerhalb der Auswahl an.
 - Nach erneutem Öffnen sind die bestätigten stückbezogenen Einstellungen und der letzte Loop-Bereich vorhanden, der Loop läuft aber nicht automatisch an.
-- Die aktuelle Notation bleibt vorauslesbar; aktive Note, Akkord und Pause sind auch bei abgeschwächter oder ausgeschalteter Farbhilfe eindeutig erkennbar.
-- Die spätere Flow-Ansicht bildet physische Zungenanordnung, Einsatz, Haltedauer, Loslassen, Akkorde und Pausen korrekt ab und bleibt bei reduzierter Bewegung vollständig verständlich.
+- Die Laufnotation bewegt Ereignisse von rechts nach links zu einer festen Spiellinie; aktive Note, Akkord und Pause bleiben auch bei abgeschwächter oder ausgeschalteter Farbhilfe eindeutig erkennbar.
+- Die spätere Flow-Ansicht bewegt Ereignisse von oben nach unten auf die physische Zungenanordnung zu und bildet Einsatz, Haltedauer, Loslassen, Akkorde und Pausen korrekt ab.
+- Die Instrumentdarstellung ist ohne zusätzliche Erklärung als 17-Zungen-Kalimba erkennbar; Zungenlängen, Metallcharakter, reale Anordnung und direkt aufgebrachte Ton-/Zahlbeschriftung unterstützen die Zuordnung.
+- Ein Wechsel zwischen Laufnotation und Flow unterbricht die Wiedergabe nicht und bewahrt Position, Tempo, Loop, Farbhilfe und Ebenenzustand.
+- Die Playeroberfläche bleibt als zusammenhängende Einheit erkennbar; sekundäre Loop- und Mixersteuerungen verdrängen die aktive Visualisierung nicht.
+- Bei reduzierter Bewegung bleiben Reihenfolge, Annäherung, Zeitpunkt und Dauer in beiden Visualisierungen ohne kontinuierliche Animation verständlich.
 - Die spätere Ebenensteuerung kann Melodie und Begleitung unabhängig stummschalten, regeln und solo wiedergeben, ohne die gemeinsame Timeline zu verlassen.
 
 ### Noch offene Player-Entscheidungen
@@ -174,7 +313,9 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - genaue Länge und Konfigurierbarkeit des späteren Einzählers
 - spätere Erkennungsmodi, etwa kontinuierliches Live-Feedback oder ein Modus **Warte auf mich**, sowie Form und Umfang der Rückmeldung
 - Auswahl, Qualitätsziel, Lizenzierung und Ladeverhalten späterer Instrument-Samples
-- genaue visuelle und responsive Anordnung der Player-Bedienelemente
+- genaue responsive Anordnung der Player-Bedienelemente sowie Vollbild- oder Querformatführung für Flow auf schmalen Geräten
+- ob klassische Notensymbole zusätzlich zu farbigen Balken, Zahl und Tonbuchstabe angeboten werden
+- ob eine gleichzeitige Darstellung von Laufnotation und Flow auf großen Bildschirmen langfristig einen eigenen Mehrwert bietet
 
 ## Roadmap
 

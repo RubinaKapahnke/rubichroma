@@ -37,6 +37,8 @@ Textnotation, Kalimba-Zahlen, Tonbuchstaben und farbige Darstellung sind Projekt
 
 Instrumentprofile, Farbprofile und Übungszustand bleiben eigenständige fachliche Bereiche. Dadurch können später weitere Instrumente und Darstellungen ergänzt werden, ohne das Musikmodell auszutauschen.
 
+Übungen und Lieder verwenden dasselbe instrumentenunabhängige Musikmodell und dieselbe musikalische Timeline. Eine Übung ergänzt erwartete musikalische Ereignisse, Lernziel, Fähigkeit, Schwierigkeit und Bewertungsregeln, definiert aber keine konkurrierende Noten-, Instrument- oder Zeitstruktur. Redaktionelle Kernaufgaben und automatisch erzeugte Wiederholungsvarianten folgen derselben fachlichen Übungsdefinition; Varianten bleiben auf explizit erlaubte musikalische und instrumentelle Grenzen beschränkt.
+
 Das Musikmodell erlaubt mehrere musikalische Ebenen wie Melodie und Begleitung von Anfang an, auch wenn der MVP zunächst keine vollständige Mehrspur- oder Mixer-Oberfläche anbietet. Ereigniszuordnung und Speicherung dürfen deshalb keine dauerhaft einzige Stimme voraussetzen.
 
 Ein Farbprofil gehört zu genau einem Instrumentprofil und einer Stimmung. Die Zuordnung referenziert stabile physische Zungen- oder Tasten-IDs und hält die zu dieser Stimmung gehörenden Tonhöhen und Tonstufen als Metadaten vor. Bei einer anderen Stimmung wird eine neue Farbskala angelegt; RubiChroma übernimmt die Zuordnung nicht stillschweigend.
@@ -59,7 +61,7 @@ Tone.js ist die gemeinsame Zeitgrundlage für Wiedergabe und alle zeitabhängige
 
 Audio wird erst nach einer bewussten Benutzeraktion gestartet und vollständig lokal bereitgestellt. Klangerzeugung und Soundquelle bleiben hinter der Audioanbindung austauschbar, damit der synthetische MVP-Klang später durch Samples ergänzt werden kann, ohne Timeline oder Musikmodell auszutauschen.
 
-Eine zukünftige Spielerkennung wird über eine von Transport und Audioausgabe getrennte Eingabeschnittstelle angebunden. Mikrofon- und MIDI-Adapter liefern normalisierte gespielte Ereignisse; eine davon getrennte Feedbackgrenze vergleicht sie mit erwarteten Timeline-Ereignissen. Weder Eingabe noch Feedback werden zur semantischen Quelle des Liedes.
+Bildschirm-Interaktion sowie eine zukünftige Spielerkennung werden über von Transport, Audioausgabe und fachlicher Übungsdefinition getrennte Eingabeschnittstellen angebunden. Mikrofon- und MIDI-Adapter liefern normalisierte gespielte Ereignisse; eine davon getrennte Feedbackgrenze vergleicht Eingaben mit erwarteten Timeline-Ereignissen. Dieselbe Übung und Bewertung darf dadurch unterschiedliche Eingabequellen verwenden. Weder Eingabe noch Feedback werden zur semantischen Quelle des Liedes oder der Übung.
 
 ### Speicherung und Offlinebetrieb
 
@@ -67,6 +69,8 @@ Dexie-Schemata und exportierte Sicherungsformate sind ab der ersten Version expl
 
 - Service Worker: Anwendung, Fonts und statische Audioressourcen
 - IndexedDB: Lieder, Farbprofile, Übungszustand und lokale Nutzerdaten
+
+Der gespeicherte Übungszustand unterscheidet automatisch gemessene Evidenz von selbst eingeschätzter realer Übungsaktivität. Die Herkunft einer Bewertung bleibt erhalten, damit spätere Mikrofon- oder MIDI-Evidenz bestehende Selbsteinschätzungen ergänzt, aber nicht rückwirkend als objektiv gemessen erscheinen lässt.
 
 Speicherung, Audio und Medienzugriff werden hinter eigenen Services gekapselt. So können sie für eine spätere Capacitor-App bei Bedarf durch SQLite oder native Funktionen ersetzt werden.
 
