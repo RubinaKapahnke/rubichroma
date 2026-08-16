@@ -14,7 +14,7 @@ pnpm build
 pnpm e2e
 ```
 
-`pnpm e2e` erwartet einen installierten Playwright-Chromium-Browser (`pnpm exec playwright install chromium`). Der Browser-Download ist bewusst kein Installationsskript.
+`pnpm e2e` erwartet installierte Playwright-Browser für Chromium und WebKit (`pnpm exec playwright install chromium webkit`). Der Browser-Download ist bewusst kein Installationsskript.
 
 ## Daten und Kompatibilität
 
