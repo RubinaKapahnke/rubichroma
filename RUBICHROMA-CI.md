@@ -223,14 +223,38 @@ Warnungen sollen informativ sein und freie Farbwahl nicht unnötig blockieren. U
 
 ## 7. RubiChroma-Startpalette
 
-**Festgelegt:** RubiChroma erhält eine eigenständige neutrale Startpalette als auswählbares Nutzer-Preset. Sie wird unabhängig entwickelt und übernimmt weder Namen noch Farbwerte externer Produktpaletten. Sie ist nicht Teil der festen Corporate Palette.
+**Festgelegt:** RubiChroma erhält eine eigenständige Startpalette als initiale Default-Zuordnung für neu angelegte 17-Zungen-Kalimbas in C-Stimmung. Sie bleibt als Nutzer-Preset auswählbar und austauschbar, wird unabhängig entwickelt und übernimmt weder Namen noch Farbwerte externer Produktpaletten. Sie ist nicht Teil der festen Corporate Palette. Für andere Stimmungen gilt weiterhin die Regel aus Abschnitt 6: Sie benötigen eine ausdrücklich festgelegte eigene Zuordnung.
+
+### Default-Palette Version 1
+
+Die Reihenfolge entspricht der physischen Anordnung von links außen über die mittlere Zunge nach rechts außen.
+
+| Position | Tonwert | Ton | Hand | Farbe |
+|---:|---:|:---:|:---:|:---:|
+| 1 | `2″` | D″ | L | `#7A8CC9` |
+| 2 | `7′` | B′ | L | `#864B9F` |
+| 3 | `5′` | G′ | L | `#F78853` |
+| 4 | `3′` | E′ | L | `#45A953` |
+| 5 | `1′` | C′ | L | `#3CB8A6` |
+| 6 | `6` | A | L | `#F7BD30` |
+| 7 | `4` | F | L | `#E95784` |
+| 8 | `2` | D | L | `#342E38` |
+| 9 | `1` | C | R | `#2E7975` |
+| 10 | `3` | E | R | `#26562A` |
+| 11 | `5` | G | R | `#D41C33` |
+| 12 | `7` | B | R | `#6B1E69` |
+| 13 | `2′` | D′ | R | `#374469` |
+| 14 | `4′` | F′ | R | `#F89FB5` |
+| 15 | `6′` | A′ | R | `#F8D360` |
+| 16 | `1″` | C″ | R | `#A8DDBF` |
+| 17 | `3″` | E″ | R | `#81B07A` |
 
 ### Darstellungsregeln
 
 **Empfehlung:**
 
 - Die Startpalette erscheint im Farbprofil-Picker gemeinsam mit selbst erstellten und importierten Profilen.
-- Es wird nicht als Standardzuordnung erzwungen.
+- Sie ist die initiale Zuordnung für neue kompatible Dokumente, kann aber jederzeit durch ein anderes Profil ersetzt oder angepasst werden.
 - Die Farben werden mit realen Musikansichten in Light und Dark Mode auf Kontrast und Unterscheidbarkeit geprüft.
 - Preset-Metadaten enthalten digitalen Farbwert, Erfassungsmethode und Versionsstand.
 - UI und Marketing stellen keine Verbindung zu einem externen Hersteller oder Produkt her.
