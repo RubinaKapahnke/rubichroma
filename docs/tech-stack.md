@@ -43,6 +43,12 @@ Material und CDK werden für generische Elemente wie Formulare, Dialoge, Menüs,
 
 Das Corporate-Identity-Dokument ist die führende Quelle für Theme-Tokens und Gestaltung. Light und Dark Mode gehören zum MVP. Beim ersten Start gilt die Systemeinstellung; eine manuelle Auswahl wird lokal gespeichert. Die MVP-Oberfläche ist deutsch, während Texte und Formate technisch für spätere Internationalisierung vorbereitet werden.
 
+### Reaktive Zustandsgrenzen
+
+Komponenten mit `OnPush` erhalten an ihren Eingabegrenzen unveränderliche beziehungsweise referenziell neue Zustände. Eine als Component-Input weitergereichte `FormArray`, `FormGroup`, Collection oder Dokumentstruktur darf bei Import, Restore, Migration oder Hydration nicht nur verborgen in-place mutiert werden. Der Zustandstausch ersetzt die Referenz oder veröffentlicht eine gleichwertige, explizit reaktive Revision, sodass untergeordnete Komponenten ohne Reload sofort den neuen Zustand rendern.
+
+Für jeden vollständigen Dokumenttausch gilt derselbe Abnahmevertrag: repräsentative Daten laden, unmittelbar den neuen sichtbaren Inhalt und das Verschwinden des vorherigen Inhalts prüfen, anschließend eine betroffene Aktion und Undo soweit vorhanden ausführen und den gespeicherten Zustand nach Reload erneut prüfen. Parser- oder Repository-Tests allein belegen diesen Darstellungsvertrag nicht.
+
 ### Audio und Synchronisation
 
 Tone.js ist die gemeinsame Zeitgrundlage für Wiedergabe und visuelle Hervorhebung. Die Oberfläche betreibt keinen unabhängigen Timer, der der Audiowiedergabe folgt. Audio wird erst nach einer bewussten Benutzeraktion gestartet und vollständig lokal bereitgestellt.
