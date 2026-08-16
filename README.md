@@ -8,7 +8,13 @@ Die aktuelle Product Vision und der verbindliche MVP-Scope stehen im [Product Re
 
 Der beschlossene technische Zielzustand und die Architekturregeln stehen in [Tech Stack und Architektur](docs/tech-stack.md).
 
-## Starten
+Der aktuelle Corporate-Identity-Arbeitsstand steht in [RUBICHROMA-CI.md](RUBICHROMA-CI.md). Darin gekennzeichnete offene Entscheidungen bleiben bis zur ausdrücklichen Klärung unverbindlich.
+
+## Angular-Migration
+
+Die neue Angular-App entsteht parallel im Ordner [`angular-app/`](angular-app/README.md). Der bisherige Vanilla-Client im Repository-Root bleibt während der schrittweisen Migration die Referenz und wird erst nach vollständiger Funktions- und Datenübernahme abgelöst.
+
+## Bestehende App starten
 
 Im Ordner des Tools ein Terminal öffnen und ausführen:
 
