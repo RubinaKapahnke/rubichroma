@@ -29,6 +29,15 @@ Produkt-, Architektur-, Marken- oder Deploymententscheidungen werden in der jewe
 - Nur freigegebene Änderungen werden über einen Promotion-Branch und Pull Request nach `main` gebracht.
 - Hosting erfolgt über Cloudflare Pages mit GitHub-Integration. Kein Worker-Projekt mit `wrangler deploy` anlegen.
 
+## GitHub-Authentifizierung in Codex
+
+- Die verbundene GitHub-App, die `gh`-CLI und Git-Zugangsdaten sind getrennte Authentifizierungskontexte. Eine funktionierende App-Verbindung bedeutet nicht automatisch, dass `gh` angemeldet ist, und umgekehrt.
+- Sandbox-Prozesse und freigegebene Prozesse außerhalb der Sandbox können unter Windows unterschiedliche Sicht auf den Anmeldespeicher haben. Ein fehlgeschlagenes `gh auth status` in einem Kontext widerlegt daher nicht den gültigen Login im anderen Kontext.
+- Vor `gh auth login` den Status immer in genau dem Ausführungskontext prüfen, in dem der nachfolgende `gh`-Befehl laufen soll. Nur bei dort tatsächlich fehlender oder ungültiger Anmeldung erneut authentifizieren.
+- GitHub-Metadaten bevorzugt über die bereits verbundene GitHub-App bearbeiten. Für notwendige `gh`-Befehle den nachweislich angemeldeten Kontext wiederverwenden; für `git push` die vorhandenen Git-Zugangsdaten verwenden.
+- Eine Codex-Sicherheitsfreigabe für einen extern wirksamen Befehl ist keine erneute GitHub-Anmeldung. Beides in Statusmeldungen klar unterscheiden.
+- Tokens, Gerätecodes und andere Anmeldedaten niemals in Dateien, Commits, Logs oder Chat-Antworten übernehmen.
+
 ## Toolchain
 
 - Node.js 24
