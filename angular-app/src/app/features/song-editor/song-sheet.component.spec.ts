@@ -74,9 +74,6 @@ describe('SongSheetComponent desktop selection gestures', () => {
     fixture.componentRef.setInput('selectedPositions', [{ lineIndex: 0, wordIndex: 0 }]);
     fixture.componentRef.setInput('touchSelectionActive', true);
     fixture.detectChanges();
-    const nextTouch = { ...touchDown, pointerId: 8 } as PointerEvent;
-    fixture.componentInstance.startLongPress(nextTouch, 0, 1);
-    fixture.componentInstance.finishLongPress(nextTouch);
     fixture.componentInstance.selectWord(new MouseEvent('click'), 0, 1);
 
     expect(gestures.at(-1)).toEqual({
@@ -85,6 +82,24 @@ describe('SongSheetComponent desktop selection gestures', () => {
       toggleKey: true,
       touchSelection: true,
     });
+  });
+
+  it('offers an explicit mobile multi-selection entry point', async () => {
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    let requested = false;
+    fixture.componentInstance.multiSelectionRequested.subscribe(() => (requested = true));
+    fixture.detectChanges();
+
+    (
+      fixture.nativeElement.querySelector('[data-testid="start-multi-selection"]') as HTMLElement
+    ).click();
+
+    expect(requested).toBe(true);
   });
 });
 

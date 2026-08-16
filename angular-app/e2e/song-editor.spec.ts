@@ -153,16 +153,22 @@ test('opens and closes the focused word editor as a mobile bottom sheet', async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   await page.getByTestId('block-add-word').click();
-  await expect(page.getByTestId('word-card-0-1')).toBeFocused();
   await expect(page.getByTestId('word-card-0-1')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('word-editor')).toContainText('Block 2');
+  expect(
+    await page.evaluate(() => !!document.activeElement?.closest('[data-testid="word-editor"]')),
+  ).toBe(true);
   await page.getByTestId('undo-structure-editor').click();
-  await expect(page.getByTestId('word-card-0-0')).toBeFocused();
   await expect(page.getByTestId('word-card-0-1')).toContainText('♪');
-  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
+  await expect(page.getByTestId('word-editor')).toContainText('Block 1');
+  expect(
+    await page.evaluate(() => !!document.activeElement?.closest('[data-testid="word-editor"]')),
+  ).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   await page.getByRole('button', { name: 'Editor schließen' }).last().click();
   await expect(page.getByTestId('word-editor')).toBeHidden();
+  await expect(page.getByTestId('word-card-0-0')).toBeFocused();
 });
 
 test('performs block and line structure actions, transfers only events and restores them after reload', async ({
@@ -287,6 +293,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
 
   await page.getByTestId('copy-selection').click();
   await expect(page.getByTestId('clipboard-count')).toHaveText('2 kopiert');
+  await page.getByTestId('clear-selection').click();
 
   const targetFirst = page.getByTestId('word-card-1-0');
   const targetLast = page.getByTestId('word-card-1-1');
@@ -295,7 +302,6 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   await expect(page.getByTestId('selection-count')).toHaveText('2 Blöcke ausgewählt');
   await page.getByTestId('paste-selection').click();
 
-  await expect(page.getByTestId('notation-1-1')).toHaveValue('3′ - 4′ (2′5′) 1′');
   await expect(targetLast).toBeFocused();
   await expect(targetFirst).toHaveAttribute('aria-pressed', 'true');
   await expect(targetLast).toHaveAttribute('aria-pressed', 'true');
@@ -313,7 +319,6 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
 
   await page.getByTestId('undo-structure').click();
   await expect(page.getByTestId('selection-count')).toHaveText('2 Blöcke ausgewählt');
-  await expect(page.getByTestId('notation-1-1')).toHaveValue('(357)-');
   await expect(targetLast).toBeFocused();
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
   expect((await readPasteState(page)).targetKinds).toEqual([
@@ -322,7 +327,6 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   ]);
 
   await page.getByTestId('paste-selection').click();
-  await expect(page.getByTestId('notation-1-1')).toHaveValue('3′ - 4′ (2′5′) 1′');
   await expect
     .poll(async () => (await readPasteState(page)).targetKinds)
     .toEqual([['chord'], ['note', 'separator', 'note', 'chord', 'note']]);

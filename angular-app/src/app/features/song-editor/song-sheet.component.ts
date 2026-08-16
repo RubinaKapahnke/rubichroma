@@ -35,6 +35,7 @@ export class SongSheetComponent {
   readonly touchSelectionActive = input.required<boolean>();
   readonly selectionChange = output<WordSelection | null>();
   readonly wordSelect = output<WordSelectionGesture>();
+  readonly multiSelectionRequested = output<void>();
   readonly structureAction = output<SongStructureAction>();
   private readonly destroyRef = inject(DestroyRef);
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;
@@ -60,8 +61,7 @@ export class SongSheetComponent {
       return;
     }
 
-    const continueTouchSelection =
-      isTouchClick && this.touchSelectionActive() && this.selectedPositions().length > 0;
+    const continueTouchSelection = this.touchSelectionActive();
     this.wordSelect.emit({
       position: { lineIndex, wordIndex },
       shiftKey: event.shiftKey,

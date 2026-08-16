@@ -1,6 +1,17 @@
-<p class="touch-selection-help" id="touch-selection-help">
-  Gedrückt halten startet die Mehrfachauswahl. Weitere Blöcke lassen sich dann antippen.
-</p>
+<div class="touch-selection-help" id="touch-selection-help">
+  <span>Gedrückt halten startet die Mehrfachauswahl.</span>
+  @if (!touchSelectionActive()) {
+    <button
+      type="button"
+      data-testid="start-multi-selection"
+      (click)="multiSelectionRequested.emit()"
+    >
+      Mehrfach auswählen
+    </button>
+  } @else {
+    <strong>Weitere Blöcke antippen.</strong>
+  }
+</div>
 <div
   class="song-lines"
   aria-label="Bearbeitbare Liedblöcke"

@@ -6,7 +6,12 @@ import {
   effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
+import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
+import { CdkPortal, PortalModule } from '@angular/cdk/portal';
 import { FormArray, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -32,9 +37,15 @@ import { EditorValue, SongEditorStore } from './song-editor.store';
 import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component';
 import { KalimbaKeyView, WordEditorComponent } from './word-editor.component';
 
+export type EditorInteractionMode = 'idle' | 'editing' | 'multi-select';
+
 @Component({
   selector: 'app-song-editor',
   imports: [
+    A11yModule,
+    NgTemplateOutlet,
+    OverlayModule,
+    PortalModule,
     ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
@@ -59,7 +70,9 @@ export class SongEditorComponent {
   });
   readonly selection = computed(() => this.selectionState().active);
   readonly selectedPositions = computed(() => this.selectionState().positions);
-  readonly touchSelectionActive = signal(false);
+  readonly interactionMode = signal<EditorInteractionMode>('idle');
+  readonly touchSelectionActive = computed(() => this.interactionMode() === 'multi-select');
+  readonly mobileViewport = signal(false);
   readonly musicClipboard = signal<MusicSelectionClipboard | null>(null);
   readonly clipboardCount = computed(() => this.musicClipboard()?.sequences.length ?? 0);
   readonly actionNotice = signal<string | null>(null);
@@ -83,8 +96,30 @@ export class SongEditorComponent {
     });
   });
   private readonly destroyRef = inject(DestroyRef);
+  private readonly overlay = inject(Overlay);
+  private readonly selectionPortal = viewChild<CdkPortal>('selectionPortal');
+  private readonly editorPortal = viewChild<CdkPortal>('editorPortal');
   private formSubscription?: Subscription;
   private hydratedVersion = 0;
+  private selectionOverlayRef?: OverlayRef;
+  private editorOverlayRef?: OverlayRef;
+  private selectionResizeObserver?: ResizeObserver;
+  private mobileMediaQuery?: MediaQueryList;
+  private readonly updateViewportMetrics = (): void => {
+    if (typeof window === 'undefined') return;
+    const visualViewport = window.visualViewport;
+    const viewportHeight = visualViewport?.height ?? window.innerHeight;
+    const viewportTop = visualViewport?.offsetTop ?? 0;
+    const layoutHeight = document.documentElement.clientHeight || window.innerHeight;
+    const viewportBottom = Math.max(0, layoutHeight - viewportTop - viewportHeight);
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty('--rc-visual-viewport-height', `${viewportHeight}px`);
+    rootStyle.setProperty('--rc-visual-viewport-top', `${viewportTop}px`);
+    rootStyle.setProperty('--rc-visual-viewport-bottom', `${viewportBottom}px`);
+  };
+  private readonly updateMobileViewport = (event?: MediaQueryListEvent): void => {
+    this.mobileViewport.set(event?.matches ?? this.mobileMediaQuery?.matches ?? false);
+  };
 
   constructor() {
     effect(() => {
@@ -96,7 +131,37 @@ export class SongEditorComponent {
       }
     });
     void this.store.initialize();
-    this.destroyRef.onDestroy(() => this.formSubscription?.unsubscribe());
+    this.initializeViewportTracking();
+
+    effect(() => {
+      const portal = this.selectionPortal();
+      if (this.interactionMode() === 'multi-select' && portal) {
+        this.openSelectionOverlay(portal);
+      } else {
+        this.closeSelectionOverlay();
+      }
+    });
+
+    effect(() => {
+      const portal = this.editorPortal();
+      if (this.interactionMode() === 'editing' && this.mobileViewport() && portal) {
+        this.openEditorOverlay(portal);
+      } else {
+        this.closeEditorOverlay();
+      }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.formSubscription?.unsubscribe();
+      this.selectionResizeObserver?.disconnect();
+      this.selectionOverlayRef?.dispose();
+      this.editorOverlayRef?.dispose();
+      this.mobileMediaQuery?.removeEventListener?.('change', this.updateMobileViewport);
+      window.visualViewport?.removeEventListener('resize', this.updateViewportMetrics);
+      window.visualViewport?.removeEventListener('scroll', this.updateViewportMetrics);
+      window.removeEventListener('resize', this.updateViewportMetrics);
+      document.documentElement.style.removeProperty('--rc-selection-bar-height');
+    });
   }
 
   async importFile(event: Event): Promise<void> {
@@ -137,19 +202,29 @@ export class SongEditorComponent {
       this.clearSelection();
       return;
     }
-    this.touchSelectionActive.set(false);
+    this.interactionMode.set('editing');
     this.setSingleSelection(selection);
+  }
+
+  startMultiSelection(): void {
+    this.interactionMode.set('multi-select');
   }
 
   handleWordSelection(gesture: WordSelectionGesture): void {
     const document = this.store.document();
     if (!document) return;
-    this.touchSelectionActive.set(gesture.touchSelection);
-    const mode: SongSelectionMode = gesture.shiftKey
-      ? 'range'
-      : gesture.toggleKey
-        ? 'toggle'
-        : 'single';
+    const currentMode = this.interactionMode();
+    const startsMultiSelection =
+      currentMode === 'multi-select' ||
+      gesture.touchSelection ||
+      gesture.shiftKey ||
+      gesture.toggleKey;
+    const mode: SongSelectionMode = startsMultiSelection
+      ? gesture.shiftKey && currentMode !== 'multi-select'
+        ? 'range'
+        : 'toggle'
+      : 'single';
+    this.interactionMode.set(startsMultiSelection ? 'multi-select' : 'editing');
     const selectionState = updateSongSelection(
       document,
       this.selectionState(),
@@ -157,11 +232,12 @@ export class SongEditorComponent {
       mode,
     );
     this.selectionState.set(selectionState);
-    if (selectionState.positions.length === 0) this.touchSelectionActive.set(false);
   }
 
   closeWordEditor(): void {
+    const previousSelection = this.selection();
     this.clearSelection();
+    if (previousSelection) this.focusSelection(previousSelection);
   }
 
   copyMusicSelection(): void {
@@ -255,7 +331,7 @@ export class SongEditorComponent {
   }
 
   selectedWord(): WordForm | null {
-    if (this.touchSelectionActive()) return null;
+    if (this.interactionMode() !== 'editing') return null;
     const selection = this.selection();
     return selection
       ? (this.lines().at(selection.lineIndex)?.controls.words.at(selection.wordIndex) ?? null)
@@ -323,6 +399,14 @@ export class SongEditorComponent {
 
   private focusSelection(selection: SongPosition): void {
     setTimeout(() => {
+      if (this.mobileViewport() && this.interactionMode() === 'editing') {
+        document
+          .querySelector<HTMLButtonElement>(
+            '.rc-editor-overlay-pane [aria-label="Editor schließen"]',
+          )
+          ?.focus();
+        return;
+      }
       document
         .querySelector<HTMLElement>(
           `[data-testid="word-card-${selection.lineIndex}-${selection.wordIndex}"]`,
@@ -339,8 +423,86 @@ export class SongEditorComponent {
   }
 
   private clearSelection(): void {
-    this.touchSelectionActive.set(false);
+    this.interactionMode.set('idle');
     this.selectionState.set({ ...EMPTY_SONG_SELECTION, positions: [] });
+  }
+
+  private initializeViewportTracking(): void {
+    if (typeof window === 'undefined') return;
+    if (typeof window.matchMedia === 'function') {
+      this.mobileMediaQuery = window.matchMedia('(max-width: 760px)');
+      this.updateMobileViewport();
+      this.mobileMediaQuery.addEventListener?.('change', this.updateMobileViewport);
+    }
+    window.visualViewport?.addEventListener('resize', this.updateViewportMetrics);
+    window.visualViewport?.addEventListener('scroll', this.updateViewportMetrics);
+    window.addEventListener('resize', this.updateViewportMetrics);
+    this.updateViewportMetrics();
+  }
+
+  private openSelectionOverlay(portal: CdkPortal): void {
+    if (!this.selectionOverlayRef) {
+      this.selectionOverlayRef = this.overlay.create({
+        panelClass: 'rc-selection-overlay-pane',
+        positionStrategy: this.overlay
+          .position()
+          .global()
+          .left('0')
+          .right('0')
+          .bottom('var(--rc-visual-viewport-bottom, 0px)'),
+        scrollStrategy: this.overlay.scrollStrategies.reposition(),
+      });
+    }
+    if (!this.selectionOverlayRef.hasAttached()) this.selectionOverlayRef.attach(portal);
+    queueMicrotask(() => this.observeSelectionToolbar());
+  }
+
+  private closeSelectionOverlay(): void {
+    this.selectionResizeObserver?.disconnect();
+    this.selectionResizeObserver = undefined;
+    this.selectionOverlayRef?.detach();
+    document.documentElement.style.removeProperty('--rc-selection-bar-height');
+  }
+
+  private observeSelectionToolbar(): void {
+    const toolbar = document.querySelector<HTMLElement>('[data-testid="selection-toolbar"]');
+    if (!toolbar) return;
+    const updateHeight = (): void =>
+      document.documentElement.style.setProperty(
+        '--rc-selection-bar-height',
+        `${Math.ceil(toolbar.getBoundingClientRect().height)}px`,
+      );
+    updateHeight();
+    if (typeof ResizeObserver === 'undefined') return;
+    this.selectionResizeObserver?.disconnect();
+    this.selectionResizeObserver = new ResizeObserver(updateHeight);
+    this.selectionResizeObserver.observe(toolbar);
+  }
+
+  private openEditorOverlay(portal: CdkPortal): void {
+    if (!this.editorOverlayRef) {
+      this.editorOverlayRef = this.overlay.create({
+        hasBackdrop: true,
+        backdropClass: 'rc-editor-overlay-backdrop',
+        panelClass: 'rc-editor-overlay-pane',
+        positionStrategy: this.overlay
+          .position()
+          .global()
+          .left('0')
+          .right('0')
+          .bottom('var(--rc-visual-viewport-bottom, 0px)'),
+        scrollStrategy: this.overlay.scrollStrategies.block(),
+      });
+      this.editorOverlayRef.backdropClick().subscribe(() => this.closeWordEditor());
+      this.editorOverlayRef.keydownEvents().subscribe((event) => {
+        if (event.key === 'Escape') this.closeWordEditor();
+      });
+    }
+    if (!this.editorOverlayRef.hasAttached()) this.editorOverlayRef.attach(portal);
+  }
+
+  private closeEditorOverlay(): void {
+    this.editorOverlayRef?.detach();
   }
 }
 

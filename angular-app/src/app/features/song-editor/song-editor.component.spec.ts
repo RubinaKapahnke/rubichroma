@@ -95,4 +95,121 @@ describe('SongEditorComponent hydration', () => {
     ]);
     expect(fixture.componentInstance.selection()).toEqual({ lineIndex: 0, wordIndex: 0 });
   });
+
+  it('latches multi-selection until it is explicitly ended', async () => {
+    const documentState = signal<SongDocument | null>(cloneDocument(DEFAULT_DOCUMENT));
+    const hydrationVersionState = signal(1);
+    const store = {
+      document: documentState.asReadonly(),
+      hydrationVersion: hydrationVersionState.asReadonly(),
+      hasDocument: computed(() => documentState() !== null),
+      status: signal('saved'),
+      error: signal<string | null>(null),
+      canUndo: signal(false),
+      initialize: () => Promise.resolve(),
+      updateEditorValue: () => null,
+      saveEditorValue: () => Promise.resolve(),
+    };
+    const theme = { preference: signal('system'), setPreference: () => undefined };
+
+    await TestBed.configureTestingModule({
+      imports: [SongEditorComponent],
+      providers: [
+        { provide: SongEditorStore, useValue: store },
+        { provide: ThemeService, useValue: theme },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(SongEditorComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+
+    component.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: false,
+      touchSelection: false,
+    });
+    expect(component.interactionMode()).toBe('editing');
+    expect(component.selectedWord()).not.toBeNull();
+
+    component.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: true,
+      touchSelection: true,
+    });
+    expect(component.interactionMode()).toBe('multi-select');
+    expect(component.selectedWord()).toBeNull();
+
+    component.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 1 },
+      shiftKey: false,
+      toggleKey: false,
+      touchSelection: false,
+    });
+    expect(component.interactionMode()).toBe('multi-select');
+    expect(component.selectedPositions()).toEqual([{ lineIndex: 0, wordIndex: 1 }]);
+
+    component.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 1 },
+      shiftKey: false,
+      toggleKey: false,
+      touchSelection: false,
+    });
+    expect(component.interactionMode()).toBe('multi-select');
+    expect(component.selectedPositions()).toEqual([]);
+
+    component.closeWordEditor();
+    expect(component.interactionMode()).toBe('idle');
+  });
+
+  it('switches desktop Shift selection from editing to an ordered multi-selection', async () => {
+    const documentState = signal<SongDocument | null>(cloneDocument(DEFAULT_DOCUMENT));
+    const hydrationVersionState = signal(1);
+    const store = {
+      document: documentState.asReadonly(),
+      hydrationVersion: hydrationVersionState.asReadonly(),
+      hasDocument: computed(() => documentState() !== null),
+      status: signal('saved'),
+      error: signal<string | null>(null),
+      canUndo: signal(false),
+      initialize: () => Promise.resolve(),
+      updateEditorValue: () => null,
+      saveEditorValue: () => Promise.resolve(),
+    };
+    const theme = { preference: signal('system'), setPreference: () => undefined };
+
+    await TestBed.configureTestingModule({
+      imports: [SongEditorComponent],
+      providers: [
+        { provide: SongEditorStore, useValue: store },
+        { provide: ThemeService, useValue: theme },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SongEditorComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: false,
+      touchSelection: false,
+    });
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 1 },
+      shiftKey: true,
+      toggleKey: false,
+      touchSelection: false,
+    });
+
+    expect(fixture.componentInstance.interactionMode()).toBe('multi-select');
+    expect(fixture.componentInstance.selectedPositions()).toEqual([
+      { lineIndex: 0, wordIndex: 0 },
+      { lineIndex: 0, wordIndex: 1 },
+    ]);
+    expect(fixture.componentInstance.selectedWord()).toBeNull();
+  });
 });

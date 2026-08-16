@@ -1,19 +1,38 @@
 :host {
   display: block;
+  width: 100%;
   min-width: 0;
 }
 
 .word-editor {
-  display: grid;
+  display: flex;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  gap: 1.15rem;
-  padding: 1.1rem;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--rc-color-border);
   border-radius: var(--rc-radius-panel);
   background: var(--rc-color-surface);
   box-shadow: var(--rc-shadow-md);
+
+  > * {
+    min-width: 0;
+  }
+}
+
+.word-editor > header {
+  flex: 0 0 auto;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--rc-color-border);
+  background: var(--rc-color-surface);
+}
+
+.word-editor-content {
+  display: grid;
+  min-width: 0;
+  gap: 1.15rem;
+  padding: 1.1rem;
 
   > * {
     min-width: 0;
@@ -161,15 +180,42 @@ mat-form-field {
   overflow-wrap: anywhere;
 }
 
+.key-scroll-hint {
+  margin-top: 0.35rem;
+  color: var(--rc-color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.key-palette-shell {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.key-palette-shell::after {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  bottom: 0.55rem;
+  width: 1.4rem;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--rc-color-surface));
+  content: '';
+}
+
 .key-palette {
   width: 100%;
   flex-wrap: nowrap;
-  padding: 0.15rem 0 0.55rem;
+  padding: 0.15rem 1.5rem 0.55rem 0.15rem;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
+  scroll-padding-inline: 0.15rem 1.5rem;
   scrollbar-color: var(--rc-color-primary-text) var(--rc-color-surface-subtle);
   scrollbar-width: thin;
   touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 
 .key-button {
@@ -243,19 +289,33 @@ details summary {
 
 @media (max-width: 760px) {
   :host {
-    position: fixed;
-    z-index: 31;
-    inset: auto 0 0;
     width: 100%;
     min-width: 0;
     max-width: 100vw;
-    max-height: min(90dvh, 50rem);
-    overflow-y: auto;
+    height: min(calc(var(--rc-visual-viewport-height, 100vh) - 0.5rem), 50rem);
+    max-height: min(calc(100vh - 0.5rem), calc(100dvh - 0.5rem), 50rem);
   }
 
   .word-editor {
+    height: 100%;
     max-width: 100vw;
     border-radius: var(--rc-radius-panel) var(--rc-radius-panel) 0 0;
+  }
+
+  .word-editor > header {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    min-height: 4rem;
+    padding: 0.65rem 0.8rem;
+  }
+
+  .word-editor-content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding: 0.8rem 0.8rem max(1rem, env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
   }
 
   .section-heading {
