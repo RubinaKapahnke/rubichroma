@@ -3,6 +3,7 @@
 **Version:** 1.0 (CI-Grundlage)
 **Stand:** 16. August 2026
 **Geltungsbereich:** Produkt-UI, Website, App-Icon, Lerninhalte, optionale Druckmaterialien und zukünftiges Design-System
+**Führende Quelle:** Bei gestalterischen Abweichungen wird die Anwendung an dieses Dokument angepasst.
 
 ## Statuskennzeichnung
 
@@ -92,7 +93,7 @@ Der Claim wird in englischer Titelschreibung und ohne abschließendes Satzzeiche
 
 ### Wortmarke
 
-**Festgelegt:** Bevorzugte Schreibweise ist **RubiChroma**.
+**Festgelegt:** Verbindliche Schreibweise ist **RubiChroma**.
 
 - **Rubi:** RubiChroma Pink `#F7496E`
 - **Chroma:** RubiChroma Ink `#171A2B` im Light Mode beziehungsweise die helle neutrale Wortmarkenvariante im Dark Mode
@@ -122,6 +123,8 @@ Das Symbol muss:
 - nicht wie eine konkrete Instrumentenmarke wirken.
 
 **Zu validieren:** Die konkrete Symbolform, App-Icon-Komposition, optische Korrekturen der Sora-Wortmarke und markenrechtliche Verfügbarkeit.
+
+**Festgelegt:** Für den geschlossenen MVP-Pilot genügt die Wortmarke. Symbolmarke und endgültiges App-Icon werden vor der ersten Store-Testversion fertiggestellt.
 
 ---
 
@@ -206,32 +209,35 @@ Warnungen sollen informativ sein und freie Farbwahl nicht unnötig blockieren. U
 
 - stabile Profil-ID,
 - Anzeigename,
-- Instrument- beziehungsweise Layoutbezug,
-- Zuordnung von Ton/Bedienelement zu Farbe,
+- Instrument- und Stimmungsbezug,
+- Zuordnung einer stabilen physischen Zungen- beziehungsweise Tasten-ID zu einer Farbe,
+- Tonhöhe und Tonstufe innerhalb der zugehörigen Stimmung als Metadaten,
 - zusätzliche Zahl-/Buchstaben-/Symbolcodierung,
 - Herkunft `system`, `preset`, `imported` oder `custom`,
 - Version und Änderungsdatum,
 - optionale Lizenz-/Quellenangabe.
 
+**Festgelegt:** Eine andere Stimmung erhält eine neu festgelegte Farbskala. RubiChroma überträgt eine Farbzuordnung nicht stillschweigend auf eine andere Stimmung.
+
 ---
 
-## 7. Guangna-Preset
+## 7. RubiChroma-Startpalette
 
-**Festgelegt:** Farben der Guangna Acrylic Marker sollen als auswählbares Nutzer-Preset unterstützt werden. Sie sind nicht Teil der festen Corporate Palette.
+**Festgelegt:** RubiChroma erhält eine eigenständige neutrale Startpalette als auswählbares Nutzer-Preset. Sie wird unabhängig entwickelt und übernimmt weder Namen noch Farbwerte externer Produktpaletten. Sie ist nicht Teil der festen Corporate Palette.
 
 ### Darstellungsregeln
 
 **Empfehlung:**
 
-- Das Preset erscheint im Farbprofil-Picker gemeinsam mit anderen Presets.
+- Die Startpalette erscheint im Farbprofil-Picker gemeinsam mit selbst erstellten und importierten Profilen.
 - Es wird nicht als Standardzuordnung erzwungen.
-- Digitale Farben werden als Annäherung an reale Markerfarben gekennzeichnet, da Material, Untergrund, Display und Licht die Wahrnehmung verändern.
-- Preset-Metadaten enthalten Marker-Code, digitalen Farbwert, Erfassungsmethode und Versionsstand.
-- UI und Marketing dürfen keine Partnerschaft oder offizielle Unterstützung suggerieren.
+- Die Farben werden mit realen Musikansichten in Light und Dark Mode auf Kontrast und Unterscheidbarkeit geprüft.
+- Preset-Metadaten enthalten digitalen Farbwert, Erfassungsmethode und Versionsstand.
+- UI und Marketing stellen keine Verbindung zu einem externen Hersteller oder Produkt her.
 
-### Rechtliches Gate
+### Externe Presets
 
-**Zu validieren:** Vor öffentlicher Nutzung müssen Name, Markenbezug, Farbcode-Daten, Produktabbildungen und zulässige Beschreibung juristisch beziehungsweise markenrechtlich geprüft werden. Falls die Bezeichnung nicht freigegeben wird, ist eine neutrale Alternative wie „Acrylic Marker Palette – persönliche Vorlage“ vorzusehen.
+**Festgelegt:** Ein externes Marken- oder Produktpreset gehört nicht zum MVP. Falls später eines ergänzt wird, müssen Name, Farbdaten, Abbildungen und zulässige Beschreibung vor Veröffentlichung rechtlich geprüft werden.
 
 ---
 
@@ -361,6 +367,8 @@ Warnungen sollen informativ sein und freie Farbwahl nicht unnötig blockieren. U
 
 **Empfehlung:** Nutzerfarben werden im Dark Mode nicht unbemerkt inhaltlich verändert. Bei mangelndem Kontrast werden Vordergrund, Rand, Symbol oder Form angepasst. Eine optionale Display-Kompensation darf die gespeicherte Originalfarbe nicht überschreiben.
 
+**Festgelegt:** Light und Dark Mode gehören zum MVP und sind manuell umschaltbar. Beim ersten Start gilt die Systemeinstellung; anschließend wird die Auswahl lokal gespeichert.
+
 **Zu validieren:** Die komplette Corporate- und Nutzerfarbmatrix muss mit realen UI-Komponenten, Fokuszuständen und typischen Farbprofilen in beiden Modi getestet werden.
 
 ---
@@ -407,6 +415,8 @@ Jedes Musikfarbfeld zeigt zusätzlich mindestens Tonbuchstabe, Zahl oder Symbol.
 - Fehlertexte nennen Problem, Folge und nächsten sinnvollen Schritt.
 - Claim bleibt in Englisch; Produktoberfläche folgt der gewählten Sprache.
 
+**Festgelegt:** Die Oberfläche des geschlossenen MVP-Piloten ist deutsch. Komponenten, Texte und Formate werden technisch für spätere Sprachvarianten vorbereitet; weitere vollständige Übersetzungen gehören nicht zum MVP.
+
 ### Beispiele
 
 | Situation | Verwenden | Vermeiden |
@@ -420,7 +430,7 @@ Jedes Musikfarbfeld zeigt zusätzlich mindestens Tonbuchstabe, Zahl oder Symbol.
 
 ## 15. Print-Anwendungen
 
-**Festgelegt:** Print ist optional und gegenüber der digitalen Nutzung nachgeordnet.
+**Festgelegt:** Print ist optional und gegenüber der digitalen Nutzung nachgeordnet. Im MVP werden Browserdruck und A4-PDF für Lied- und Übungsblätter unterstützt.
 
 ### Vorgesehene Anwendungen
 
@@ -437,9 +447,9 @@ Jedes Musikfarbfeld zeigt zusätzlich mindestens Tonbuchstabe, Zahl oder Symbol.
 - Jeder Farbwert wird zusätzlich mit Zahl, Buchstabe oder Symbol ausgegeben.
 - Schwarzweißdruck bleibt durch Rahmen, Beschriftung und gegebenenfalls Muster verständlich.
 - Druckansichten entfernen interaktive UI-Elemente und optimieren Seitenumbrüche.
-- Schildchen bieten Schnittmarken, Instrument-/Tonbezeichnung und skalierbare Maße.
+- Schildchen, weitere Papiergrößen und spezielle Druckformate folgen nach dem MVP.
 - Für professionelle Materialien werden CMYK-Proofs und reale Testdrucke verwendet; Display-Hexwerte sind keine verlässlichen Druckfarbwerte.
-- Guangna-basierte Druckvorlagen werden erst nach rechtlicher Freigabe veröffentlicht.
+- Extern abgeleitete Produktpaletten werden nicht ohne vorherige Rechteprüfung veröffentlicht.
 
 ---
 
@@ -456,7 +466,7 @@ Jedes Musikfarbfeld zeigt zusätzlich mindestens Tonbuchstabe, Zahl oder Symbol.
 | Fehler reversibel und lösungsorientiert behandeln | Nutzern vorwurfsvoll oder technisch kryptisch antworten |
 | Instrumente sachlich abstrahieren | Maskottchen oder überladene Illustrationen verwenden |
 | Material-Komponenten markenspezifisch themen | Unveränderten Angular-Material-Standardlook übernehmen |
-| Presets neutral und transparent kennzeichnen | Eine Guangna-Partnerschaft suggerieren |
+| Presets neutral und transparent kennzeichnen | Eine Partnerschaft mit externen Herstellern suggerieren |
 
 ---
 
@@ -575,19 +585,16 @@ Komponenten dürfen keine Corporate-Hexwerte direkt referenzieren. Nutzerfarben 
 
 ---
 
-## 18. Noch offene Entscheidungen
+## 18. Validierungs- und Veröffentlichungsgates
 
-### Vor UI-Umsetzung zu klären
+Die Produktentscheidungen für den MVP sind getroffen. Folgende Punkte bleiben als Prüfaufgaben bestehen:
 
-1. **Schreibweise:** Der aktuelle CI-Brief setzt „RubiChroma“, während zuvor „Rubichroma“ verwendet wurde. Die verbindliche Produkt-, Domain- und Store-Schreibweise muss bestätigt werden.
-2. **Logo-Symbol:** Motiv, Konstruktion, Schutzraum, App-Icon und monochrome Varianten.
-3. **Guangna-Rechte:** Markenname, Preset-Bezeichnung, Farbdaten, Abbildungen und Disclaimer.
-4. **Sekundärpalette:** Praxistest mit realen Nutzerpaletten, nicht nur isolierte Kontrastprüfung.
-5. **Dark Mode:** Validierung mit sehr hellen, dunklen und kontrastarmen Nutzerfarben.
-6. **Notation:** Glyphenabdeckung und Lesbarkeit von Sora für alle unterstützten Instrumente und Notationssysteme.
-7. **Print:** Farbmanagement, reale Testdrucke, Schildchenformate und unterstützte Papiergrößen.
-8. **Internationalisierung:** Sprachvarianten, Claim-Lokalisierung und Tonalitätsregeln pro Sprache.
-9. **Markenschutz:** Verfügbarkeit und Schutzfähigkeit von RubiChroma, Wortmarke, Logo und Claim.
+1. **Symbol und App-Icon:** Motiv, Konstruktion, Schutzraum und monochrome Varianten vor der ersten Store-Testversion fertigstellen.
+2. **Start- und Sekundärpalette:** Praxistest mit realen Nutzerpaletten, nicht nur isolierte Kontrastprüfung.
+3. **Dark Mode:** Validierung mit sehr hellen, dunklen und kontrastarmen Nutzerfarben.
+4. **Notation:** Glyphenabdeckung und Lesbarkeit von Sora für die im MVP unterstützte Notation prüfen.
+5. **Print:** Browserdruck und A4-PDF mit realen Lied- und Übungsblättern testen.
+6. **Rechtliches Veröffentlichungsgate:** Verfügbarkeit und Schutzfähigkeit von RubiChroma, Wortmarke und Claim vor öffentlicher Beta oder Store-Veröffentlichung prüfen. Externe Presets benötigen vor ihrer Veröffentlichung eine eigene Rechteprüfung.
 
 ### Später zu validierende Annahmen
 
