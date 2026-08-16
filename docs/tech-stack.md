@@ -17,7 +17,11 @@
 - Playwright für Browser- und End-to-End-Tests
 - später Capacitor für iOS- und Android-Pakete
 
-Der MVP benötigt kein Backend, Benutzerkonto oder Cloud-System.
+Der MVP benötigt kein Backend, Benutzerkonto oder Cloud-Datenspeicher. Cloudflare Pages dient ausschließlich der Auslieferung der statischen Web-App.
+
+## Hosting und Veröffentlichung
+
+Die Web-App wird als statische Angular-Anwendung über Cloudflare Pages mit GitHub-Integration veröffentlicht. `main` ist Produktion; `dev`, Feature-Branches und Pull Requests erhalten Vorschau-Deployments. Die verbindliche Konfiguration und der Einrichtungszeitpunkt stehen in [Deployment und Cloudflare Pages](deployment.md).
 
 ## Architekturregeln
 

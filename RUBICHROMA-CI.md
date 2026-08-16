@@ -36,11 +36,11 @@
 
 ### Claim
 
-**Im aktuellen CI-Brief bevorzugt:**
+**Festgelegt:**
 
-> **Your colors. Your music.**
+> **Color Your Music**
 
-Der Claim wird in normaler Satzschreibung verwendet. Er endet in der Wortmarken-Anwendung mit Punkten, nicht mit Ausrufezeichen.
+Der Claim wird in englischer Titelschreibung und ohne abschließendes Satzzeichen verwendet.
 
 ---
 
@@ -579,16 +579,15 @@ Komponenten dürfen keine Corporate-Hexwerte direkt referenzieren. Nutzerfarben 
 
 ### Vor UI-Umsetzung zu klären
 
-1. **Claim-Konflikt:** Im bisherigen Produktgespräch wurde „Color your Music“ festgelegt; der aktuelle CI-Brief bevorzugt „Your colors. Your music.“. Festlegen, welcher Claim verbindlich ist und ob der andere als Kampagnenzeile bestehen darf.
-2. **Schreibweise:** Der aktuelle CI-Brief setzt „RubiChroma“, während zuvor „Rubichroma“ verwendet wurde. Die verbindliche Produkt-, Domain- und Store-Schreibweise muss bestätigt werden.
-3. **Logo-Symbol:** Motiv, Konstruktion, Schutzraum, App-Icon und monochrome Varianten.
-4. **Guangna-Rechte:** Markenname, Preset-Bezeichnung, Farbdaten, Abbildungen und Disclaimer.
-5. **Sekundärpalette:** Praxistest mit realen Nutzerpaletten, nicht nur isolierte Kontrastprüfung.
-6. **Dark Mode:** Validierung mit sehr hellen, dunklen und kontrastarmen Nutzerfarben.
-7. **Notation:** Glyphenabdeckung und Lesbarkeit von Sora für alle unterstützten Instrumente und Notationssysteme.
-8. **Print:** Farbmanagement, reale Testdrucke, Schildchenformate und unterstützte Papiergrößen.
-9. **Internationalisierung:** Sprachvarianten, Claim-Lokalisierung und Tonalitätsregeln pro Sprache.
-10. **Markenschutz:** Verfügbarkeit und Schutzfähigkeit von RubiChroma, Wortmarke, Logo und Claim.
+1. **Schreibweise:** Der aktuelle CI-Brief setzt „RubiChroma“, während zuvor „Rubichroma“ verwendet wurde. Die verbindliche Produkt-, Domain- und Store-Schreibweise muss bestätigt werden.
+2. **Logo-Symbol:** Motiv, Konstruktion, Schutzraum, App-Icon und monochrome Varianten.
+3. **Guangna-Rechte:** Markenname, Preset-Bezeichnung, Farbdaten, Abbildungen und Disclaimer.
+4. **Sekundärpalette:** Praxistest mit realen Nutzerpaletten, nicht nur isolierte Kontrastprüfung.
+5. **Dark Mode:** Validierung mit sehr hellen, dunklen und kontrastarmen Nutzerfarben.
+6. **Notation:** Glyphenabdeckung und Lesbarkeit von Sora für alle unterstützten Instrumente und Notationssysteme.
+7. **Print:** Farbmanagement, reale Testdrucke, Schildchenformate und unterstützte Papiergrößen.
+8. **Internationalisierung:** Sprachvarianten, Claim-Lokalisierung und Tonalitätsregeln pro Sprache.
+9. **Markenschutz:** Verfügbarkeit und Schutzfähigkeit von RubiChroma, Wortmarke, Logo und Claim.
 
 ### Später zu validierende Annahmen
 
@@ -596,7 +595,6 @@ Komponenten dürfen keine Corporate-Hexwerte direkt referenzieren. Nutzerfarben 
 - Die 70/30-Balance aus modern und spielerisch wird von gemischten Zielgruppen als hochwertig und zugänglich wahrgenommen.
 - RubiChroma Pink bleibt auch neben kräftigen Nutzerpaletten ausreichend eigenständig.
 - Ein primär neutraler Rahmen erhöht die Lesbarkeit heterogener Nutzerfarben.
-- Der Claim „Your colors. Your music.“ transportiert den persönlichen Nutzen klarer als eine stärker handlungsorientierte Alternative.
 
 ---
 

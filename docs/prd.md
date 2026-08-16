@@ -52,7 +52,7 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 
 - weitere Instrumente
 - vollständiger mobiler Noteneditor
-- Konten, Cloud oder Teilen
+- Konten, Cloud-Synchronisierung, Cloud-Datenspeicherung oder Teilen
 - öffentliche Songbibliothek
 - automatische Instrument-, Sticker-, Tasten- oder Tonerkennung
 - Mikrofonanalyse und automatische Spielbewertung

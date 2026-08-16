@@ -8,7 +8,11 @@ Die aktuelle Product Vision und der verbindliche MVP-Scope stehen im [Product Re
 
 Der beschlossene technische Zielzustand und die Architekturregeln stehen in [Tech Stack und Architektur](docs/tech-stack.md).
 
+Die geplante Veröffentlichung von Produktion und Vorschauen über Cloudflare Pages ist in [Deployment und Cloudflare Pages](docs/deployment.md) beschrieben.
+
 Der aktuelle Corporate-Identity-Arbeitsstand steht in [RUBICHROMA-CI.md](RUBICHROMA-CI.md). Darin gekennzeichnete offene Entscheidungen bleiben bis zur ausdrücklichen Klärung unverbindlich.
+
+Verbindliche Arbeits-, Quellen- und Prüfregeln für KI-Agenten stehen in [AGENTS.md](AGENTS.md).
 
 ## Angular-Migration
 
