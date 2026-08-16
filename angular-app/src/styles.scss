@@ -132,6 +132,10 @@ input {
 }
 
 @media (max-width: 600px) {
+  .theme-control select {
+    min-width: 5.75rem;
+  }
+
   .theme-control > span {
     position: absolute;
     width: 1px;
