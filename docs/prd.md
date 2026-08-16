@@ -243,6 +243,8 @@ Innerhalb desselben Players kann der Visualisierungsbereich zwischen zwei Darste
 
 Beide Darstellungen sind Projektionen derselben Timeline. Ein Wechsel unterbricht die Wiedergabe nicht und verändert weder Position noch Geschwindigkeit, Loop, Farbhilfe oder Ebenenzustand. Auf kleinen Bildschirmen ist immer nur eine Visualisierung sichtbar. Eine gleichzeitige Darstellung kann auf großen Bildschirmen später optional angeboten werden, ist aber weder eigener Navigationsbereich noch Standard.
 
+Der Liedtext läuft in beiden Darstellungen synchron mit derselben Timeline mit. Das aktuell gespielte Wort beziehungsweise Textstück ist eindeutig hervorgehoben; die nächste Textzeile bleibt vorauslesbar und bereits Gespieltes tritt zurück. Der Text gehört zur zusammenhängenden Playeroberfläche und wird nicht als unabhängiger, separat gesteuerter Scroller umgesetzt. Ein Wechsel zwischen Flow und Laufnotation bewahrt Textposition und Hervorhebung.
+
 Für die Laufnotation gilt:
 
 - Die Spiellinie bleibt fest, während die Ereignisse auf sie zulaufen.
@@ -300,6 +302,7 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - Die Laufnotation bewegt Ereignisse von rechts nach links zu einer festen Spiellinie; aktive Note, Akkord und Pause bleiben auch bei abgeschwächter oder ausgeschalteter Farbhilfe eindeutig erkennbar.
 - Die spätere Flow-Ansicht bewegt Ereignisse von oben nach unten auf die physische Zungenanordnung zu und bildet Einsatz, Haltedauer, Loslassen, Akkorde und Pausen korrekt ab.
 - Die Instrumentdarstellung ist ohne zusätzliche Erklärung als 17-Zungen-Kalimba erkennbar; Zungenlängen, Metallcharakter, reale Anordnung und direkt aufgebrachte Ton-/Zahlbeschriftung unterstützen die Zuordnung.
+- Der Liedtext läuft synchron mit; aktuelles Wort beziehungsweise Textstück, vorauslesbare nächste Zeile und bereits gespielter Text bleiben zur musikalischen Position passend erkennbar.
 - Ein Wechsel zwischen Laufnotation und Flow unterbricht die Wiedergabe nicht und bewahrt Position, Tempo, Loop, Farbhilfe und Ebenenzustand.
 - Die Playeroberfläche bleibt als zusammenhängende Einheit erkennbar; sekundäre Loop- und Mixersteuerungen verdrängen die aktive Visualisierung nicht.
 - Bei reduzierter Bewegung bleiben Reihenfolge, Annäherung, Zeitpunkt und Dauer in beiden Visualisierungen ohne kontinuierliche Animation verständlich.
