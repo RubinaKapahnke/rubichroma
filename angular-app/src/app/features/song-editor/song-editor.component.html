@@ -6,6 +6,19 @@
     <span class="module-name">Kalimba-Editor</span>
   </div>
   <span class="spacer"></span>
+  <label class="theme-control">
+    <span>Darstellung</span>
+    <select
+      data-testid="theme-select"
+      aria-label="Farbschema"
+      [value]="theme.preference()"
+      (change)="changeTheme($event)"
+    >
+      <option value="system">System</option>
+      <option value="light">Hell</option>
+      <option value="dark">Dunkel</option>
+    </select>
+  </label>
   <span class="save-state" role="status" aria-live="polite" [attr.data-status]="store.status()">
     @switch (store.status()) {
       @case ('loading') {
@@ -26,7 +39,7 @@
 
 <main>
   <section class="hero">
-    <p class="kicker" lang="en">Your colors. Your music.</p>
+    <p class="kicker" lang="en">Color Your Music</p>
     <h1>Musik wird sichtbar – in deinen Farben.</h1>
     <p>
       Bearbeite Liedtext und Kalimba-Notation in einer klaren, persönlichen Arbeitsfläche.

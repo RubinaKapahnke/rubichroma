@@ -1,44 +1,50 @@
 :root {
   color-scheme: light;
 
-  // Fixed RubiChroma brand tokens. User-defined music colors must not reuse these roles.
-  --rc-brand-pink: #f7496e;
-  --rc-brand-pink-soft: #ffe8ed;
-  --rc-ink: #1d1930;
-  --rc-plum: #3d293d;
-  --rc-canvas: #f7f6f9;
-  --rc-surface: #fffdfb;
-  --rc-surface-subtle: #f0eef3;
-  --rc-lavender-gray: #ded9e4;
-  --rc-text-muted: #625c6f;
-  --rc-outline: #c8c2ce;
-  --rc-focus: #b51f48;
-  --rc-error: #a6283f;
-  --rc-error-container: #ffe8eb;
+  // Corporate Identity tokens. User-defined music colors must not reuse these roles.
+  --rc-brand-primary: #f7496e;
+  --rc-brand-primary-strong: #c7204c;
+  --rc-brand-ink: #171a2b;
+  --rc-brand-plum: #4a2947;
 
-  --rc-radius-sm: 0.75rem;
-  --rc-radius-md: 1rem;
-  --rc-radius-lg: 1.5rem;
-  --rc-shadow-card: 0 0.75rem 2.25rem rgb(29 25 48 / 8%);
-  --rc-shadow-sticky: 0 0.25rem 1rem rgb(29 25 48 / 6%);
+  --rc-color-background: #fff9f6;
+  --rc-color-surface: #ffffff;
+  --rc-color-surface-subtle: #ece8f0;
+  --rc-color-text: #171a2b;
+  --rc-color-text-muted: #686272;
+  --rc-color-border: #d8d2dd;
+  --rc-color-primary: #f7496e;
+  --rc-color-on-primary: #171a2b;
+  --rc-color-primary-text: #c7204c;
+  --rc-color-primary-container: #ffe8ed;
+  --rc-color-focus: #285cb8;
+  --rc-color-success: #147a61;
+  --rc-color-warning: #985500;
+  --rc-color-error: #b42318;
+  --rc-color-error-container: #ffebe8;
+  --rc-color-info: #285cb8;
+
+  --rc-radius-sm: 0.5rem;
+  --rc-radius-control: 0.625rem;
+  --rc-radius-panel: 1rem;
+  --rc-radius-pill: 999px;
+  --rc-focus-width: 0.1875rem;
+  --rc-shadow-sm: 0 0.125rem 0.5rem rgb(23 26 43 / 8%);
+  --rc-shadow-md: 0 0.625rem 1.75rem rgb(23 26 43 / 12%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --rc-brand-pink-soft: #4b2230;
-    --rc-ink: #f7f3fa;
-    --rc-plum: #eadfeb;
-    --rc-canvas: #121117;
-    --rc-surface: #1c1a22;
-    --rc-surface-subtle: #27242e;
-    --rc-lavender-gray: #4a4552;
-    --rc-text-muted: #c9c2d0;
-    --rc-outline: #625c69;
-    --rc-focus: #ff8ca5;
-    --rc-error: #ffb3be;
-    --rc-error-container: #4b2029;
-    --rc-shadow-card: 0 0.75rem 2.25rem rgb(0 0 0 / 24%);
-    --rc-shadow-sticky: 0 0.25rem 1rem rgb(0 0 0 / 20%);
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --rc-color-background: #11131d;
+  --rc-color-surface: #1c1e2a;
+  --rc-color-surface-subtle: #262837;
+  --rc-color-text: #f8f5fa;
+  --rc-color-text-muted: #c8c1cc;
+  --rc-color-border: #3d3e50;
+  --rc-color-primary-text: #f7496e;
+  --rc-color-primary-container: #4b2230;
+  --rc-color-error: #ffb3be;
+  --rc-color-error-container: #4b2029;
+  --rc-shadow-sm: 0 0.125rem 0.5rem rgb(0 0 0 / 20%);
+  --rc-shadow-md: 0 0.625rem 1.75rem rgb(0 0 0 / 28%);
 }

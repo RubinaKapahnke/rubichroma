@@ -30,7 +30,7 @@ Es ist absichtlich kein Service Worker registriert: Ohne fest vereinbarten Angul
 
 ## Markenbasis
 
-Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus dem App-Bundle und zentrale RubiChroma-Tokens in `src/styles/_tokens.scss`. Das feste Markenpink `#F7496E` kennzeichnet Branding, Primäraktionen und aktive Zustände. Ruhige neutrale Flächen halten den visuellen Raum für spätere persönliche Musikfarben frei; Zustände bleiben zusätzlich durch Text, Form oder Symbole erkennbar. Aktuell folgt das Theme der Systemeinstellung. Für das MVP ist ein manueller Umschalter vorgesehen: Beim ersten Start gilt die Systemeinstellung, anschließend die lokal gespeicherte Auswahl.
+Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus dem App-Bundle und zentrale RubiChroma-Tokens in `src/styles/_tokens.scss`. Das feste Markenpink `#F7496E` kennzeichnet Branding, Primäraktionen und aktive Zustände. Ruhige neutrale Flächen halten den visuellen Raum für spätere persönliche Musikfarben frei; Zustände bleiben zusätzlich durch Text, Form oder Symbole erkennbar. Light und Dark Mode sind manuell umschaltbar: Beim ersten Start gilt die Systemeinstellung, anschließend die lokal gespeicherte Auswahl.
 
 ## Aktueller Schnitt
 

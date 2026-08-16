@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation, encodeLegacyNotation } from '../../domain/legacy-notation-codec';
+import { ThemeService } from '../../infrastructure/theme.service';
 import { SongDocument } from '../../domain/song-document';
 import { EditorValue, SongEditorStore } from './song-editor.store';
 
@@ -32,6 +33,7 @@ type LineForm = FormGroup<{ words: FormArray<WordForm> }>;
 })
 export class SongEditorComponent {
   readonly store = inject(SongEditorStore);
+  readonly theme = inject(ThemeService);
   readonly title = new FormControl('', { nonNullable: true });
   readonly lines = new FormArray<LineForm>([]);
   private readonly destroyRef = inject(DestroyRef);
@@ -88,6 +90,10 @@ export class SongEditorComponent {
 
   trackByIndex(index: number): number {
     return index;
+  }
+
+  changeTheme(event: Event): void {
+    this.theme.setPreference((event.target as HTMLSelectElement).value);
   }
 
   private hydrate(document: SongDocument): void {

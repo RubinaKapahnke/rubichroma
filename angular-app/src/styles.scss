@@ -27,51 +27,49 @@ html {
   @include mat.theme-overrides(
     (
       primary: #f7496e,
-      on-primary: #1d1930,
+      on-primary: #171a2b,
       primary-container: #ffe8ed,
-      on-primary-container: #3d293d,
-      surface: #fffdfb,
-      surface-container: #f0eef3,
-      surface-container-low: #f7f6f9,
-      surface-container-high: #e8e5ec,
-      on-surface: #1d1930,
-      on-surface-variant: #625c6f,
-      outline: #77717e,
-      outline-variant: #c8c2ce,
-      error: #a6283f,
+      on-primary-container: #4a2947,
+      surface: #ffffff,
+      surface-container: #ece8f0,
+      surface-container-low: #fff9f6,
+      surface-container-high: #e4dfe8,
+      on-surface: #171a2b,
+      on-surface-variant: #686272,
+      outline: #686272,
+      outline-variant: #d8d2dd,
+      error: #b42318,
       on-error: #ffffff,
-      error-container: #ffe8eb,
+      error-container: #ffebe8,
       on-error-container: #5c0b1e,
     )
   );
 
   min-width: 0;
-  background: var(--rc-canvas);
+  background: var(--rc-color-background);
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    @include mat.theme-overrides(
-      (
-        primary: #f7496e,
-        on-primary: #1d1930,
-        primary-container: #4b2230,
-        on-primary-container: #ffd9e2,
-        surface: #1c1a22,
-        surface-container: #27242e,
-        surface-container-low: #211f27,
-        surface-container-high: #322f38,
-        on-surface: #f7f3fa,
-        on-surface-variant: #c9c2d0,
-        outline: #a39ca9,
-        outline-variant: #625c69,
-        error: #ffb3be,
-        on-error: #5c0b1e,
-        error-container: #4b2029,
-        on-error-container: #ffd9df,
-      )
-    );
-  }
+html[data-theme='dark'] {
+  @include mat.theme-overrides(
+    (
+      primary: #f7496e,
+      on-primary: #171a2b,
+      primary-container: #4b2230,
+      on-primary-container: #ffd9e2,
+      surface: #1c1e2a,
+      surface-container: #262837,
+      surface-container-low: #11131d,
+      surface-container-high: #303241,
+      on-surface: #f8f5fa,
+      on-surface-variant: #c8c1cc,
+      outline: #8f90a0,
+      outline-variant: #3d3e50,
+      error: #ffb3be,
+      on-error: #5c0b1e,
+      error-container: #4b2029,
+      on-error-container: #ffd9df,
+    )
+  );
 }
 
 * {
@@ -83,11 +81,20 @@ body {
   min-height: 100dvh;
   margin: 0;
   overflow-x: hidden;
-  color: var(--rc-ink);
-  background: var(--rc-canvas);
+  color: var(--rc-color-text);
+  background: var(--rc-color-background);
   font-family: Sora, 'Helvetica Neue', Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 button,
@@ -95,12 +102,44 @@ input {
   font: inherit;
 }
 
+.theme-control {
+  display: grid;
+  gap: 0.15rem;
+  color: var(--rc-color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+
+  select {
+    min-width: 6.5rem;
+    min-height: 2.75rem;
+    padding: 0.45rem 2rem 0.45rem 0.65rem;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+  }
+}
+
 ::selection {
-  color: var(--rc-ink);
-  background: var(--rc-brand-pink-soft);
+  color: var(--rc-color-text);
+  background: var(--rc-color-primary-container);
 }
 
 :focus-visible {
-  outline: 0.1875rem solid var(--rc-focus);
-  outline-offset: 0.1875rem;
+  outline: var(--rc-focus-width) solid var(--rc-color-focus);
+  outline-offset: var(--rc-focus-width);
+}
+
+@media (max-width: 600px) {
+  .theme-control > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }

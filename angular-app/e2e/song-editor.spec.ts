@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { THEME_STORAGE_KEY } from '../src/app/infrastructure/theme-preference';
+
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
   await page.goto('/');
   const title = page.getByTestId('song-title');
@@ -45,4 +47,25 @@ test('edits title, word and raw notation and restores them after reload', async 
   await expect(page.getByTestId('song-title')).toHaveValue('Reload Song äöü');
   await expect(page.getByTestId('word-0-0')).toHaveValue('Märchen');
   await expect(page.getByTestId('notation-0-0')).toHaveValue('(13) 5′-x(');
+});
+
+test('stores a manual theme and restores it after reload', async ({ page }) => {
+  await page.goto('/');
+  const themeSelect = page.getByTestId('theme-select');
+
+  await expect(themeSelect).toHaveValue('system');
+  await themeSelect.selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect
+    .poll(() => page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEY))
+    .toBe('dark');
+
+  await page.reload();
+  await expect(themeSelect).toHaveValue('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await themeSelect.selectOption('system');
+  await expect
+    .poll(() => page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEY))
+    .toBeNull();
 });
