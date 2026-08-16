@@ -6,6 +6,8 @@ Web-App zum Erstellen und Bearbeiten farbiger Kalimba-Noten über dem Liedtext.
 
 Die aktuelle Product Vision und der verbindliche MVP-Scope stehen im [Product Requirements Document](docs/prd.md).
 
+Der beschlossene technische Zielzustand und die Architekturregeln stehen in [Tech Stack und Architektur](docs/tech-stack.md).
+
 ## Starten
 
 Im Ordner des Tools ein Terminal öffnen und ausführen:
