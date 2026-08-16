@@ -85,8 +85,93 @@ test('opens and closes the focused word editor as a mobile bottom sheet', async 
   await expect(page.getByTestId('word-editor')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
+  await page.getByTestId('block-add-word').click();
+  await expect(page.getByTestId('word-card-0-1')).toBeFocused();
+  await expect(page.getByTestId('word-card-0-1')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(page.getByTestId('word-card-0-0')).toBeFocused();
+  await expect(page.getByTestId('word-card-0-1')).toContainText('♪');
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
   await page.getByRole('button', { name: 'Editor schließen' }).last().click();
   await expect(page.getByTestId('word-editor')).toBeHidden();
+});
+
+test('performs block and line structure actions, transfers only events and restores them after reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
+
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('block-add-word').click();
+  await expect(page.getByTestId('word-0-1')).toHaveValue('Neues Wort');
+  await page.getByTestId('block-delete').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(2);
+
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('block-add-melody').click();
+  await expect(page.getByTestId('word-0-1')).toHaveValue('♪');
+  await page.getByTestId('block-delete').click();
+
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('block-duplicate').click();
+  await expect(page.getByTestId('notation-0-1')).toHaveValue('1 2 3 (135)');
+  await page.getByTestId('line-duplicate-0').click();
+  await expect(page.locator('.song-line')).toHaveCount(2);
+  await expect(page.locator('[data-testid^="word-card-1-"]')).toHaveCount(3);
+  await page.getByTestId('line-delete-1').click();
+  await expect(page.locator('.song-line')).toHaveCount(1);
+
+  await page.getByTestId('line-add-0').click();
+  await expect(page.locator('.song-line')).toHaveCount(2);
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('block-copy-next-line').click();
+  await expect(page.getByTestId('word-1-0')).toHaveValue('Neue Zeile');
+  await expect(page.getByTestId('notation-1-0')).toHaveValue('1 2 3 (135)');
+  await expect(page.getByTestId('word-card-1-0')).toBeFocused();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
+
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1')))
+    .toBe('user-sentinel');
+  await page.reload();
+
+  await expect(page.locator('.song-line')).toHaveCount(2);
+  await page.getByTestId('word-card-1-0').click();
+  await expect(page.getByTestId('word-1-0')).toHaveValue('Neue Zeile');
+  await expect(page.getByTestId('notation-1-0')).toHaveValue('1 2 3 (135)');
+  await expect(page.getByTestId('undo-structure')).toBeDisabled();
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'user-sentinel',
+  );
+});
+
+test('undoes structure actions in session order and restores selection and keyboard focus', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByTestId('word-card-0-0').focus();
+  await page.getByTestId('word-card-0-0').press('Enter');
+
+  await page.getByTestId('block-duplicate').click();
+  await expect(page.getByTestId('word-card-0-1')).toBeFocused();
+  await page.getByTestId('line-duplicate-0').click();
+  await expect(page.getByTestId('word-card-1-0')).toBeFocused();
+  await expect(page.locator('.song-line')).toHaveCount(2);
+
+  await page.getByTestId('undo-structure').click();
+  await expect(page.locator('.song-line')).toHaveCount(1);
+  await expect(page.getByTestId('word-card-0-1')).toBeFocused();
+  await expect(page.getByTestId('word-card-0-1')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByTestId('undo-structure').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(2);
+  await expect(page.getByTestId('word-card-0-0')).toBeFocused();
+  await expect(page.getByTestId('undo-structure')).toBeDisabled();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
 });
 
 test('keeps selection and focus stable during keyboard navigation', async ({ page }) => {

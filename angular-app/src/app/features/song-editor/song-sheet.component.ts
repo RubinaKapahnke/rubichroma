@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { FormArray } from '@angular/forms';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { MusicEvent } from '../../domain/music-event';
+import { SongStructureAction } from '../../domain/song-structure-editing';
 import { LineForm, WordForm, WordSelection } from './song-editor-form';
 
 @Component({
@@ -14,6 +15,7 @@ export class SongSheetComponent {
   readonly lines = input.required<FormArray<LineForm>>();
   readonly selection = input.required<WordSelection | null>();
   readonly selectionChange = output<WordSelection | null>();
+  readonly structureAction = output<SongStructureAction>();
 
   selectWord(lineIndex: number, wordIndex: number): void {
     this.selectionChange.emit({ lineIndex, wordIndex });

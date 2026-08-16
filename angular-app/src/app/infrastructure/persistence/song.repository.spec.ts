@@ -1,5 +1,5 @@
-import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
+import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
 import {
@@ -9,6 +9,9 @@ import {
 import { stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
 import { KalimbaDatabase } from './kalimba.database';
 import { SongRepository } from './song.repository';
+
+Dexie.dependencies.indexedDB = indexedDB;
+Dexie.dependencies.IDBKeyRange = IDBKeyRange;
 
 const databases: KalimbaDatabase[] = [];
 

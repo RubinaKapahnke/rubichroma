@@ -9,6 +9,54 @@
     </button>
   </header>
 
+  <div class="block-actions" aria-label="Blockstruktur bearbeiten">
+    <button
+      type="button"
+      data-testid="undo-structure-editor"
+      [disabled]="!canUndo()"
+      (click)="undoRequested.emit()"
+    >
+      Rückgängig
+    </button>
+    <button
+      type="button"
+      data-testid="block-add-word"
+      (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
+    >
+      Wort danach
+    </button>
+    <button
+      type="button"
+      data-testid="block-add-melody"
+      (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
+    >
+      Melodie danach
+    </button>
+    <button
+      type="button"
+      data-testid="block-duplicate"
+      (click)="structureAction.emit({ kind: 'duplicate-block' })"
+    >
+      Block duplizieren
+    </button>
+    <button
+      type="button"
+      data-testid="block-copy-next-line"
+      [disabled]="!canCopyToNextLine()"
+      (click)="structureAction.emit({ kind: 'copy-events-to-next-line' })"
+    >
+      Töne in nächste Zeile
+    </button>
+    <button
+      type="button"
+      data-testid="block-delete"
+      [disabled]="!canDeleteBlock()"
+      (click)="structureAction.emit({ kind: 'delete-block' })"
+    >
+      Block löschen
+    </button>
+  </div>
+
   <mat-form-field appearance="outline">
     <mat-label>Wort oder Textstück</mat-label>
     <input

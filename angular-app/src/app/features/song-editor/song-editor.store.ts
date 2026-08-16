@@ -6,6 +6,13 @@ import {
 } from '../../domain/legacy-notation-codec';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import {
+  editSongStructure,
+  SongPosition,
+  SongStructureAction,
+  SongStructureEditResult,
+  SongStructureHistory,
+} from '../../domain/song-structure-editing';
+import {
   LEGACY_STORAGE_KEY,
   parseLegacyV0,
   stringifyVanillaCompatible,
@@ -26,11 +33,14 @@ export class SongEditorStore {
   private readonly statusState = signal<SaveStatus>('loading');
   private readonly errorState = signal<string | null>(null);
   private readonly hydrationVersionState = signal(0);
+  private readonly canUndoState = signal(false);
+  private readonly structureHistory = new SongStructureHistory();
 
   readonly document = this.documentState.asReadonly();
   readonly status = this.statusState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly hydrationVersion = this.hydrationVersionState.asReadonly();
+  readonly canUndo = this.canUndoState.asReadonly();
   readonly hasDocument = computed(() => this.documentState() !== null);
 
   async initialize(): Promise<void> {
@@ -40,12 +50,39 @@ export class SongEditorStore {
       const legacyJson = localStorage.getItem(LEGACY_STORAGE_KEY);
       const document = await this.repository.migrateLegacy(legacyJson, DEFAULT_DOCUMENT);
       this.documentState.set(document);
+      this.structureHistory.clear();
+      this.canUndoState.set(false);
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
     } catch (error) {
       this.statusState.set('error');
       this.errorState.set(messageOf(error));
     }
+  }
+
+  applyStructureAction(
+    action: SongStructureAction,
+    selection: SongPosition,
+  ): SongStructureEditResult {
+    const current = this.documentState();
+    if (!current) return { ok: false, reason: 'invalid-selection' };
+    const result = editSongStructure({ document: current, selection }, action);
+    if (!result.ok) return result;
+
+    this.structureHistory.record({ document: current, selection });
+    this.canUndoState.set(true);
+    this.applyStructureSnapshot(result.state.document);
+    void this.persistSnapshot(result.state.document);
+    return result;
+  }
+
+  undoStructure(): SongPosition | null {
+    const previous = this.structureHistory.undo();
+    this.canUndoState.set(this.structureHistory.canUndo);
+    if (!previous) return null;
+    this.applyStructureSnapshot(previous.document);
+    void this.persistSnapshot(previous.document);
+    return previous.selection;
   }
 
   async saveEditorValue(value: EditorValue): Promise<void> {
@@ -82,6 +119,9 @@ export class SongEditorStore {
       });
     });
 
+    // A non-structural edit is a newer state that an older structure snapshot must not overwrite.
+    this.structureHistory.clear();
+    this.canUndoState.set(false);
     this.documentState.set(candidate);
     this.statusState.set('saving');
     this.errorState.set(null);
@@ -96,6 +136,8 @@ export class SongEditorStore {
     try {
       const saved = await this.repository.replace(candidate);
       this.documentState.set(saved);
+      this.structureHistory.clear();
+      this.canUndoState.set(false);
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
     } catch (error) {
@@ -114,6 +156,29 @@ export class SongEditorStore {
   setError(error: unknown): void {
     this.statusState.set('error');
     this.errorState.set(messageOf(error));
+  }
+
+  private applyStructureSnapshot(document: SongDocument): void {
+    this.documentState.set(document);
+    this.hydrationVersionState.update((version) => version + 1);
+    this.statusState.set('saving');
+    this.errorState.set(null);
+  }
+
+  private async persistSnapshot(snapshot: SongDocument): Promise<void> {
+    try {
+      const saved = await this.repository.save(snapshot);
+      // A late save must never replace a newer edit or undo snapshot in memory.
+      if (this.documentState() === snapshot) {
+        this.documentState.set(saved);
+        this.statusState.set('saved');
+      }
+    } catch (error) {
+      if (this.documentState() === snapshot) {
+        this.statusState.set('error');
+        this.errorState.set(`Speichern fehlgeschlagen: ${messageOf(error)}`);
+      }
+    }
   }
 }
 
