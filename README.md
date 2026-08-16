@@ -2,6 +2,10 @@
 
 Web-App zum Erstellen und Bearbeiten farbiger Kalimba-Noten über dem Liedtext.
 
+## Produktplanung
+
+Die aktuelle Product Vision und der verbindliche MVP-Scope stehen im [Product Requirements Document](docs/prd.md).
+
 ## Starten
 
 Im Ordner des Tools ein Terminal öffnen und ausführen:
