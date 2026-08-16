@@ -48,23 +48,27 @@ describe('SongEditorComponent hydration', () => {
       position: { lineIndex: 0, wordIndex: 0 },
       shiftKey: false,
       toggleKey: false,
+      touchSelection: false,
     });
     fixture.componentInstance.handleWordSelection({
       position: { lineIndex: 0, wordIndex: 1 },
       shiftKey: true,
       toggleKey: false,
+      touchSelection: false,
     });
     expect(fixture.componentInstance.selectedPositions()).toHaveLength(2);
     fixture.componentInstance.handleWordSelection({
       position: { lineIndex: 0, wordIndex: 0 },
       shiftKey: false,
       toggleKey: true,
+      touchSelection: false,
     });
     expect(fixture.componentInstance.selectedPositions()).toEqual([{ lineIndex: 0, wordIndex: 1 }]);
     fixture.componentInstance.handleWordSelection({
       position: { lineIndex: 0, wordIndex: 0 },
       shiftKey: false,
       toggleKey: true,
+      touchSelection: false,
     });
 
     const imported = cloneDocument(DEFAULT_DOCUMENT);

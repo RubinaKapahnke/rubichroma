@@ -121,7 +121,11 @@
       </fieldset>
     </div>
     <p class="key-help">Umrandet = im Block vorhanden. Pink = für den neuen Akkord ausgewählt.</p>
-    <div class="key-palette" aria-label="17 Kalimba-Zungen in physischer Reihenfolge">
+    <div
+      class="key-palette"
+      data-testid="key-palette"
+      aria-label="17 Kalimba-Zungen in physischer Reihenfolge"
+    >
       @for (key of keys(); track key.id) {
         <button
           class="key-button"

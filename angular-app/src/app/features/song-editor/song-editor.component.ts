@@ -59,6 +59,7 @@ export class SongEditorComponent {
   });
   readonly selection = computed(() => this.selectionState().active);
   readonly selectedPositions = computed(() => this.selectionState().positions);
+  readonly touchSelectionActive = signal(false);
   readonly musicClipboard = signal<MusicSelectionClipboard | null>(null);
   readonly clipboardCount = computed(() => this.musicClipboard()?.sequences.length ?? 0);
   readonly actionNotice = signal<string | null>(null);
@@ -136,20 +137,27 @@ export class SongEditorComponent {
       this.clearSelection();
       return;
     }
+    this.touchSelectionActive.set(false);
     this.setSingleSelection(selection);
   }
 
   handleWordSelection(gesture: WordSelectionGesture): void {
     const document = this.store.document();
     if (!document) return;
+    this.touchSelectionActive.set(gesture.touchSelection);
     const mode: SongSelectionMode = gesture.shiftKey
       ? 'range'
       : gesture.toggleKey
         ? 'toggle'
         : 'single';
-    this.selectionState.set(
-      updateSongSelection(document, this.selectionState(), gesture.position, mode),
+    const selectionState = updateSongSelection(
+      document,
+      this.selectionState(),
+      gesture.position,
+      mode,
     );
+    this.selectionState.set(selectionState);
+    if (selectionState.positions.length === 0) this.touchSelectionActive.set(false);
   }
 
   closeWordEditor(): void {
@@ -247,6 +255,7 @@ export class SongEditorComponent {
   }
 
   selectedWord(): WordForm | null {
+    if (this.touchSelectionActive()) return null;
     const selection = this.selection();
     return selection
       ? (this.lines().at(selection.lineIndex)?.controls.words.at(selection.wordIndex) ?? null)
@@ -330,6 +339,7 @@ export class SongEditorComponent {
   }
 
   private clearSelection(): void {
+    this.touchSelectionActive.set(false);
     this.selectionState.set({ ...EMPTY_SONG_SELECTION, positions: [] });
   }
 }

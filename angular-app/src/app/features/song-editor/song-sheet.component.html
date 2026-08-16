@@ -1,4 +1,11 @@
-<div class="song-lines" aria-label="Bearbeitbare Liedblöcke">
+<p class="touch-selection-help" id="touch-selection-help">
+  Gedrückt halten startet die Mehrfachauswahl. Weitere Blöcke lassen sich dann antippen.
+</p>
+<div
+  class="song-lines"
+  aria-label="Bearbeitbare Liedblöcke"
+  aria-describedby="touch-selection-help"
+>
   @for (line of lines().controls; track $index; let lineIndex = $index) {
     <section class="song-line" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">
       <div class="line-heading">
@@ -45,6 +52,11 @@
               (wordIndex + 1) +
               ', bearbeiten'
             "
+            (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
+            (pointermove)="trackLongPress($event)"
+            (pointerup)="finishLongPress($event)"
+            (pointercancel)="finishLongPress($event)"
+            (contextmenu)="preventTouchContextMenu($event)"
             (click)="selectWord($event, lineIndex, wordIndex)"
             (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
           >

@@ -37,7 +37,7 @@
   </span>
 </mat-toolbar>
 
-<main>
+<main [class.has-touch-selection]="touchSelectionActive()">
   <section class="hero">
     <p class="kicker" lang="en">Color Your Music</p>
     <h1>Musik wird sichtbar – in deinen Farben.</h1>
@@ -56,6 +56,7 @@
     @if (selectedPositions().length > 0) {
       <div
         class="selection-toolbar"
+        [class.is-touch-selection]="touchSelectionActive()"
         role="toolbar"
         aria-label="Aktionen für ausgewählte Liedblöcke"
         data-testid="selection-toolbar"
@@ -126,6 +127,7 @@
             [lines]="lines()"
             [selection]="selection()"
             [selectedPositions]="selectedPositions()"
+            [touchSelectionActive]="touchSelectionActive()"
             (selectionChange)="changeSelection($event)"
             (wordSelect)="handleWordSelection($event)"
             (structureAction)="applyStructureAction($event)"

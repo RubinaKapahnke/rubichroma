@@ -11,5 +11,16 @@ export default defineConfig({
     url: 'http://127.0.0.1:4200',
     reuseExistingServer: true,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'desktop-chromium',
+      testIgnore: /.*\.mobile\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'smartphone-chromium',
+      testMatch: /.*\.mobile\.spec\.ts/,
+      use: { ...devices['Pixel 7'] },
+    },
+  ],
 });

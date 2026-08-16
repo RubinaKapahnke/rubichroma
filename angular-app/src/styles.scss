@@ -131,12 +131,39 @@ input {
   outline-offset: var(--rc-focus-width);
 }
 
+app-song-editor,
+app-song-editor .topbar,
+app-song-editor .brand-lockup,
+app-song-editor mat-card-content,
+app-song-editor app-word-editor {
+  min-width: 0;
+}
+
+app-song-editor main,
+app-song-editor .topbar,
+app-song-editor .editor-card,
+app-song-editor .editor-layout,
+app-song-editor app-word-editor {
+  max-width: 100%;
+}
+
+app-song-editor .topbar,
+app-song-editor .editor-card,
+app-song-editor .editor-layout {
+  width: 100%;
+}
+
+app-song-editor .structure-toolbar {
+  flex-wrap: wrap;
+}
+
 .selection-toolbar {
   display: flex;
   position: sticky;
   z-index: 9;
   top: 5rem;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.65rem;
   margin-bottom: 0.75rem;
   padding: 0.65rem 0.8rem;
@@ -144,6 +171,16 @@ input {
   border-radius: var(--rc-radius-panel);
   background: var(--rc-color-primary-container);
   box-shadow: var(--rc-shadow-md);
+
+  button {
+    min-height: var(--rc-control-min-size);
+    white-space: normal;
+  }
+
+  .mat-mdc-button-base {
+    height: auto;
+    min-height: var(--rc-control-min-size);
+  }
 }
 
 .selection-spacer {
@@ -151,6 +188,37 @@ input {
 }
 
 @media (max-width: 600px) {
+  app-song-editor .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 0.65rem;
+    padding: 0.5rem;
+    white-space: normal;
+  }
+
+  app-song-editor .topbar .spacer {
+    display: none;
+  }
+
+  app-song-editor .topbar .theme-control {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  app-song-editor .topbar .save-state {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+    text-align: center;
+  }
+
+  app-song-editor mat-card-actions button {
+    flex: 1 1 10rem;
+    min-height: var(--rc-control-min-size);
+    white-space: normal;
+  }
+
   .theme-control select {
     min-width: 5.75rem;
   }
@@ -167,9 +235,30 @@ input {
   }
 
   .selection-toolbar {
-    top: 4.5rem;
+    top: 7rem;
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .selection-toolbar.is-touch-selection {
+    display: grid;
+    position: fixed;
+    z-index: 40;
+    inset: auto 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    max-height: calc(100dvh - 1rem);
+    margin: 0;
+    overflow-y: auto;
+
+    strong,
+    [data-testid='clipboard-count'],
+    [data-testid='clear-selection'] {
+      grid-column: 1 / -1;
+    }
+  }
+
+  main.has-touch-selection {
+    padding-bottom: 16rem;
   }
 
   .selection-spacer {

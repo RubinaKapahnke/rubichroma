@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { FormArray } from '@angular/forms';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { MusicEvent } from '../../domain/music-event';
@@ -9,7 +16,11 @@ export interface WordSelectionGesture {
   position: WordSelection;
   shiftKey: boolean;
   toggleKey: boolean;
+  touchSelection: boolean;
 }
+
+const LONG_PRESS_DURATION_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE_PX = 12;
 
 @Component({
   selector: 'app-song-sheet',
@@ -21,16 +32,77 @@ export class SongSheetComponent {
   readonly lines = input.required<FormArray<LineForm>>();
   readonly selection = input.required<WordSelection | null>();
   readonly selectedPositions = input.required<readonly WordSelection[]>();
+  readonly touchSelectionActive = input.required<boolean>();
   readonly selectionChange = output<WordSelection | null>();
   readonly wordSelect = output<WordSelectionGesture>();
   readonly structureAction = output<SongStructureAction>();
+  private readonly destroyRef = inject(DestroyRef);
+  private longPressTimer: ReturnType<typeof setTimeout> | undefined;
+  private touchPointerId: number | null = null;
+  private touchStart: { x: number; y: number } | null = null;
+  private touchClickPending = false;
+  private suppressNextTouchClick = false;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.cancelLongPress());
+  }
 
   selectWord(event: MouseEvent, lineIndex: number, wordIndex: number): void {
+    const isTouchClick =
+      this.touchClickPending ||
+      (typeof PointerEvent !== 'undefined' &&
+        event instanceof PointerEvent &&
+        event.pointerType === 'touch');
+    this.touchClickPending = false;
+
+    if (isTouchClick && this.suppressNextTouchClick) {
+      this.suppressNextTouchClick = false;
+      return;
+    }
+
+    const continueTouchSelection =
+      isTouchClick && this.touchSelectionActive() && this.selectedPositions().length > 0;
     this.wordSelect.emit({
       position: { lineIndex, wordIndex },
       shiftKey: event.shiftKey,
-      toggleKey: event.ctrlKey || event.metaKey,
+      toggleKey: event.ctrlKey || event.metaKey || continueTouchSelection,
+      touchSelection: continueTouchSelection,
     });
+  }
+
+  startLongPress(event: PointerEvent, lineIndex: number, wordIndex: number): void {
+    if (event.pointerType !== 'touch' || !event.isPrimary) return;
+
+    this.cancelLongPress();
+    this.suppressNextTouchClick = false;
+    this.touchPointerId = event.pointerId;
+    this.touchStart = { x: event.clientX, y: event.clientY };
+    this.touchClickPending = true;
+    this.longPressTimer = setTimeout(() => {
+      this.longPressTimer = undefined;
+      this.suppressNextTouchClick = true;
+      this.wordSelect.emit({
+        position: { lineIndex, wordIndex },
+        shiftKey: false,
+        toggleKey: true,
+        touchSelection: true,
+      });
+    }, LONG_PRESS_DURATION_MS);
+  }
+
+  trackLongPress(event: PointerEvent): void {
+    if (event.pointerId !== this.touchPointerId || !this.touchStart) return;
+    const moved = Math.hypot(event.clientX - this.touchStart.x, event.clientY - this.touchStart.y);
+    if (moved > LONG_PRESS_MOVE_TOLERANCE_PX) this.cancelLongPress();
+  }
+
+  finishLongPress(event: PointerEvent): void {
+    if (event.pointerId !== this.touchPointerId) return;
+    this.cancelLongPress(false);
+  }
+
+  preventTouchContextMenu(event: Event): void {
+    if (this.suppressNextTouchClick) event.preventDefault();
   }
 
   isSelected(lineIndex: number, wordIndex: number): boolean {
@@ -92,6 +164,14 @@ export class SongSheetComponent {
         )
         ?.focus(),
     );
+  }
+
+  private cancelLongPress(clearPendingClick = true): void {
+    if (this.longPressTimer) clearTimeout(this.longPressTimer);
+    this.longPressTimer = undefined;
+    this.touchPointerId = null;
+    this.touchStart = null;
+    if (clearPendingClick) this.touchClickPending = false;
   }
 }
 

@@ -362,6 +362,30 @@ test('stores a manual theme and restores it after reload', async ({ page }) => {
     .toBeNull();
 });
 
+test('keeps the editor panel and fields inside large and compact desktop viewports', async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 920, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await page.getByTestId('word-card-0-0').click();
+
+    await expectNoPageOverflow(page);
+    await expectInsideViewport(page, page.getByTestId('word-editor'));
+    await expectInsideViewport(page, page.getByTestId('word-0-0'));
+    await expectInsideViewport(page, page.getByTestId('notation-0-0'));
+
+    const keyPalette = page.getByTestId('key-palette');
+    await expect(keyPalette).toBeVisible();
+    expect(await keyPalette.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+      true,
+    );
+  }
+});
+
 async function readPasteState(page: import('@playwright/test').Page): Promise<{
   targetTexts: string[];
   targetKinds: string[][];
@@ -397,4 +421,24 @@ async function readPasteState(page: import('@playwright/test').Page): Promise<{
       database.close();
     }
   });
+}
+
+async function expectNoPageOverflow(page: import('@playwright/test').Page): Promise<void> {
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <= document.documentElement.clientWidth &&
+        document.body.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+}
+
+async function expectInsideViewport(
+  page: import('@playwright/test').Page,
+  locator: import('@playwright/test').Locator,
+): Promise<void> {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
 }
