@@ -14,6 +14,13 @@ Dieses Repository gehört zum Produkt **RubiChroma – Color Your Music**. Der l
 
 Produkt-, Architektur-, Marken- oder Deploymententscheidungen werden in der jeweils führenden Quelle geändert. Keine zusätzliche Kontext- oder Handoff-Datei mit denselben Aussagen anlegen. Als offen markierte Entscheidungen nicht selbstständig festlegen.
 
+## Projektspezifisches Festhalten
+
+- In RubiChroma bedeuten Formulierungen wie „festhalten“, „merken“ oder „dokumentieren“ standardmäßig: die Information in der passenden führenden Repository-Quelle oder im zuständigen Issue von `RubinaKapahnke/rubichroma` ergänzen.
+- Globale Ideen-, Wunsch- oder Aufgaben-Inboxen, persönliche `items.jsonl`-Sammlungen und allgemeine Capture-Skills dafür nicht verwenden, außer der Nutzer verlangt ausdrücklich eine projektübergreifende oder globale Ablage.
+- Vor einer neuen Ablage zuerst eine vorhandene führende Quelle oder ein passendes GitHub-Issue suchen. Nur wenn keines geeignet ist, ein klar abgegrenztes RubiChroma-Issue anlegen; keine parallele Handoff- oder Merkliste erzeugen.
+- Fachliche Entscheidungen bleiben in ihrer führenden Quelle beziehungsweise im Issue. `AGENTS.md` enthält nur die Routing- und Arbeitsregel und dupliziert nicht den fachlichen Inhalt.
+
 ## Repository-Aufbau
 
 - Der Vanilla-Client im Repository-Root ist während der Migration die funktionale Referenz.
