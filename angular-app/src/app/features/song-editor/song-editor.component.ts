@@ -461,18 +461,20 @@ export class SongEditorComponent {
 
   undoStructure(): void {
     const previousSelectionState = this.selectionState();
+    const focusTarget = this.historyFocusTarget();
     const selection = this.store.undoStructure();
     if (!selection) return;
-    this.restoreHistorySelection(selection, previousSelectionState);
-    this.actionNotice.set('Letzte Strukturaktion rückgängig gemacht');
+    this.restoreHistorySelection(selection, previousSelectionState, focusTarget);
+    this.actionNotice.set('Letzte Änderung rückgängig gemacht');
   }
 
   redoStructure(): void {
     const previousSelectionState = this.selectionState();
+    const focusTarget = this.historyFocusTarget();
     const selection = this.store.redoStructure();
     if (!selection) return;
-    this.restoreHistorySelection(selection, previousSelectionState);
-    this.actionNotice.set('Letzte Strukturaktion wiederholt');
+    this.restoreHistorySelection(selection, previousSelectionState, focusTarget);
+    this.actionNotice.set('Letzte Änderung wiederholt');
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -540,10 +542,14 @@ export class SongEditorComponent {
 
     this.formSubscription = new Subscription();
     this.formSubscription.add(
-      this.title.valueChanges.subscribe(() => this.store.updateEditorValue(this.editorValue())),
+      this.title.valueChanges.subscribe(() =>
+        this.store.updateEditorValue(this.editorValue(), this.historySelection()),
+      ),
     );
     this.formSubscription.add(
-      lines.valueChanges.subscribe(() => this.store.updateEditorValue(this.editorValue())),
+      lines.valueChanges.subscribe(() =>
+        this.store.updateEditorValue(this.editorValue(), this.historySelection()),
+      ),
     );
     this.formSubscription.add(
       this.title.valueChanges.pipe(debounceTime(350)).subscribe(() => void this.persist()),
@@ -554,7 +560,7 @@ export class SongEditorComponent {
   }
 
   private persist(): Promise<void> {
-    return this.store.saveEditorValue(this.editorValue());
+    return this.store.saveEditorValue(this.editorValue(), this.historySelection());
   }
 
   private editorValue(): EditorValue {
@@ -612,6 +618,7 @@ export class SongEditorComponent {
   private restoreHistorySelection(
     selection: SongPosition,
     previousSelectionState: SongSelectionState,
+    focusTarget: string | null = null,
   ): void {
     const document = this.store.document();
     if (
@@ -628,7 +635,29 @@ export class SongEditorComponent {
     } else {
       this.setSingleSelection(selection, document ?? undefined);
     }
-    this.focusSelection(selection);
+    if (focusTarget) {
+      setTimeout(() => {
+        const target = globalThis.document.querySelector<HTMLElement>(
+          `[data-testid="${focusTarget}"]`,
+        );
+        if (target) target.focus();
+        else this.focusSelection(selection);
+      });
+    } else {
+      this.focusSelection(selection);
+    }
+  }
+
+  private historySelection(): SongPosition | null {
+    return (
+      this.selection() ??
+      (this.lines().at(0)?.controls.words.length ? { lineIndex: 0, wordIndex: 0 } : null)
+    );
+  }
+
+  private historyFocusTarget(): string | null {
+    const target = document.activeElement?.getAttribute('data-testid');
+    return target === 'song-title' || target?.startsWith('word-') ? target : null;
   }
 
   private clearSelection(): void {

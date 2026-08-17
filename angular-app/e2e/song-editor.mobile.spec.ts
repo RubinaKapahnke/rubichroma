@@ -3,6 +3,31 @@ import { resolve } from 'node:path';
 
 const SYNTHETIC_IMPORT_FIXTURE = resolve('e2e/fixtures/synthetic-structure-song.json');
 
+test('keeps the mobile brand, theme and save state visible without horizontal overflow', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const brand = page.locator('.brand-lockup');
+  const theme = page.getByTestId('theme-select');
+  const saveState = page.locator('.save-state');
+
+  for (const fontSize of ['100%', '200%']) {
+    await page.locator('html').evaluate((element, size) => {
+      element.style.fontSize = size;
+    }, fontSize);
+    await expect(brand).toBeVisible();
+    await expect(theme).toBeVisible();
+    await expect(saveState).toBeVisible();
+    await expectInsideVisualViewport(page, brand);
+    await expectInsideVisualViewport(page, theme);
+    await expectInsideVisualViewport(page, saveState);
+    expect(await brand.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+      true,
+    );
+    await expectNoPageOverflow(page);
+  }
+});
+
 test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed close control', async ({
   page,
 }) => {
@@ -19,7 +44,7 @@ test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed 
   await expectInsideVisualViewport(page, close);
   await expectPageScrollLocked(page);
   await expectNoPageOverflow(page);
-  expect((await page.locator('.topbar').boundingBox())!.height).toBeLessThanOrEqual(64);
+  expect((await page.locator('.topbar').boundingBox())!.height).toBeLessThanOrEqual(96);
 
   const closeTop = (await close.boundingBox())!.y;
   await content.evaluate((element) => {

@@ -421,6 +421,48 @@ test('previews a line, block and event without changing selection or song data',
   await expectNoPageOverflow(page);
 });
 
+test('keeps text edits in document history across inspector and player navigation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByTestId('word-card-0-0').click();
+  const word = page.getByTestId('word-0-0');
+  await word.fill('Willkommen zurück');
+  await expect(word).toBeFocused();
+
+  await page.keyboard.press('Control+z');
+  await expect(word).toHaveValue('Willkommen');
+  await expect(word).toBeFocused();
+  await page.keyboard.press('Control+y');
+  await expect(word).toHaveValue('Willkommen zurück');
+  await expect(word).toBeFocused();
+
+  await page.getByTestId('word-card-0-1').click();
+  await expect(page.getByTestId('word-editor')).toContainText('Block 2');
+  await page.getByRole('button', { name: 'Editor schließen' }).click();
+  await expect(page.getByTestId('word-editor')).toHaveCount(0);
+  await page.getByTestId('open-player').click();
+  await page.getByTestId('back-to-editor').click();
+  await expect(page.getByTestId('song-title')).toBeFocused();
+
+  await page.getByTestId('word-card-0-0').click();
+  await expect(word).toHaveValue('Willkommen zurück');
+  await word.focus();
+  await page.keyboard.press('Control+z');
+  await expect(word).toHaveValue('Willkommen');
+  await expect(word).toBeFocused();
+  await page.keyboard.press('Control+Shift+z');
+  await expect(word).toHaveValue('Willkommen zurück');
+  await expect(word).toBeFocused();
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+
+  await page.reload();
+  await page.getByTestId('word-card-0-0').click();
+  await expect(page.getByTestId('word-0-0')).toHaveValue('Willkommen zurück');
+});
+
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
   await page.goto('/');
   const title = page.getByTestId('song-title');

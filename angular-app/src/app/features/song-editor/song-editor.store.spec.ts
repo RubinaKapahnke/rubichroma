@@ -172,9 +172,10 @@ describe('SongEditorStore structure persistence', () => {
     await expectSaved(store);
   });
 
-  it('does not let an older structure snapshot overwrite a newer editor state', async () => {
+  it('keeps text edits in central history, clears redo on a new edit and persists fidelity', async () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
     await store.initialize();
+    const original = structuredClone(store.document()!);
     expect(
       store.applyStructureAction({ kind: 'duplicate-block' }, { lineIndex: 0, wordIndex: 0 }).ok,
     ).toBe(true);
@@ -182,21 +183,52 @@ describe('SongEditorStore structure persistence', () => {
     expect(store.canRedo()).toBe(true);
 
     const document = store.document()!;
-    await store.saveEditorValue({
-      title: 'Neuerer Titel',
-      lines: document.song.lines.map((line) => ({
-        words: line.words.map((word) => ({
-          text: word.text,
-          notation: word.legacyNotation.raw,
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    await store.saveEditorValue(
+      {
+        title: 'Neuerer Titel',
+        lines: document.song.lines.map((line) => ({
+          words: line.words.map((word) => ({
+            text: word === line.words[0] ? 'Neuer Text' : word.text,
+            notation: word.legacyNotation.raw,
+          })),
         })),
-      })),
-    });
+      },
+      selection,
+    );
 
-    expect(store.canUndo()).toBe(false);
+    expect(store.canUndo()).toBe(true);
     expect(store.canRedo()).toBe(false);
-    expect(store.undoStructure()).toBeNull();
     expect(store.document()?.song.title).toBe('Neuerer Titel');
+    expect(store.document()?.song.lines[0].words[0].text).toBe('Neuer Text');
+    expect(store.document()?.song.lines[0].words[0].extra).toEqual(
+      original.song.lines[0].words[0].extra,
+    );
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(original);
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()?.song.title).toBe('Neuerer Titel');
+    expect(store.document()?.song.lines[0].words[0].text).toBe('Neuer Text');
+
+    expect(store.undoStructure()).toEqual(selection);
+    const reverted = store.document()!;
+    await store.saveEditorValue(
+      {
+        title: 'Anderer Titel',
+        lines: reverted.song.lines.map((line) => ({
+          words: line.words.map((word) => ({
+            text: word.text,
+            notation: word.legacyNotation.raw,
+          })),
+        })),
+      },
+      selection,
+    );
+    expect(store.canRedo()).toBe(false);
+    expect(store.document()?.song.title).toBe('Anderer Titel');
     await expectSaved(store);
+    expect((await repository.load())?.song.title).toBe('Anderer Titel');
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(JSON.stringify(COMPLETE_LEGACY));
   });
 
   it('persists a multi-selection paste and restores the exact previous snapshot with undo', async () => {

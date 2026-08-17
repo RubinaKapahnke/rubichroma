@@ -221,11 +221,11 @@ app-word-editor {
   }
 
   .save-state {
-    max-width: 7rem;
+    max-width: 6.25rem;
     padding-inline: 0.45rem;
     font-size: 0.7rem;
     text-align: right;
-    white-space: normal;
+    white-space: nowrap;
   }
 
   main {
@@ -254,7 +254,6 @@ app-word-editor {
   mat-card-actions {
     padding-inline: 1rem;
   }
-
 }
 
 @media (max-width: 900px) {

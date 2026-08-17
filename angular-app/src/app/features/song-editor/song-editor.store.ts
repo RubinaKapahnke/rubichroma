@@ -266,8 +266,8 @@ export class SongEditorStore {
     return next.selection;
   }
 
-  async saveEditorValue(value: EditorValue): Promise<void> {
-    const candidate = this.updateEditorValue(value);
+  async saveEditorValue(value: EditorValue, selection?: SongPosition | null): Promise<void> {
+    const candidate = this.updateEditorValue(value, selection);
     if (!candidate) return;
 
     try {
@@ -283,9 +283,10 @@ export class SongEditorStore {
     }
   }
 
-  updateEditorValue(value: EditorValue): SongDocument | null {
+  updateEditorValue(value: EditorValue, selection?: SongPosition | null): SongDocument | null {
     const current = this.documentState();
     if (!current) return null;
+    if (matchesEditorValue(current, value)) return current;
     const candidate = cloneDocument(current);
     candidate.song.title = value.title;
     value.lines.forEach((line, lineIndex) => {
@@ -313,8 +314,12 @@ export class SongEditorStore {
       });
     });
 
-    // A non-structural edit is a newer state that an older structure snapshot must not overwrite.
-    this.clearStructureHistory();
+    const historySelection = selection ?? this.lastStructureSelection ?? firstSongPosition(current);
+    if (historySelection) {
+      this.structureHistory.record({ document: current, selection: historySelection });
+      this.lastStructureSelection = { ...historySelection };
+      this.syncHistoryAvailability();
+    }
     this.documentState.set(candidate);
     this.statusState.set('saving');
     this.errorState.set(null);
@@ -383,6 +388,30 @@ export class SongEditorStore {
       }
     }
   }
+}
+
+function matchesEditorValue(document: SongDocument, value: EditorValue): boolean {
+  if (document.song.title !== value.title || document.song.lines.length !== value.lines.length) {
+    return false;
+  }
+  return document.song.lines.every((line, lineIndex) => {
+    const valueLine = value.lines[lineIndex];
+    if (!valueLine || line.words.length !== valueLine.words.length) return false;
+    return line.words.every((word, wordIndex) => {
+      const valueWord = valueLine.words[wordIndex];
+      return (
+        !!valueWord &&
+        word.text === valueWord.text &&
+        encodeLegacyNotation(projectSongWordEvents(word), word.legacyNotation) ===
+          valueWord.notation
+      );
+    });
+  });
+}
+
+function firstSongPosition(document: SongDocument): SongPosition | null {
+  const lineIndex = document.song.lines.findIndex((line) => line.words.length > 0);
+  return lineIndex < 0 ? null : { lineIndex, wordIndex: 0 };
 }
 
 function reconcileEventMetadata(
