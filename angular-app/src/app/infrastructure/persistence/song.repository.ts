@@ -103,6 +103,32 @@ export class SongRepository {
     });
   }
 
+  async renameSong(songId: string, title: string): Promise<StoredSong> {
+    return this.database.transaction('rw', this.database.songs, async () => {
+      const current = await this.database.songs.get(songId);
+      if (!current) throw new Error('Das Lied wurde in der lokalen Ablage nicht gefunden.');
+      const document = cloneDocument(current.document);
+      document.song.title = title;
+      const stored = createStored(document, songId, current.revision + 1, current.createdAt);
+      await this.database.songs.put(stored);
+      await this.transactionGuard?.();
+      return cloneStoredSong(stored);
+    });
+  }
+
+  async duplicateSong(songId: string): Promise<StoredSong> {
+    return this.database.transaction('rw', this.database.songs, async () => {
+      const source = await this.database.songs.get(songId);
+      if (!source) throw new Error('Das Lied wurde in der lokalen Ablage nicht gefunden.');
+      const document = cloneDocument(source.document);
+      document.song.title = `${source.document.song.title || 'Lied ohne Titel'} – Kopie`;
+      const duplicate = createStored(document, createSongId(), 1);
+      await this.database.songs.add(duplicate);
+      await this.transactionGuard?.();
+      return cloneStoredSong(duplicate);
+    });
+  }
+
   async save(document: SongDocument, songId?: string): Promise<SongDocument> {
     return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
       const resolvedSongId = songId ?? (await this.currentSongId());

@@ -187,6 +187,59 @@ describe('SongRepository', () => {
     expect(await repo.database.songs.count()).toBe(1);
   });
 
+  it('renames and duplicates songs without changing their musical or unknown data', async () => {
+    const repo = repository();
+    const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const originalId = (await repo.currentSongId())!;
+    const originalRecord = (await repo.database.songs.get(originalId))!;
+    await repo.database.songs.put({
+      ...originalRecord,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+
+    const renamed = await repo.renameSong(originalId, 'Umbenanntes Lied');
+    const expectedRenamed = structuredClone(original);
+    expectedRenamed.song.title = 'Umbenanntes Lied';
+    expect(renamed.document).toEqual(expectedRenamed);
+    expect(renamed.createdAt).toBe('2025-01-01T00:00:00.000Z');
+    expect(renamed.updatedAt > '2025-01-01T00:00:00.000Z').toBe(true);
+
+    const duplicate = await repo.duplicateSong(originalId);
+    const expectedDuplicate = structuredClone(expectedRenamed);
+    expectedDuplicate.song.title = 'Umbenanntes Lied – Kopie';
+    expect(duplicate.id).not.toBe(originalId);
+    expect(duplicate.document).toEqual(expectedDuplicate);
+    expect(duplicate.createdAt).not.toBe(renamed.createdAt);
+    expect(await repo.currentSongId()).toBe(originalId);
+    expect((await repo.load(originalId))?.song.title).toBe('Umbenanntes Lied');
+    expect((await repo.listSongs()).map((song) => song.id)).toContain(duplicate.id);
+  });
+
+  it('rolls back a failed rename without changing the original or active song', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated rename failure');
+    });
+    const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const originalId = (await repo.currentSongId())!;
+    fail = true;
+
+    await expect(repo.renameSong(originalId, 'Nicht gespeichert')).rejects.toThrow(
+      'simulated rename failure',
+    );
+    expect(await repo.currentSongId()).toBe(originalId);
+    expect(await repo.load(originalId)).toEqual(original);
+  });
+
   it('keeps the previous current song when switching fails inside the transaction', async () => {
     let fail = false;
     const repo = repository(() => {

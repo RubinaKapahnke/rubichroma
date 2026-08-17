@@ -103,6 +103,28 @@ describe('SongEditorStore structure persistence', () => {
     expect(store.status()).toBe('saved');
   });
 
+  it('keeps the active view consistent while renaming and creates an independent duplicate', async () => {
+    const legacyJson = JSON.stringify(COMPLETE_LEGACY);
+    localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
+    await store.initialize();
+    const originalId = store.activeSongId()!;
+    const original = structuredClone(store.document()!);
+
+    await store.renameSong(originalId, 'Aktiv umbenannt');
+    expect(store.activeSongId()).toBe(originalId);
+    expect(store.document()?.song.title).toBe('Aktiv umbenannt');
+    expect(store.document()?.song.lines).toEqual(original.song.lines);
+    expect(store.canUndo()).toBe(false);
+
+    await store.duplicateSong(originalId);
+    const duplicate = store.songs().find((song) => song.id !== originalId)!;
+    expect(duplicate.title).toBe('Aktiv umbenannt – Kopie');
+    expect(store.activeSongId()).toBe(originalId);
+    expect((await repository.load(duplicate.id))?.song.lines).toEqual(original.song.lines);
+    expect((await repository.load(duplicate.id))?.extra).toEqual(original.extra);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
+  });
+
   it('previews and restores a full local backup without touching legacy storage', async () => {
     const legacyJson = JSON.stringify(COMPLETE_LEGACY);
     localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
