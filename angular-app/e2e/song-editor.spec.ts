@@ -155,7 +155,7 @@ test('exports, previews and atomically restores a full local backup', async ({ p
   await page.getByTestId('backup-export-button').click();
   const backupBuffer = await readFile((await (await downloadPromise).path())!);
   const backup = JSON.parse(backupBuffer.toString('utf8')) as Record<string, any>;
-  expect(backup).toMatchObject({ kind: 'rubichroma-local-backup', formatVersion: 2 });
+  expect(backup).toMatchObject({ kind: 'rubichroma-local-backup', formatVersion: 3 });
   expect(backup['storage']['songs'][0]['id']).toMatch(/^song-/);
   expect(backup['storage']['songs'][0]['createdAt']).toEqual(expect.any(String));
   expect(backup['storage']['songs'][0]['revision']).toBeGreaterThan(0);
@@ -171,7 +171,7 @@ test('exports, previews and atomically restores a full local backup', async ({ p
     timeout: 5_000,
   });
   const futureBackup = structuredClone(backup);
-  futureBackup['formatVersion'] = 3;
+  futureBackup['formatVersion'] = 4;
   await page.getByTestId('backup-file-input').setInputFiles({
     name: 'future-backup.json',
     mimeType: 'application/json',
@@ -265,7 +265,7 @@ test('imports a validated backup repeatedly as independent new library songs', a
   await page.getByTestId('backup-import-new-confirm').click();
   await expect(page.getByTestId('song-library')).toBeVisible();
   await page.locator('.document-more-actions > summary').click();
-  await expect(page.locator('.song-library-entry')).toHaveCount(2);
+  await expect(page.locator('.song-library-entry')).toHaveCount(4);
   await expect(page.locator('.song-library-entry.is-current')).toContainText(
     'Prüflied ÄÖÜ – drei Zeilen',
   );
@@ -285,7 +285,7 @@ test('imports a validated backup repeatedly as independent new library songs', a
     buffer: backupBuffer,
   });
   await page.getByTestId('backup-import-new-confirm').click();
-  await expect(page.locator('.song-library-entry')).toHaveCount(3);
+  await expect(page.locator('.song-library-entry')).toHaveCount(5);
   const secondImportId = (await readLibraryState(page)).currentId;
   expect(new Set([originalId, firstImportId, secondImportId]).size).toBe(3);
 
