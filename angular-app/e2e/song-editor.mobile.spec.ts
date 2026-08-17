@@ -67,35 +67,18 @@ test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed 
   await expectPageScrollUnlocked(page);
 });
 
-test('closes mobile action menus on selection, outside tap and Escape', async ({ page }) => {
+test('keeps compact line actions available and dismisses the mobile inspector safely', async ({
+  page,
+}) => {
   await page.goto('/');
-  const lineActions = page.getByTestId('line-actions-0');
-  const lineToggle = lineActions.locator('summary');
-
-  await lineToggle.tap();
-  await expect(lineToggle).toHaveAttribute('aria-expanded', 'true');
-  await page.getByTestId('song-title').tap();
-  await expect(lineActions).toHaveJSProperty('open', false);
-
-  await lineToggle.tap();
-  await page.keyboard.press('Escape');
-  await expect(lineActions).toHaveJSProperty('open', false);
-
-  await lineToggle.tap();
+  await expect(page.getByTestId('line-duplicate-0')).toBeVisible();
+  await expect(page.getByTestId('line-delete-0')).toBeDisabled();
   await page.getByTestId('word-card-0-0').tap();
   await expect(page.getByTestId('word-editor')).toBeVisible();
-  await expect(lineActions).toHaveJSProperty('open', false);
-
-  const blockActions = page.getByTestId('more-block-actions');
-  const blockToggle = blockActions.locator('summary');
-  await blockToggle.tap();
-  await expect(blockToggle).toHaveAttribute('aria-expanded', 'true');
   await page.getByText('Musikereignisse', { exact: true }).tap();
-  await expect(blockActions).toHaveJSProperty('open', false);
-  await blockToggle.tap();
+  await expect(page.getByTestId('word-editor')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('word-editor')).toBeHidden();
-  await expect(blockActions).toBeHidden();
   await expectNoPageOverflow(page);
 });
 

@@ -1364,3 +1364,61 @@ summary:focus-visible {
 }
 
 .reduce-motion .kalimba-key.key-pulse { animation: none; }
+
+.practice-settings {
+  margin-top: 0.65rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+}
+
+.practice-settings > summary {
+  display: flex;
+  min-height: var(--rc-control-min-size);
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+
+.practice-settings > summary strong {
+  color: var(--rc-color-text-muted);
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.practice-settings-content {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.7rem;
+  border-top: 1px solid var(--rc-color-border);
+}
+
+.flow-track-area { position: relative; }
+
+.flow-empty {
+  position: absolute;
+  inset: 42% 0 auto;
+  z-index: 1;
+  margin: 0;
+  color: var(--rc-color-text-muted);
+  font-size: 0.72rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (min-width: 1100px) {
+  .score-lines {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    max-block-size: 12rem;
+  }
+
+  .score-line {
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+}

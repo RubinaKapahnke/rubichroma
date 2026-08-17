@@ -114,7 +114,8 @@ export class SongEditorComponent {
     const selection = this.selection();
     if (!selection) return [];
     return (
-      this.store.document()?.song.lines[selection.lineIndex]?.words[selection.wordIndex]?.events ?? []
+      this.store.document()?.song.lines[selection.lineIndex]?.words[selection.wordIndex]?.events ??
+      []
     );
   });
   private readonly destroyRef = inject(DestroyRef);
@@ -279,6 +280,27 @@ export class SongEditorComponent {
     const previousSelection = this.selection();
     this.clearSelection();
     if (previousSelection) this.focusSelection(previousSelection);
+  }
+
+  dismissInspectorOnBackground(event: MouseEvent): void {
+    if (this.interactionMode() !== 'editing') return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (
+      target.closest(
+        'app-word-editor, .word-card, button, a, input, select, textarea, summary, [role="button"]',
+      )
+    ) {
+      return;
+    }
+    this.closeWordEditor();
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  closeDesktopEditorOnEscape(event: Event): void {
+    if (this.mobileViewport() || this.interactionMode() !== 'editing') return;
+    event.preventDefault();
+    this.closeWordEditor();
   }
 
   copyMusicSelection(): void {

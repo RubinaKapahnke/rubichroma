@@ -4,94 +4,16 @@
       <p class="eyebrow">{{ location() }}</p>
       <h2 id="word-editor-title">Wort und Töne bearbeiten</h2>
     </div>
-    <button class="icon-button" type="button" aria-label="Editor schließen" (click)="closed.emit()">
-      ×
-    </button>
+    <div class="inspector-header-actions">
+      <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
+        <button class="history-action" type="button" data-testid="undo-structure-editor" aria-label="Rückgängig" title="Rückgängig (Strg+Z)" [disabled]="!canUndo()" (click)="undoRequested.emit()"><span aria-hidden="true">↶</span></button>
+        <button class="history-action" type="button" data-testid="redo-structure-editor" aria-label="Wiederholen" title="Wiederholen (Strg+Y)" [disabled]="!canRedo()" (click)="redoRequested.emit()"><span aria-hidden="true">↷</span></button>
+      </div>
+      <button class="icon-button" type="button" aria-label="Editor schließen" title="Editor schließen (Esc)" (click)="closed.emit()">×</button>
+    </div>
   </header>
 
   <div class="word-editor-content">
-    <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
-      <button
-        class="history-action"
-        type="button"
-        data-testid="undo-structure-editor"
-        aria-label="Rückgängig"
-        title="Rückgängig (Strg+Z)"
-        [disabled]="!canUndo()"
-        (click)="undoRequested.emit()"
-      >
-        <span aria-hidden="true">↶</span>
-      </button>
-      <button
-        class="history-action"
-        type="button"
-        data-testid="redo-structure-editor"
-        aria-label="Wiederholen"
-        title="Wiederholen (Strg+Y)"
-        [disabled]="!canRedo()"
-        (click)="redoRequested.emit()"
-      >
-        <span aria-hidden="true">↷</span>
-      </button>
-    </div>
-    <section class="add-next-block" aria-labelledby="add-next-block-title">
-      <div>
-        <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
-        <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
-      </div>
-      <div class="add-next-block-actions">
-        <button
-          class="primary-block-action"
-          type="button"
-          data-testid="block-add-word"
-          (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
-        >
-          + Textblock
-        </button>
-        <button
-          type="button"
-          data-testid="block-add-melody"
-          (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
-        >
-          + Melodieblock
-        </button>
-      </div>
-    </section>
-    <details class="more-block-actions" data-testid="more-block-actions" [open]="moreActionsOpen()">
-      <summary
-        aria-controls="more-block-actions-menu"
-        [attr.aria-expanded]="moreActionsOpen()"
-        (click)="toggleMoreActions($event)"
-      >
-        Weitere Blockaktionen
-      </summary>
-      <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
-        <button
-          type="button"
-          data-testid="block-duplicate"
-          (click)="runStructureAction({ kind: 'duplicate-block' })"
-        >
-          Block duplizieren
-        </button>
-        <button
-          type="button"
-          data-testid="block-copy-next-line"
-          [disabled]="!canCopyToNextLine()"
-          (click)="runStructureAction({ kind: 'copy-events-to-next-line' })"
-        >
-          Töne in nächste Zeile
-        </button>
-        <button
-          type="button"
-          data-testid="block-delete"
-          [disabled]="!canDeleteBlock()"
-          (click)="runStructureAction({ kind: 'delete-block' })"
-        >
-          Block löschen
-        </button>
-      </div>
-    </details>
-
     @if (isMelodyBlock()) {
       <div class="melody-block-marker" data-testid="melody-block-marker">
         <span aria-hidden="true">♪</span>
@@ -298,7 +220,29 @@
       <p class="editor-notice" role="alert">{{ message }}</p>
     }
 
-    <details open>
+    <details class="block-management" data-testid="block-management">
+      <summary>Block einfügen und verwalten</summary>
+      <section class="add-next-block" aria-labelledby="add-next-block-title">
+        <div>
+          <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
+          <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
+        </div>
+        <div class="add-next-block-actions">
+          <button class="primary-block-action" type="button" data-testid="block-add-word" (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })">+ Textblock</button>
+          <button type="button" data-testid="block-add-melody" (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })">+ Melodieblock</button>
+        </div>
+      </section>
+      <details class="more-block-actions" data-testid="more-block-actions" [open]="moreActionsOpen()">
+        <summary aria-controls="more-block-actions-menu" [attr.aria-expanded]="moreActionsOpen()" (click)="toggleMoreActions($event)">Seltene und destruktive Aktionen</summary>
+        <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
+          <button type="button" data-testid="block-duplicate" (click)="runStructureAction({ kind: 'duplicate-block' })">Block duplizieren</button>
+          <button type="button" data-testid="block-copy-next-line" [disabled]="!canCopyToNextLine()" (click)="runStructureAction({ kind: 'copy-events-to-next-line' })">Töne in nächste Zeile</button>
+          <button class="destructive-action" type="button" data-testid="block-delete" [disabled]="!canDeleteBlock()" (click)="runStructureAction({ kind: 'delete-block' })">Block löschen</button>
+        </div>
+      </details>
+    </details>
+
+    <details>
       <summary>Textnotation und Kompatibilität</summary>
       <mat-form-field appearance="outline">
         <mat-label>Legacy-Notation</mat-label>

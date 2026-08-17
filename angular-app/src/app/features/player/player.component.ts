@@ -59,15 +59,17 @@ export function scrollScoreTargetIntoView(
     );
   }
 
-  if (targetRect.left < containerRect.left + padding) {
-    scroller.scrollLeft = Math.max(
+  const horizontalScroller = line.scrollWidth > line.clientWidth ? line : scroller;
+  const horizontalRect = horizontalScroller.getBoundingClientRect();
+  if (targetRect.left < horizontalRect.left + padding) {
+    horizontalScroller.scrollLeft = Math.max(
       0,
-      scroller.scrollLeft + targetRect.left - containerRect.left - padding,
+      horizontalScroller.scrollLeft + targetRect.left - horizontalRect.left - padding,
     );
-  } else if (targetRect.right > containerRect.right - padding) {
-    scroller.scrollLeft = Math.max(
+  } else if (targetRect.right > horizontalRect.right - padding) {
+    horizontalScroller.scrollLeft = Math.max(
       0,
-      scroller.scrollLeft + targetRect.right - containerRect.right + padding,
+      horizontalScroller.scrollLeft + targetRect.right - horizontalRect.right + padding,
     );
   }
 }
@@ -170,6 +172,17 @@ export class PlayerComponent implements OnDestroy {
       ? (this.originalBpm * this.transport.speedPercent()) / 100
       : this.transport.speedPercent(),
   );
+  readonly practiceSettingsStatus = computed(() => {
+    const active: string[] = [];
+    if (this.previewBars() !== 2) active.push(`${this.previewBars()} ${this.previewBars() === 1 ? 'Takt' : 'Takte'}`);
+    if (this.colorAid() !== 'full') active.push(`Farbhilfe ${this.colorAid() === 'off' ? 'aus' : 'abgeschwächt'}`);
+    if (this.reducedMotion()) active.push('Weniger Bewegung');
+    if (this.transport.metronomeEnabled()) active.push('Metronom');
+    if (this.transport.loopEnabled()) active.push(`Loop Takt ${this.loopStartBar()}–${this.loopEndBar()}`);
+    if (!this.transport.melodyEnabled()) active.push('Melodie aus');
+    if (!this.transport.accompanimentEnabled()) active.push('Begleitung aus');
+    return active.length ? active.join(' · ') : 'Standard';
+  });
 
   constructor() {
     afterNextRender(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));

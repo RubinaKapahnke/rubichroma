@@ -49,22 +49,6 @@
           <button type="button" data-testid="view-flow" [class.active]="viewMode() === 'flow'" [attr.aria-pressed]="viewMode() === 'flow'" (click)="setView('flow')">Flow</button>
           <button type="button" data-testid="view-tab" [class.active]="viewMode() === 'tab'" [attr.aria-pressed]="viewMode() === 'tab'" (click)="setView('tab')">Lauf-Tab</button>
         </div>
-        <div class="display-options">
-          <div class="preview-switch" role="group" aria-label="Vorschauzeitraum">
-            <span>Vorschau</span>
-            @for (bars of [1, 2, 4]; track bars) {
-              <button type="button" [class.active]="previewBars() === bars" [attr.aria-pressed]="previewBars() === bars" [attr.data-testid]="'preview-' + bars" (click)="setPreviewBars(bars)">{{ bars }} T.</button>
-            }
-          </div>
-          <label><input type="checkbox" data-testid="show-degrees" [checked]="showDegrees()" [disabled]="showDegrees() && !showLetters()" (change)="setShowDegrees($any($event.target).checked)" /> Zahl</label>
-          <label><input type="checkbox" data-testid="show-letters" [checked]="showLetters()" [disabled]="showLetters() && !showDegrees()" (change)="setShowLetters($any($event.target).checked)" /> Ton</label>
-          <label>Farbhilfe
-            <select data-testid="color-aid" [value]="colorAid()" (change)="setColorAid($any($event.target).value)">
-              <option value="full">Vollständig</option><option value="soft">Abgeschwächt</option><option value="off">Aus</option>
-            </select>
-          </label>
-          <label class="motion-option"><input type="checkbox" data-testid="reduced-motion" [checked]="reducedMotion()" (change)="reducedMotion.set($any($event.target).checked)" /> Bewegung reduzieren</label>
-        </div>
       </div>
 
       <div class="visual-stage" [class.tab-stage]="viewMode() === 'tab'">
@@ -75,6 +59,9 @@
                 <div class="lane-grid" aria-hidden="true">
                   @for (key of playerTimeline.keys; track key.id) { <span [attr.data-testid]="'flow-lane-' + key.lane"></span> }
                 </div>
+                @if (visibleEvents().length === 0) {
+                  <p class="flow-empty" data-testid="flow-empty">Die nächsten Töne erscheinen gleich.</p>
+                }
                 @for (event of visibleEvents(); track event.id) {
                   @for (lane of event.lanes; track lane) {
                     <div class="falling-event-slot" [style.--lane-index]="lane" [style.--flow-progress]="flowProgress(event)" [attr.data-event-id]="event.id" [attr.data-lane]="lane" [attr.data-start]="event.startBeat">
@@ -164,25 +151,42 @@
         <div class="control-group volume-control"><div class="control-label"><label for="volume">Lautstärke</label><strong>{{ transport.volumePercent() }} %</strong></div><input id="volume" type="range" min="0" max="100" [value]="transport.volumePercent()" (input)="transport.setVolume($any($event.target).value)" /></div>
       </div>
 
-      <div class="secondary-tools">
-        <label class="metronome-toggle"><input type="checkbox" data-testid="metronome-enabled" [checked]="transport.metronomeEnabled()" (change)="transport.setMetronomeEnabled($any($event.target).checked)" /> Metronom Ein/Aus</label>
-        <details data-testid="loop-drawer" [open]="transport.loopEnabled()">
-          <summary><span>Loop</span><strong>{{ transport.loopEnabled() ? 'Takt ' + loopStartBar() + '–' + loopEndBar() : 'Aus' }}</strong></summary>
-          <div class="loop-content">
-            <label><input type="checkbox" data-testid="loop-enabled" [checked]="transport.loopEnabled()" (change)="setLoopEnabled($any($event.target).checked)" /> Bereich wiederholen</label>
-            <label>Von Takt <select data-testid="loop-start-bar" [value]="loopStartBar()" (change)="setLoopStartBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
-            <label>bis Takt <select data-testid="loop-end-bar" [value]="loopEndBar()" (change)="setLoopEndBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
-            <span data-testid="loop-summary">Takt {{ loopStartBar() }}–{{ loopEndBar() }} · Schlag {{ selectedLoopRange().startBeat + 1 }} bis {{ selectedLoopRange().endBeat }}</span>
+      <details class="practice-settings" data-testid="practice-settings">
+        <summary><span>Übungseinstellungen</span><strong data-testid="practice-settings-status">{{ practiceSettingsStatus() }}</strong></summary>
+        <div class="practice-settings-content">
+          <div class="display-options">
+            <div class="preview-switch" role="group" aria-label="Vorschauzeitraum">
+              <span>Vorschau</span>
+              @for (bars of [1, 2, 4]; track bars) {
+                <button type="button" [class.active]="previewBars() === bars" [attr.aria-pressed]="previewBars() === bars" [attr.data-testid]="'preview-' + bars" (click)="setPreviewBars(bars)">{{ bars }} {{ bars === 1 ? 'Takt' : 'Takte' }}</button>
+              }
+            </div>
+            <label><input type="checkbox" data-testid="show-degrees" [checked]="showDegrees()" [disabled]="showDegrees() && !showLetters()" (change)="setShowDegrees($any($event.target).checked)" /> Zahl</label>
+            <label><input type="checkbox" data-testid="show-letters" [checked]="showLetters()" [disabled]="showLetters() && !showDegrees()" (change)="setShowLetters($any($event.target).checked)" /> Ton</label>
+            <label>Farbhilfe <select data-testid="color-aid" [value]="colorAid()" (change)="setColorAid($any($event.target).value)"><option value="full">Vollständig</option><option value="soft">Abgeschwächt</option><option value="off">Aus</option></select></label>
+            <label class="motion-option"><input type="checkbox" data-testid="reduced-motion" [checked]="reducedMotion()" (change)="reducedMotion.set($any($event.target).checked)" /> Bewegung reduzieren</label>
           </div>
-        </details>
-        <details data-testid="mixer-drawer">
-          <summary><span>Mixer</span><strong>2 Ebenen</strong></summary>
-          <div class="mixer-content">
-            <label data-testid="track-melody"><strong>Melodie</strong><input type="checkbox" [checked]="transport.melodyEnabled()" (change)="transport.setTrackEnabled('melody', $any($event.target).checked)" /> Ein</label>
-            <label data-testid="track-accompaniment"><strong>Begleitung</strong><input type="checkbox" [checked]="transport.accompanimentEnabled()" (change)="transport.setTrackEnabled('accompaniment', $any($event.target).checked)" /> Ein</label>
+          <div class="secondary-tools">
+            <label class="metronome-toggle"><input type="checkbox" data-testid="metronome-enabled" [checked]="transport.metronomeEnabled()" (change)="transport.setMetronomeEnabled($any($event.target).checked)" /> Metronom</label>
+            <details data-testid="loop-drawer" [open]="transport.loopEnabled()">
+              <summary><span>Loop</span><strong>{{ transport.loopEnabled() ? 'Takt ' + loopStartBar() + '–' + loopEndBar() : 'Aus' }}</strong></summary>
+              <div class="loop-content">
+                <label><input type="checkbox" data-testid="loop-enabled" [checked]="transport.loopEnabled()" (change)="setLoopEnabled($any($event.target).checked)" /> Bereich wiederholen</label>
+                <label>Von Takt <select data-testid="loop-start-bar" [value]="loopStartBar()" (change)="setLoopStartBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
+                <label>bis Takt <select data-testid="loop-end-bar" [value]="loopEndBar()" (change)="setLoopEndBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
+                <span data-testid="loop-summary">Takt {{ loopStartBar() }}–{{ loopEndBar() }} · Schlag {{ selectedLoopRange().startBeat + 1 }} bis {{ selectedLoopRange().endBeat }}</span>
+              </div>
+            </details>
+            <details data-testid="mixer-drawer">
+              <summary><span>Mixer</span><strong>2 Ebenen</strong></summary>
+              <div class="mixer-content">
+                <label data-testid="track-melody"><strong>Melodie</strong><input type="checkbox" [checked]="transport.melodyEnabled()" (change)="transport.setTrackEnabled('melody', $any($event.target).checked)" /> Ein</label>
+                <label data-testid="track-accompaniment"><strong>Begleitung</strong><input type="checkbox" [checked]="transport.accompanimentEnabled()" (change)="transport.setTrackEnabled('accompaniment', $any($event.target).checked)" /> Ein</label>
+              </div>
+            </details>
           </div>
-        </details>
-      </div>
+        </div>
+      </details>
     </section>
 
     <section class="score-sheet" aria-labelledby="score-title" data-testid="score-sheet">

@@ -92,13 +92,15 @@
 
 .song-line {
   display: grid;
-  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
   padding-block: 1rem;
   border-top: 1px solid var(--rc-color-border);
 }
 
 .line-heading {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   min-width: 0;
   align-items: flex-start;
@@ -109,53 +111,24 @@
   flex-direction: column;
 }
 
-.line-actions {
-  position: relative;
-
-  summary,
-  button {
-    min-height: 2.25rem;
-    padding: 0.3rem 0.5rem;
-    color: var(--rc-color-text);
-    border: 1px solid var(--rc-color-border);
-    border-radius: var(--rc-radius-sm);
-    background: var(--rc-color-surface-subtle);
-    font-size: 0.7rem;
-    cursor: pointer;
-  }
-
-  summary {
-    display: flex;
-    width: 2.25rem;
-    align-items: center;
-    justify-content: center;
-    color: var(--rc-color-text-muted);
-    list-style: none;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-  }
-
-  button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
+.line-primary-actions {
+  display: flex;
+  gap: 0.3rem;
 }
 
-.line-action-menu {
-  display: grid;
-  position: absolute;
-  z-index: 3;
-  width: max-content;
-  max-width: min(16rem, calc(100vw - 2rem));
-  gap: 0.35rem;
-  margin-top: 0.35rem;
-  padding: 0.4rem;
-  border: 1px solid var(--rc-color-border);
-  border-radius: var(--rc-radius-control);
-  background: var(--rc-color-surface);
-  box-shadow: var(--rc-shadow-md);
+.add-line-button,
+.line-icon-action {
+  display: inline-grid;
+  width: var(--rc-control-min-size);
+  min-width: var(--rc-control-min-size);
+  min-height: var(--rc-control-min-size);
+  padding: 0;
+  place-items: center;
+}
+
+.line-icon-action.destructive {
+  color: var(--rc-color-error);
+  border-color: color-mix(in srgb, var(--rc-color-error) 55%, var(--rc-color-border));
 }
 
 .line-number {
@@ -171,6 +144,8 @@
 }
 
 .words {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   align-items: end;
   flex-wrap: wrap;

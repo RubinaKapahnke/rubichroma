@@ -32,6 +32,8 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.locator('.score-event-bar').first()).toHaveText('Takt 1');
   await expect(page.locator('.score-event-bar').last()).toHaveText('Takt 12');
   await expect(page.getByTestId('tempo-unit-bpm')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('practice-settings-status')).toHaveText('Standard');
+  await openPracticeSettings(page);
   await expect(page.getByTestId('preview-2')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('loop-enabled')).not.toBeChecked();
   await expect(page.getByTestId('loop-summary')).toContainText('Schlag 1 bis 8');
@@ -96,6 +98,9 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await page.getByTestId('metronome-enabled').check();
   await page.getByTestId('mixer-drawer').getByText('Mixer').click();
   await page.getByTestId('track-accompaniment').getByRole('checkbox').uncheck();
+  await expect(page.getByTestId('practice-settings-status')).toContainText('4 Takte');
+  await expect(page.getByTestId('practice-settings-status')).toContainText('Metronom');
+  await expect(page.getByTestId('practice-settings-status')).toContainText('Begleitung aus');
   await expect(page.locator('.flow-event.accompaniment')).toHaveCount(0);
 
   const scoreEntries = page.locator('.score-entry');
@@ -118,6 +123,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await page.reload();
   await expect(page.getByTestId('player-title')).toHaveText('Twinkle, Twinkle, Little Star');
   await expect(page.getByTestId('view-flow')).toHaveAttribute('aria-pressed', 'true');
+  await openPracticeSettings(page);
   await expect(page.getByTestId('loop-enabled')).not.toBeChecked();
   expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
     'issue-45-sentinel',
@@ -135,6 +141,13 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.getByTestId('song-title')).toHaveValue('Twinkle – gemeinsamer Teststand');
   await expect(page.locator('.song-line')).toHaveCount(6);
 });
+
+async function openPracticeSettings(page: import('@playwright/test').Page): Promise<void> {
+  const settings = page.getByTestId('practice-settings');
+  if (!(await settings.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await settings.locator(':scope > summary').click();
+  }
+}
 
 test('keeps synchronized text and the 17-tine instrument usable on a narrow phone', async ({
   page,
@@ -219,9 +232,9 @@ test('renders the canonical profile colors unchanged across editor and player su
 
     const scoreEntry = page.locator(`.score-entry[data-profile-color="${color}"]`).first();
     await expect(scoreEntry).toBeVisible();
-    expect(await scoreEntry.evaluate((element) => getComputedStyle(element).borderBottomColor)).toBe(
-      hexToRgb(color),
-    );
+    expect(
+      await scoreEntry.evaluate((element) => getComputedStyle(element).borderBottomColor),
+    ).toBe(hexToRgb(color));
   }
 });
 
@@ -232,6 +245,7 @@ test('starts Twinkle at full duration and applies a prepared range only after lo
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('open-player').click();
+  await openPracticeSettings(page);
 
   const loop = page.getByTestId('loop-enabled');
   const position = page.getByTestId('position');
@@ -269,6 +283,10 @@ test('keeps the player stable while only the bounded score follows later lines',
 
     const shell = page.locator('.player-shell');
     const score = page.getByTestId('score-scroll');
+    const scoreColumnCount = await score.evaluate(
+      (element) => getComputedStyle(element).gridTemplateColumns.split(' ').length,
+    );
+    expect(scoreColumnCount).toBe(viewport.width >= 1100 ? 2 : 1);
     const backToEditor = page.getByTestId('back-to-editor');
     await expect(backToEditor).toBeVisible();
     const backActionBox = await backToEditor.boundingBox();
