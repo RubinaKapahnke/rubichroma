@@ -4,7 +4,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
 import { eventDurationInBeats } from '../../domain/music-event';
 import { projectSongWordEvents } from '../../domain/song-document';
-import { CANONICAL_CANON_SONG_ID, CANONICAL_TWINKLE_SONG_ID } from './canonical-seed-songs';
+import { inspectTextNotation } from '../../domain/text-notation-import';
+import {
+  CANONICAL_CANON_SONG_ID,
+  CANONICAL_CANON_TEXT_SOURCE,
+  CANONICAL_TWINKLE_SONG_ID,
+} from './canonical-seed-songs';
 import { KalimbaDatabase } from './kalimba.database';
 import { SongRepository } from './song.repository';
 
@@ -22,6 +27,25 @@ describe('canonical example song seeds', () => {
 
   afterEach(async () => {
     await database.delete();
+  });
+
+  it('normalizes the complete canonical text source and expands its concrete row sequence', () => {
+    const preview = inspectTextNotation(CANONICAL_CANON_TEXT_SOURCE);
+
+    expect(preview.canImport).toBe(true);
+    expect(preview.title).toBe('Canon in C-Dur');
+    expect(preview.lines).toHaveLength(21);
+    expect(preview.lines.filter((line) => line.section === 'Teil A')).toHaveLength(10);
+    expect(
+      preview.lines
+        .filter((line) => line.section === 'Teil A')
+        .slice(6)
+        .map((line) => line.repeatedFromRow),
+    ).toEqual([4, 5, 6, 4]);
+    expect(preview.lines.every((line) => line.eventCount > 0 && line.text === '')).toBe(true);
+    expect(preview.warnings).toEqual([
+      expect.objectContaining({ message: expect.stringContaining('1 Schlag'), blocking: false }),
+    ]);
   });
 
   it('adds exactly one complete Twinkle and one textless playable Canon', async () => {

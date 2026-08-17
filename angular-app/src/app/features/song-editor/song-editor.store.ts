@@ -35,6 +35,10 @@ import {
   SongStructureHistory,
 } from '../../domain/song-structure-editing';
 import {
+  createDocumentFromTextNotation,
+  TextNotationImportPreview,
+} from '../../domain/text-notation-import';
+import {
   LEGACY_STORAGE_KEY,
   parseLegacyV0,
   stringifyVanillaCompatible,
@@ -473,6 +477,27 @@ export class SongEditorStore {
     } catch (error) {
       this.statusState.set('error');
       this.errorState.set(`Neues Lied konnte nicht angelegt werden: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
+  async importTextNotation(preview: TextNotationImportPreview): Promise<void> {
+    // Build and validate the complete candidate before opening the repository transaction.
+    const document = createDocumentFromTextNotation(preview);
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      const stored = await this.repository.createSong(document);
+      this.activeSongIdState.set(stored.id);
+      this.documentState.set(stored.document);
+      this.persistedDocuments.set(stored.id, stored.document);
+      await this.refreshSongs();
+      this.clearStructureHistory();
+      this.hydrationVersionState.update((version) => version + 1);
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Textnotation konnte nicht importiert werden: ${messageOf(error)}`);
       throw error;
     }
   }

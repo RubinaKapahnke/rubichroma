@@ -33,6 +33,7 @@ import {
   updateSongSelection,
 } from '../../domain/song-selection-editing';
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
+import { inspectTextNotation, TextNotationImportPreview } from '../../domain/text-notation-import';
 import { ThemeService } from '../../infrastructure/theme.service';
 import type { LocalBackupPreview } from '../../infrastructure/persistence/local-backup';
 import type { SongSummary } from '../../infrastructure/persistence/song.repository';
@@ -109,6 +110,9 @@ export class SongEditorComponent {
   readonly renameTitle = signal('');
   readonly libraryNotice = signal<string | null>(null);
   readonly pendingDuplicateSongId = signal<string | null>(null);
+  readonly textImportOpen = signal(false);
+  readonly textImportSource = signal('');
+  readonly textImportPreview = signal<TextNotationImportPreview | null>(null);
   readonly duplicateVariantName = signal('Variante');
   readonly renamingVariantId = signal<string | null>(null);
   readonly variantName = signal('');
@@ -383,6 +387,9 @@ export class SongEditorComponent {
   closeLibrary(): void {
     this.libraryOpen.set(false);
     this.libraryQuery.set('');
+    this.textImportOpen.set(false);
+    this.textImportSource.set('');
+    this.textImportPreview.set(null);
     this.cancelRename();
     this.cancelDuplicate();
     this.cancelVariantRename();
@@ -401,6 +408,62 @@ export class SongEditorComponent {
       this.focusEditorTitle();
     } catch {
       // The store keeps the previous song selected when creation fails.
+    }
+  }
+
+  startTextNotationImport(): void {
+    this.textImportOpen.set(true);
+    this.textImportSource.set('');
+    this.textImportPreview.set(null);
+    this.libraryNotice.set(null);
+    setTimeout(() =>
+      document.querySelector<HTMLTextAreaElement>('[data-testid="text-notation-source"]')?.focus(),
+    );
+  }
+
+  updateTextNotationSource(event: Event): void {
+    const source = (event.target as HTMLTextAreaElement).value;
+    this.textImportSource.set(source);
+    this.textImportPreview.set(inspectTextNotation(source));
+  }
+
+  async loadTextNotationFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const source = await file.text();
+      this.textImportSource.set(source);
+      this.textImportPreview.set(inspectTextNotation(source));
+    } catch (error) {
+      this.store.setError(error);
+    } finally {
+      input.value = '';
+    }
+  }
+
+  cancelTextNotationImport(): void {
+    this.textImportOpen.set(false);
+    this.textImportSource.set('');
+    this.textImportPreview.set(null);
+    this.libraryNotice.set('Textimport abgebrochen – Bibliothek unverändert.');
+  }
+
+  async confirmTextNotationImport(): Promise<void> {
+    const preview = this.textImportPreview();
+    if (!preview?.canImport) return;
+    try {
+      await this.store.importTextNotation(preview);
+      this.textImportOpen.set(false);
+      this.textImportSource.set('');
+      this.textImportPreview.set(null);
+      this.libraryOpen.set(false);
+      this.documentMode.set('view');
+      this.clearSelection();
+      this.actionNotice.set('Textnotation als neues eigenständiges Lied importiert');
+      this.focusEditorTitle();
+    } catch {
+      // The repository transaction keeps the active song and library unchanged on failure.
     }
   }
 
