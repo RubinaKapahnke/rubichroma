@@ -34,6 +34,7 @@ import {
 } from '../../domain/song-selection-editing';
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
 import { ThemeService } from '../../infrastructure/theme.service';
+import type { LocalBackupPreview } from '../../infrastructure/persistence/local-backup';
 import { AudioPreviewService } from '../player/audio-preview.service';
 import { PlayerLaunchService } from '../player/player-launch.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
@@ -93,6 +94,7 @@ export class SongEditorComponent {
   readonly musicClipboard = signal<MusicSelectionClipboard | null>(null);
   readonly clipboardCount = computed(() => this.musicClipboard()?.sequences.length ?? 0);
   readonly actionNotice = signal<string | null>(null);
+  readonly pendingRestore = signal<LocalBackupPreview | null>(null);
   readonly kalimbaKeys = computed(() => {
     const keys = this.store.document()?.keys ?? [];
     return keys.flatMap((key, index): KalimbaKeyView[] => {
@@ -206,15 +208,72 @@ export class SongEditorComponent {
 
   exportFile(): void {
     try {
-      const blob = new Blob([this.store.exportJson()], { type: 'application/json;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = 'kalimba-song.json';
-      anchor.click();
-      URL.revokeObjectURL(url);
+      this.downloadJson(this.store.exportJson(), 'rubichroma-song.json');
     } catch (error) {
       this.store.setError(error);
+    }
+  }
+
+  async exportLocalBackupFile(): Promise<void> {
+    try {
+      await this.persist();
+      const date = new Date().toISOString().slice(0, 10);
+      this.downloadJson(
+        await this.store.exportLocalBackupJson(),
+        `rubichroma-sicherung-${date}.json`,
+      );
+      this.actionNotice.set('Lokale Sicherung erstellt');
+    } catch (error) {
+      this.store.setError(error);
+    }
+  }
+
+  async inspectLocalBackupFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const preview = this.store.inspectLocalBackup(await file.text());
+      this.pendingRestore.set(preview);
+      this.actionNotice.set('Sicherung geprüft – noch nichts verändert');
+    } catch (error) {
+      this.pendingRestore.set(null);
+      this.store.setError(
+        new Error(
+          `Sicherung konnte nicht geprüft werden: ${
+            error instanceof Error ? error.message : 'Unbekannter Fehler'
+          }`,
+        ),
+      );
+    } finally {
+      input.value = '';
+    }
+  }
+
+  cancelLocalRestore(): void {
+    this.pendingRestore.set(null);
+    this.actionNotice.set('Wiederherstellung abgebrochen');
+  }
+
+  formatBackupDate(value: string): string {
+    return new Intl.DateTimeFormat('de-DE', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  }
+
+  async confirmLocalRestore(): Promise<void> {
+    const preview = this.pendingRestore();
+    if (!preview) return;
+    try {
+      await this.persist();
+      await this.store.restoreLocalBackup(preview);
+      this.pendingRestore.set(null);
+      this.clearSelection();
+      this.actionNotice.set('Lokale Sicherung wiederhergestellt');
+      this.focusEditorTitle();
+    } catch {
+      // The store exposes a user-facing error and leaves the previous document intact on rollback.
     }
   }
 
@@ -579,6 +638,16 @@ export class SongEditorComponent {
 
   private persist(): Promise<void> {
     return this.store.saveEditorValue(this.editorValue(), this.historySelection());
+  }
+
+  private downloadJson(contents: string, filename: string): void {
+    const blob = new Blob([contents], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   private editorValue(): EditorValue {

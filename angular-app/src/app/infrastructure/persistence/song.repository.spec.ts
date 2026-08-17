@@ -114,6 +114,56 @@ describe('SongRepository', () => {
     expect((await repo.load())?.song.title).toBe('Die Schöne – Grüße');
   });
 
+  it('exports and restores the exact song record and related metadata atomically', async () => {
+    const repo = repository();
+    const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const enriched = structuredClone(original);
+    enriched.song.lines[0].words[0].melodyEvents[0] = {
+      ...enriched.song.lines[0].words[0].melodyEvents[0],
+      duration: 2,
+      eventUnknown: { nested: ['kept'] },
+    } as unknown as MusicEvent;
+    enriched.song.lines[0].words[0].extra['backupUnknown'] = { fidelity: true };
+    await repo.save(enriched);
+    await repo.database.meta.put({ key: 'profile-setting', value: '{"mode":"full"}' });
+    const backup = await repo.exportLocalBackupSnapshot();
+
+    const changed = structuredClone(enriched);
+    changed.song.title = 'Temporary local change';
+    await repo.save(changed);
+    await repo.database.meta.put({ key: 'profile-setting', value: 'changed' });
+
+    expect(await repo.restoreLocalBackupSnapshot(backup)).toEqual(backup.songs[0].document);
+    expect(await repo.database.songs.toArray()).toEqual(backup.songs);
+    expect(await repo.database.meta.toArray()).toEqual(backup.metadata);
+  });
+
+  it('rolls back both song and metadata when a restore transaction fails', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated restore failure');
+    });
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const before = await repo.exportLocalBackupSnapshot();
+    const candidate = structuredClone(before);
+    candidate.songs[0].document.song.title = 'Must roll back';
+    candidate.metadata.push({ key: 'restore-only', value: 'must roll back' });
+
+    fail = true;
+    await expect(repo.restoreLocalBackupSnapshot(candidate)).rejects.toThrow(
+      'simulated restore failure',
+    );
+    expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
+  });
+
   it('atomically upgrades a real Dexie v1 song record to structured events', async () => {
     const name = `upgrade-${crypto.randomUUID()}`;
     const legacyDocument = storedV1Document();

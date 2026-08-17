@@ -11,7 +11,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'issue-45-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_FIXTURE);
   await expect(page.getByTestId('song-title')).toHaveValue('Twinkle, Twinkle, Little Star');
   await expect(page.locator('.song-line')).toHaveCount(6);
   await expect(page.getByTestId('word-card-5-3')).toContainText('what you are');
@@ -158,7 +158,7 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_FIXTURE);
   await page.getByTestId('open-player').click();
 
   await expect(page.getByTestId('reduced-motion')).toBeChecked();
@@ -203,7 +203,7 @@ test('renders the canonical profile colors unchanged across editor and player su
       await sheetColorSurface.evaluate((element) => getComputedStyle(element).backgroundColor),
     ).toBe(hexToRgb(color));
   }
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_FIXTURE);
   await expect(page.getByTestId('sheet-track-0-0-melody')).toContainText('C · 1');
   await expect(page.getByTestId('sheet-track-0-0-accompaniment')).toContainText('E · 3 + G · 5');
   for (const color of ['#26562A', '#D41C33']) {
@@ -265,7 +265,7 @@ test('starts Twinkle at full duration and applies a prepared range only after lo
 }) => {
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_FIXTURE);
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('open-player').click();
   await openPracticeSettings(page);
@@ -301,7 +301,7 @@ test('keeps the player stable while only the bounded score follows later lines',
     await page.setViewportSize(viewport);
     await page.goto('/');
     await page.getByTestId('edit-mode-toggle').click();
-    await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+    await page.getByTestId('song-file-input').setInputFiles(TWINKLE_FIXTURE);
     await page.getByTestId('open-player').click();
     await expect(page.getByTestId('player-title')).toHaveText('Twinkle, Twinkle, Little Star');
 
