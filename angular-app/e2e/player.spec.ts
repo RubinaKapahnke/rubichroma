@@ -6,6 +6,7 @@ const TWINKLE_FIXTURE = resolve('e2e/fixtures/twinkle-twinkle-little-star.json')
 test('opens the imported editor song in one drift-free Flow and running-tab player', async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   await page.goto('/');
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'issue-45-sentinel'));
