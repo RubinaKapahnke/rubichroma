@@ -43,6 +43,14 @@ describe('SongEditorComponent hydration', () => {
     hydrationVersionState.set(1);
     fixture.detectChanges();
     await fixture.whenStable();
+    expect(fixture.componentInstance.documentMode()).toBe('view');
+    expect(
+      (fixture.nativeElement.querySelector('[data-testid="song-title"]') as HTMLInputElement)
+        .readOnly,
+    ).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="undo-structure"]')).toBeNull();
+    fixture.componentInstance.startEditing();
+    fixture.detectChanges();
     const initialReference = fixture.componentInstance.lines();
 
     fixture.componentInstance.handleWordSelection({
@@ -126,6 +134,8 @@ describe('SongEditorComponent hydration', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const component = fixture.componentInstance;
+    component.startEditing();
+    fixture.detectChanges();
 
     component.handleWordSelection({
       position: { lineIndex: 0, wordIndex: 0 },
@@ -163,8 +173,12 @@ describe('SongEditorComponent hydration', () => {
     expect(component.interactionMode()).toBe('multi-select');
     expect(component.selectedPositions()).toEqual([]);
 
-    component.closeWordEditor();
+    component.finishEditing();
+    fixture.detectChanges();
+    expect(component.documentMode()).toBe('view');
     expect(component.interactionMode()).toBe('idle');
+    expect(component.selection()).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-word-editor')).toBeNull();
   });
 
   it('switches desktop Shift selection from editing to an ordered multi-selection', async () => {
@@ -194,6 +208,8 @@ describe('SongEditorComponent hydration', () => {
     const fixture = TestBed.createComponent(SongEditorComponent);
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.componentInstance.startEditing();
+    fixture.detectChanges();
 
     fixture.componentInstance.handleWordSelection({
       position: { lineIndex: 0, wordIndex: 0 },
@@ -248,6 +264,8 @@ describe('SongEditorComponent hydration', () => {
     const fixture = TestBed.createComponent(SongEditorComponent);
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.componentInstance.startEditing();
+    fixture.detectChanges();
     fixture.componentInstance.handleWordSelection({
       position: { lineIndex: 0, wordIndex: 0 },
       shiftKey: false,

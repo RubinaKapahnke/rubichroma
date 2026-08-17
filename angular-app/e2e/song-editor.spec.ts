@@ -7,10 +7,55 @@ import { THEME_STORAGE_KEY } from '../src/app/infrastructure/theme-preference';
 const SYNTHETIC_IMPORT_FIXTURE = resolve('e2e/fixtures/synthetic-structure-song.json');
 const TWINKLE_IMPORT_FIXTURE = resolve('e2e/fixtures/twinkle-twinkle-little-star.json');
 
+test('starts in a calm full-width view and opens editing context only on request', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const title = page.getByTestId('song-title');
+  const sheet = page.locator('app-song-sheet');
+  const layout = page.locator('.editor-layout');
+  await expect(title).toBeVisible();
+  await expect(title).toHaveAttribute('readonly', '');
+  await expect(page.getByTestId('edit-mode-toggle')).toHaveText('Bearbeiten');
+  await expect(page.getByTestId('add-song-block')).toHaveCount(0);
+  await expect(page.getByTestId('line-drag-handle-0')).toHaveCount(0);
+  await expect(page.getByTestId('word-preview-0-0')).toHaveCount(0);
+  const layoutBox = await layout.boundingBox();
+  const sheetBox = await sheet.boundingBox();
+  expect(layoutBox).not.toBeNull();
+  expect(sheetBox).not.toBeNull();
+  expect(Math.abs(layoutBox!.width - sheetBox!.width)).toBeLessThanOrEqual(2);
+
+  await page.getByTestId('edit-mode-toggle').click();
+  await expect(title).not.toHaveAttribute('readonly');
+  await expect(page.getByTestId('add-song-block')).toBeVisible();
+  await page.getByTestId('word-card-0-0').click();
+  await expect(page.locator('.desktop-inspector-drawer')).toBeVisible();
+  await page.getByTestId('edit-mode-toggle').click();
+  await expect(page.locator('.desktop-inspector-drawer')).toHaveCount(0);
+  await expect(page.getByTestId('edit-mode-toggle')).toBeFocused();
+  await expect(title).toHaveAttribute('readonly', '');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByTestId('open-player')).toBeVisible();
+  await expect(page.getByTestId('edit-mode-toggle')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('word-card-0-0').click();
+  await expect(page.getByTestId('word-editor')).toBeVisible();
+  await page.getByRole('button', { name: 'Editor schließen' }).click();
+  await page.getByTestId('edit-mode-toggle').click();
+  await expect(page.getByTestId('word-editor')).toHaveCount(0);
+  await expectNoPageOverflow(page);
+});
+
 test('renders an imported multi-line song immediately, then supports structure undo and reload', async ({
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('word-card-0-0')).toContainText('Willkommen');
 
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
@@ -58,6 +103,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   });
 
   const importRoundtripDownload = page.waitForEvent('download');
+  await openDocumentMenu(page);
   await page.getByTestId('export-button').click();
   const importRoundtrip = JSON.parse(
     await readFile((await (await importRoundtripDownload).path())!, 'utf8'),
@@ -74,6 +120,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.locator('.song-line')).toHaveCount(3);
   await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
@@ -87,6 +134,7 @@ test('offers compact direct line actions and keeps advanced block actions second
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
 
   await expect(page.getByText('Lied aus Blöcken aufbauen')).toBeVisible();
   await expect(page.getByTestId('add-song-block')).toHaveText(/Block am Liedende hinzufügen/);
@@ -104,6 +152,7 @@ test('switches the inspector directly and dismisses it outside or with Escape', 
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('word-editor')).toBeVisible();
   await page.getByTestId('word-card-0-1').click();
@@ -132,6 +181,7 @@ test('switches the inspector directly and dismisses it outside or with Escape', 
 
 test('keeps help preference, product labels and song storage separate', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'help-song-sentinel'));
 
@@ -148,6 +198,7 @@ test('keeps help preference, product labels and song storage separate', async ({
   await page.getByTestId('dismiss-structure-help').click();
   await expect(page.getByTestId('show-structure-help')).toBeVisible();
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('sheet-intro')).toBeHidden();
   await expect(page.getByTestId('show-structure-help')).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
@@ -161,6 +212,7 @@ test('keeps melody identity separate from optional text across autosave and relo
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-1').click();
   await expect(page.getByTestId('melody-block-marker')).toHaveText(/♪.*Melodieblock/);
   await expect(page.getByTestId('word-0-1')).toHaveValue('');
@@ -173,6 +225,7 @@ test('keeps melody identity separate from optional text across autosave and relo
     timeout: 5_000,
   });
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-1').click();
   await expect(page.getByTestId('melody-block-marker')).toBeVisible();
   await expect(page.getByTestId('word-0-1')).toHaveValue('');
@@ -199,16 +252,19 @@ test('imports, reloads and exports the canonical Twinkle fixture with durations 
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   await expect(page.getByTestId('song-title')).toHaveValue('Twinkle, Twinkle, Little Star');
   await expect(page.locator('.song-line')).toHaveCount(6);
   await expectTwinkleState(page);
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.locator('.song-line')).toHaveCount(6);
   await expectTwinkleState(page);
 
   const downloadPromise = page.waitForEvent('download');
+  await openDocumentMenu(page);
   await page.getByTestId('export-button').click();
   const download = await downloadPromise;
   const exported = JSON.parse(await readFile((await download.path())!, 'utf8')) as Record<
@@ -248,6 +304,7 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
 }) => {
   test.setTimeout(60_000);
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'syllable-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
@@ -284,6 +341,7 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
 
   const downloadPromise = page.waitForEvent('download');
+  await openDocumentMenu(page);
   await page.getByTestId('export-button').click();
   const exported = JSON.parse(
     await readFile((await (await downloadPromise).path())!, 'utf8'),
@@ -305,6 +363,7 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(5);
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('syllable-split').scrollIntoViewIfNeeded();
@@ -330,6 +389,7 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'track-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
@@ -358,6 +418,7 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
 
   const downloadPromise = page.waitForEvent('download');
+  await openDocumentMenu(page);
   await page.getByTestId('export-button').click();
   const exported = JSON.parse(
     await readFile((await (await downloadPromise).path())!, 'utf8'),
@@ -371,6 +432,7 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-1').click();
   await expect(page.getByTestId('track-row-melody')).toBeVisible();
   await expect(page.getByTestId('track-row-accompaniment')).toBeVisible();
@@ -395,6 +457,7 @@ test('previews a line, block and event without changing selection or song data',
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   const originalWord = await readStoredWord(page, 0, 0);
@@ -425,6 +488,7 @@ test('keeps text edits in document history across inspector and player navigatio
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
   const word = page.getByTestId('word-0-0');
   await word.fill('Willkommen zurück');
@@ -444,6 +508,7 @@ test('keeps text edits in document history across inspector and player navigatio
   await page.getByTestId('open-player').click();
   await page.getByTestId('back-to-editor').click();
   await expect(page.getByTestId('song-title')).toBeFocused();
+  await page.getByTestId('edit-mode-toggle').click();
 
   await page.getByTestId('word-card-0-0').click();
   await expect(word).toHaveValue('Willkommen zurück');
@@ -459,12 +524,14 @@ test('keeps text edits in document history across inspector and player navigatio
   });
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('word-0-0')).toHaveValue('Willkommen zurück');
 });
 
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   const title = page.getByTestId('song-title');
   await expect(title).toBeVisible();
   await title.fill('Reload Song äöü');
@@ -508,6 +575,7 @@ test('edits title, word and raw notation and restores them after reload', async 
   expect(persistedWord['accompanimentEvents']).toEqual([]);
   expect(persistedWord['legacyNotation']).toMatchObject({ raw: '(13) 5′-x(' });
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toHaveValue('Reload Song äöü');
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('word-0-0')).toHaveValue('Märchen');
@@ -516,6 +584,7 @@ test('edits title, word and raw notation and restores them after reload', async 
 
 test('edits structured notes, chords and separators in the selected word', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
   const keys = page.locator('.key-button');
   await expect(keys).toHaveCount(17);
@@ -536,6 +605,7 @@ test('edits structured notes, chords and separators in the selected word', async
   await expect(page.getByTestId('notation-0-0')).toHaveValue('2 3 (135) 1 (35) -');
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('notation-0-0')).toHaveValue('2 3 (135) 1 (35) -');
 });
@@ -544,6 +614,7 @@ test('restores a removed music event through central undo and persists the redon
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'event-undo-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
@@ -570,6 +641,7 @@ test('restores a removed music event through central undo and persists the redon
     .toHaveLength(originalWord['melodyEvents'].length - 1);
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('notation-0-0')).toHaveValue('-');
   const reloadedWord = await readStoredWord(page, 0, 0);
@@ -582,6 +654,7 @@ test('restores a removed music event through central undo and persists the redon
 test('opens and closes the focused word editor as a mobile bottom sheet', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
 
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('word-editor')).toBeVisible();
@@ -616,6 +689,7 @@ test('preserves a two-beat phrase ending through undo, export, reload and player
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'duration-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
@@ -634,6 +708,7 @@ test('preserves a two-beat phrase ending through undo, export, reload and player
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
 
   const exportDownload = page.waitForEvent('download');
+  await openDocumentMenu(page);
   await page.getByTestId('export-button').click();
   const exported = JSON.parse(
     await readFile((await (await exportDownload).path())!, 'utf8'),
@@ -641,6 +716,7 @@ test('preserves a two-beat phrase ending through undo, export, reload and player
   expect(exported['song']['lines'][0]['words'][3]['eventDurations']).toEqual([2]);
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-3').click();
   await expect(page.getByTestId('event-duration-0')).toHaveValue('2');
   expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
@@ -669,6 +745,7 @@ test('performs block and line structure actions, transfers only events and resto
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
 
@@ -715,6 +792,7 @@ test('performs block and line structure actions, transfers only events and resto
     .poll(() => page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1')))
     .toBe('user-sentinel');
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
 
   await expect(page.locator('.song-line')).toHaveCount(2);
   await page.getByTestId('word-card-1-0').click();
@@ -731,6 +809,7 @@ test('undoes and redoes structure actions with buttons and keyboard shortcuts', 
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').focus();
   await page.getByTestId('word-card-0-0').press('Enter');
 
@@ -778,6 +857,7 @@ test('moves blocks and whole lines with drag-drop and keyboard without fidelity 
   );
   test.setTimeout(60_000);
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await page.setViewportSize({ width: 1440, height: 1400 });
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
@@ -828,6 +908,7 @@ test('moves blocks and whole lines with drag-drop and keyboard without fidelity 
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
 
   const downloadPromise = page.waitForEvent('download');
+  await openDocumentMenu(page);
   await page.getByTestId('export-button').click();
   const exported = JSON.parse(
     await readFile((await (await downloadPromise).path())!, 'utf8'),
@@ -837,6 +918,7 @@ test('moves blocks and whole lines with drag-drop and keyboard without fidelity 
   expect(exported['song']['lines'][1]['words'][0]['unknownWordField']).toEqual(['bleibt', 1]);
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-line-0')).toContainText('zweite');
   await expect(page.getByTestId('song-line-1')).toContainText('Grüße –');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
@@ -911,6 +993,7 @@ async function openBlockManagement(page: Page): Promise<void> {
 
 test('keeps selection and focus stable during keyboard navigation', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   const firstWord = page.getByTestId('word-card-0-0');
   const secondWord = page.getByTestId('word-card-0-1');
 
@@ -928,6 +1011,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
@@ -996,6 +1080,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
     .toEqual([['chord'], ['note', 'separator', 'note', 'chord', 'note']]);
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
 
   await page.getByTestId('word-card-1-0').click();
   await expect(page.getByTestId('word-1-0')).toHaveValue('zweite');
@@ -1011,6 +1096,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
 
 test('stores a manual theme and restores it after reload', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   const themeSelect = page.getByTestId('theme-select');
 
   await expect(themeSelect).toHaveValue('system');
@@ -1021,6 +1107,7 @@ test('stores a manual theme and restores it after reload', async ({ page }) => {
     .toBe('dark');
 
   await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(themeSelect).toHaveValue('dark');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
@@ -1039,6 +1126,7 @@ test('keeps the editor panel and fields inside large and compact desktop viewpor
   ]) {
     await page.setViewportSize(viewport);
     await page.goto('/');
+    await page.getByTestId('edit-mode-toggle').click();
     await page.getByTestId('word-card-0-0').click();
 
     await expectNoPageOverflow(page);
@@ -1184,6 +1272,13 @@ async function expectNoPageOverflow(page: import('@playwright/test').Page): Prom
         document.body.scrollWidth <= document.documentElement.clientWidth,
     ),
   ).toBe(true);
+}
+
+async function openDocumentMenu(page: Page): Promise<void> {
+  const menu = page.locator('.document-more-actions');
+  if (!(await menu.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await menu.locator(':scope > summary').click();
+  }
 }
 
 async function expectInsideViewport(

@@ -7,6 +7,7 @@ test('keeps the mobile brand, theme and save state visible without horizontal ov
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   const brand = page.locator('.brand-lockup');
   const theme = page.getByTestId('theme-select');
   const saveState = page.locator('.save-state');
@@ -32,6 +33,7 @@ test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed 
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   expect((await page.locator('.editor-card').boundingBox())!.y).toBeLessThanOrEqual(240);
   await page.getByTestId('word-card-0-0').tap();
 
@@ -96,6 +98,7 @@ test('keeps compact line actions available and dismisses the mobile inspector sa
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('line-duplicate-0')).toBeVisible();
   await expect(page.getByTestId('line-delete-0')).toBeDisabled();
   await page.getByTestId('word-card-0-0').tap();
@@ -111,6 +114,7 @@ test('latches ordered touch selection, keeps a compact bottom action bar and pas
   page,
 }) => {
   await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'touch-user-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);

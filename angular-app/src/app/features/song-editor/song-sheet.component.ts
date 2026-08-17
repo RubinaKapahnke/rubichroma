@@ -32,6 +32,7 @@ export const SONG_STRUCTURE_HELP_HIDDEN_KEY = 'rubichroma-song-structure-help-hi
 })
 export class SongSheetComponent {
   readonly lines = input.required<FormArray<LineForm>>();
+  readonly editMode = input(false);
   readonly selection = input.required<WordSelection | null>();
   readonly selectedPositions = input.required<readonly WordSelection[]>();
   readonly melodyPositions = input<readonly WordSelection[]>([]);
@@ -62,6 +63,7 @@ export class SongSheetComponent {
   }
 
   selectWord(event: MouseEvent, lineIndex: number, wordIndex: number): void {
+    if (!this.editMode()) return;
     const isTouchClick =
       this.touchClickPending ||
       (typeof PointerEvent !== 'undefined' &&
@@ -84,7 +86,7 @@ export class SongSheetComponent {
   }
 
   startLongPress(event: PointerEvent, lineIndex: number, wordIndex: number): void {
-    if (event.pointerType !== 'touch' || !event.isPrimary) return;
+    if (!this.editMode() || event.pointerType !== 'touch' || !event.isPrimary) return;
 
     this.cancelLongPress();
     this.suppressNextTouchClick = false;
