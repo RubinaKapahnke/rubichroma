@@ -7,6 +7,7 @@ test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed 
   page,
 }) => {
   await page.goto('/');
+  expect((await page.locator('.editor-card').boundingBox())!.y).toBeLessThanOrEqual(240);
   await page.getByTestId('word-card-0-0').tap();
 
   const editor = page.getByTestId('word-editor');
