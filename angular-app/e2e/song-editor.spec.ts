@@ -703,6 +703,10 @@ test('undoes and redoes structure actions with buttons and keyboard shortcuts', 
 test('moves blocks and whole lines with drag-drop and keyboard without fidelity loss', async ({
   page,
 }) => {
+  test.skip(
+    test.info().project.name.includes('webkit'),
+    'Native desktop drag is covered in Chromium; touch drag remains outside this slice.',
+  );
   test.setTimeout(60_000);
   await page.goto('/');
   await page.setViewportSize({ width: 1440, height: 1400 });
