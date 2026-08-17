@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { encodeLegacyNotation, replaceWithLegacyNotation } from './legacy-notation-codec';
-import { SongDocument } from './song-document';
+import { encodeLegacyNotation } from './legacy-notation-codec';
+import { createTrackedWordFields, projectSongWordEvents, SongDocument } from './song-document';
 import {
   editSongStructure,
   previewSyllableSplit,
@@ -24,16 +24,17 @@ describe('song structure editing', () => {
     const document = documentFixture();
     const sourceWord = {
       text: 'Straße,',
-      ...replaceWithLegacyNotation('1 5 (35)'),
+      ...createTrackedWordFields('1 5 (35)'),
       extra: { unknownWordField: { remains: true } },
     };
-    const firstEvent = sourceWord.events[0];
-    const secondEvent = sourceWord.events[1];
+    const firstEvent = sourceWord.melodyEvents[0];
+    const secondEvent = sourceWord.melodyEvents[1];
     if (firstEvent.kind === 'separator' || secondEvent.kind === 'separator') {
       throw new Error('Expected playable fixture events');
     }
-    sourceWord.events[0] = { ...firstEvent, duration: 2 };
-    sourceWord.events[1] = { ...secondEvent, track: 'accompaniment' };
+    sourceWord.melodyEvents[0] = { ...firstEvent, duration: 2 };
+    sourceWord.accompanimentEvents = [{ ...secondEvent }];
+    sourceWord.melodyEvents.splice(1, 1);
     document.song.lines[0].words[0] = sourceWord;
     const original = structuredClone(document);
 
@@ -41,16 +42,17 @@ describe('song structure editing', () => {
       editSongStructure(state(document), {
         kind: 'split-block',
         splitIndex: 4,
-        firstEventCount: 1,
+        firstEventCounts: { melody: 1, accompaniment: 0 },
       }),
     );
     const [first, second] = result.state.document.song.lines[0].words;
 
     expect(first.text).toBe('Stra-');
     expect(second.text).toBe('ße,');
-    expect(first.events).toEqual([sourceWord.events[0]]);
-    expect(second.events).toEqual(sourceWord.events.slice(1));
-    expect([...first.events, ...second.events]).toEqual(sourceWord.events);
+    expect(first.melodyEvents).toEqual([sourceWord.melodyEvents[0]]);
+    expect(first.accompanimentEvents).toEqual([]);
+    expect(second.melodyEvents).toEqual(sourceWord.melodyEvents.slice(1));
+    expect(second.accompanimentEvents).toEqual(sourceWord.accompanimentEvents);
     expect(first.extra).toEqual(sourceWord.extra);
     expect(second.extra).toEqual({});
     expect(result.state.selection).toEqual({ lineIndex: 0, wordIndex: 1 });
@@ -64,7 +66,7 @@ describe('song structure editing', () => {
       editSongStructure(state(unknown), {
         kind: 'split-block',
         splitIndex: 3,
-        firstEventCount: 1,
+        firstEventCounts: { melody: 1, accompaniment: 0 },
       }),
     ).toEqual({ ok: false, reason: 'source-has-unknown-legacy-fragments' });
     expect(unknown).toEqual(unknownOriginal);
@@ -72,14 +74,14 @@ describe('song structure editing', () => {
     const oneEvent = documentFixture();
     oneEvent.song.lines[0].words[0] = {
       text: 'Hallo',
-      ...replaceWithLegacyNotation('1'),
+      ...createTrackedWordFields('1'),
       extra: {},
     };
     expect(
       editSongStructure(state(oneEvent), {
         kind: 'split-block',
         splitIndex: 2,
-        firstEventCount: 1,
+        firstEventCounts: { melody: 1, accompaniment: 0 },
       }),
     ).toEqual({ ok: false, reason: 'insufficient-split-events' });
 
@@ -88,7 +90,7 @@ describe('song structure editing', () => {
       editSongStructure(state(oneEvent), {
         kind: 'split-block',
         splitIndex: 2,
-        firstEventCount: 1,
+        firstEventCounts: { melody: 1, accompaniment: 0 },
       }),
     ).toEqual({ ok: false, reason: 'unsupported-melody-split' });
   });
@@ -103,7 +105,8 @@ describe('song structure editing', () => {
     expect(inserted.state.selection).toEqual({ lineIndex: 0, wordIndex: 1 });
     expect(inserted.state.document.song.lines[0].words[1]).toMatchObject({
       text: 'Neues Wort',
-      events: [],
+      melodyEvents: [],
+      accompanimentEvents: [],
       extra: {},
     });
     expect(source.song.lines[0].words).toHaveLength(2);
@@ -114,7 +117,8 @@ describe('song structure editing', () => {
     expect(melody.state.document.song.lines[0].words[2]).toMatchObject({
       text: '',
       toneCount: 4,
-      events: [],
+      melodyEvents: [],
+      accompanimentEvents: [],
     });
 
     const duplicated = expectSuccess(editSongStructure(initial, { kind: 'duplicate-block' }));
@@ -242,24 +246,29 @@ describe('song structure editing', () => {
 
   it('copies only structured events into the next line and preserves target text and unknown fields', () => {
     const initial = state(documentFixture());
-    const result = expectSuccess(editSongStructure(initial, { kind: 'copy-events-to-next-line' }));
+    const result = expectSuccess(
+      editSongStructure(initial, { kind: 'copy-events-to-next-line', track: 'melody' }),
+    );
     const source = initial.document.song.lines[0].words[0];
     const target = result.state.document.song.lines[1].words[0];
 
     expect(target.text).toBe('Zieltext');
     expect(target.extra).toEqual({ targetUnknown: ['bleibt'] });
     expect(target.toneCount).toBe(9);
-    expect(target.events).toEqual(source.events);
-    expect(target.events).not.toBe(source.events);
-    expect(encodeLegacyNotation(target.events, target.legacyNotation)).toBe('1′');
+    expect(target.melodyEvents).toEqual(source.melodyEvents);
+    expect(target.melodyEvents).not.toBe(source.melodyEvents);
+    expect(encodeLegacyNotation(projectSongWordEvents(target), target.legacyNotation)).toBe('1′');
     expect(result.state.selection).toEqual({ lineIndex: 1, wordIndex: 0 });
     expect(initial.document.song.lines[1].words[0].legacyNotation.raw).toBe('7');
   });
 
   it('does not overwrite unknown legacy fragments in the target block', () => {
     const document = documentFixture();
-    Object.assign(document.song.lines[1].words[0], replaceWithLegacyNotation('7 x('));
-    const result = editSongStructure(state(document), { kind: 'copy-events-to-next-line' });
+    Object.assign(document.song.lines[1].words[0], createTrackedWordFields('7 x('));
+    const result = editSongStructure(state(document), {
+      kind: 'copy-events-to-next-line',
+      track: 'melody',
+    });
     expect(result).toEqual({ ok: false, reason: 'target-has-unknown-legacy-fragments' });
     expect(document.song.lines[1].words[0].legacyNotation.raw).toBe('7 x(');
   });
@@ -319,10 +328,10 @@ function documentFixture(): SongDocument {
           words: [
             {
               text: 'Quelle',
-              ...replaceWithLegacyNotation("1' x("),
+              ...createTrackedWordFields("1' x("),
               extra: { wordUnknown: { nested: true } },
             },
-            { text: 'Danach', ...replaceWithLegacyNotation('(35)-'), extra: {} },
+            { text: 'Danach', ...createTrackedWordFields('(35)-'), extra: {} },
           ],
           extra: { lineUnknown: 'bleibt' },
         },
@@ -330,7 +339,7 @@ function documentFixture(): SongDocument {
           words: [
             {
               text: 'Zieltext',
-              ...replaceWithLegacyNotation('7'),
+              ...createTrackedWordFields('7'),
               toneCount: 9,
               extra: { targetUnknown: ['bleibt'] },
             },

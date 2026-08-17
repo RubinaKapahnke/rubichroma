@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
 import { describe, expect, it } from 'vitest';
 import { replaceWithLegacyNotation } from '../../domain/legacy-notation-codec';
+import { MusicTrackId } from '../../domain/music-event';
 import { profileInkColor, WordEditorComponent } from './word-editor.component';
 
 describe('word editor profile colors', () => {
@@ -37,7 +38,7 @@ describe('word editor syllable split', () => {
     fixture.detectChanges();
 
     const emitted: unknown[] = [];
-    const previewedEvents: number[] = [];
+    const previewedEvents: { track: MusicTrackId; eventIndex: number }[] = [];
     const previewedPitches: unknown[] = [];
     fixture.componentInstance.structureAction.subscribe((action) => emitted.push(action));
     fixture.componentInstance.musicEventPreviewRequested.subscribe((index) =>
@@ -47,7 +48,8 @@ describe('word editor syllable split', () => {
       previewedPitches.push(pitch),
     );
     fixture.componentInstance.setSplitIndex('4');
-    fixture.componentInstance.setFirstSplitEventCount('1');
+    fixture.componentInstance.setFirstSplitEventCount('melody', '1');
+    fixture.componentInstance.setFirstSplitEventCount('accompaniment', '0');
 
     expect(fixture.componentInstance.splitPreview()).toEqual({
       firstText: 'Twin-',
@@ -55,9 +57,15 @@ describe('word editor syllable split', () => {
     });
     expect(emitted).toEqual([]);
     fixture.componentInstance.splitSyllable();
-    expect(emitted).toEqual([{ kind: 'split-block', splitIndex: 4, firstEventCount: 1 }]);
+    expect(emitted).toEqual([
+      {
+        kind: 'split-block',
+        splitIndex: 4,
+        firstEventCounts: { melody: 1, accompaniment: 0 },
+      },
+    ]);
 
-    fixture.componentInstance.previewEvent(1);
+    fixture.componentInstance.previewEvent('melody', 1);
     fixture.componentInstance.auditionKeys.set(true);
     fixture.componentInstance.handleKey({
       id: 'c',
@@ -67,7 +75,7 @@ describe('word editor syllable split', () => {
       color: '#2E7975',
       pitch: { degree: 1, octave: 0 },
     });
-    expect(previewedEvents).toEqual([1]);
+    expect(previewedEvents).toEqual([{ track: 'melody', eventIndex: 1 }]);
     expect(previewedPitches).toEqual([{ degree: 1, octave: 0 }]);
   });
 });

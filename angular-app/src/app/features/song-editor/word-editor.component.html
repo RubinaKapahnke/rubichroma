@@ -93,15 +93,30 @@
               </select>
             </label>
             <label>
-              <span>Musik zuordnen</span>
+              <span>Melodie zuordnen</span>
               <select
-                data-testid="syllable-split-events"
-                [value]="selectedFirstEventCount()"
-                (change)="setFirstSplitEventCount($any($event.target).value)"
+                data-testid="syllable-split-events-melody"
+                [value]="selectedFirstEventCount('melody')"
+                (change)="setFirstSplitEventCount('melody', $any($event.target).value)"
               >
-                @for (count of splitEventCounts(); track count) {
+                @for (count of splitEventCounts('melody'); track count) {
                   <option [value]="count">
-                    {{ count }} zu erster · {{ events().length - count }} zu zweiter Silbe
+                    {{ count }} zu erster · {{ eventsForTrack('melody').length - count }} zu zweiter
+                  </option>
+                }
+              </select>
+            </label>
+            <label>
+              <span>Begleitung zuordnen</span>
+              <select
+                data-testid="syllable-split-events-accompaniment"
+                [value]="selectedFirstEventCount('accompaniment')"
+                (change)="setFirstSplitEventCount('accompaniment', $any($event.target).value)"
+              >
+                @for (count of splitEventCounts('accompaniment'); track count) {
+                  <option [value]="count">
+                    {{ count }} zu erster · {{ eventsForTrack('accompaniment').length - count }} zu
+                    zweiter
                   </option>
                 }
               </select>
@@ -110,11 +125,20 @@
           <div class="split-preview" data-testid="syllable-split-preview" aria-live="polite">
             <span
               ><strong>{{ preview.firstText }}</strong
-              ><small>{{ selectedFirstEventCount() }} Ereignis(se)</small></span
+              ><small
+                >{{ selectedFirstEventCount('melody') }} Melodie ·
+                {{ selectedFirstEventCount('accompaniment') }} Begleitung</small
+              ></span
             >
             <span
               ><strong>{{ preview.secondText }}</strong
-              ><small>{{ events().length - selectedFirstEventCount() }} Ereignis(se)</small></span
+              ><small
+                >{{ eventsForTrack('melody').length - selectedFirstEventCount('melody') }} Melodie ·
+                {{
+                  eventsForTrack('accompaniment').length - selectedFirstEventCount('accompaniment')
+                }}
+                Begleitung</small
+              ></span
             >
           </div>
           <p class="split-note">
@@ -124,6 +148,7 @@
             class="split-confirm"
             type="button"
             data-testid="syllable-split-confirm"
+            [disabled]="!canApplySyllableSplit()"
             (click)="splitSyllable()"
           >
             Teilung übernehmen
@@ -180,7 +205,7 @@
                           eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' anhören'
                         "
                         title="Ereignis anhören"
-                        (click)="previewEvent(entry.index)"
+                        (click)="previewEvent(track, entry.trackIndex)"
                       >
                         <span aria-hidden="true">▶</span>
                       </button>
@@ -192,7 +217,7 @@
                       [attr.aria-label]="
                         eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' entfernen'
                       "
-                      (click)="removeEvent(entry.index)"
+                      (click)="removeEvent(track, entry.trackIndex)"
                     >
                       <small>{{ eventKindLabel(entry.event) }}</small>
                       <strong>{{ eventLabel(entry.event) }}</strong>
@@ -210,7 +235,9 @@
                           [attr.data-testid]="'event-duration-' + entry.index"
                           [value]="eventDurationBeats(entry.event)"
                           [attr.aria-label]="'Dauer von ' + eventLabel(entry.event)"
-                          (change)="setEventDuration(entry.index, $any($event.target).value)"
+                          (change)="
+                            setEventDuration(track, entry.trackIndex, $any($event.target).value)
+                          "
                         >
                           <option value="1">1 Schlag</option>
                           <option value="2">2 Schläge</option>
@@ -402,9 +429,9 @@
             type="button"
             data-testid="block-copy-next-line"
             [disabled]="!canCopyToNextLine()"
-            (click)="runStructureAction({ kind: 'copy-events-to-next-line' })"
+            (click)="copyActiveTrackToNextLine()"
           >
-            Töne in nächste Zeile
+            {{ trackLabel(activeTrack()) }} in nächste Zeile
           </button>
           <button
             class="destructive-action"

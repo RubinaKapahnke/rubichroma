@@ -179,7 +179,7 @@ test('keeps melody identity separate from optional text across autosave and relo
   expect(await readStoredWord(page, 0, 1)).toMatchObject({
     text: '',
     toneCount: 3,
-    events: expect.arrayContaining([expect.objectContaining({ kind: 'note' })]),
+    melodyEvents: expect.arrayContaining([expect.objectContaining({ kind: 'note' })]),
   });
 
   await openBlockManagement(page);
@@ -227,6 +227,20 @@ test('imports, reloads and exports the canonical Twinkle fixture with durations 
       .flatMap((word: Record<string, any>) => word['eventTracks'] ?? [])
       .filter((track: string | null) => track === 'accompaniment'),
   ).toHaveLength(6);
+  expect(exported['formatVersion']).toBe(2);
+  expect(
+    exportedWords.every(
+      (word: Record<string, any>) =>
+        Array.isArray(word['melodyEvents']) && Array.isArray(word['accompanimentEvents']),
+    ),
+  ).toBe(true);
+  expect(
+    exportedWords.every((word: Record<string, any>) =>
+      [...word['melodyEvents'], ...word['accompanimentEvents']].every(
+        (event: Record<string, any>) => !('track' in event),
+      ),
+    ),
+  ).toBe(true);
 });
 
 test('splits a word into explicitly assigned syllables through undo, reload and player projection', async ({
@@ -241,7 +255,8 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
   await page.getByTestId('syllable-split').locator('summary').click();
 
   await page.getByTestId('syllable-split-point').selectOption('4');
-  await page.getByTestId('syllable-split-events').selectOption('1');
+  await page.getByTestId('syllable-split-events-melody').selectOption('1');
+  await page.getByTestId('syllable-split-events-accompaniment').selectOption('0');
   await expect(page.getByTestId('syllable-split-preview')).toContainText('Twin-');
   await expect(page.getByTestId('syllable-split-preview')).toContainText('kle,');
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(4);
@@ -253,13 +268,13 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
   await expect(page.getByTestId('word-card-0-1')).toContainText('kle,');
   const splitFirst = await readStoredWord(page, 0, 0);
   const splitSecond = await readStoredWord(page, 0, 1);
-  expect(splitFirst['events']).toHaveLength(1);
-  expect(splitSecond['events']).toHaveLength(2);
-  expect(splitFirst['events'][0]).toMatchObject({ kind: 'note', duration: 1, track: 'melody' });
-  expect(splitSecond['events']).toMatchObject([
-    { kind: 'note', duration: 1, track: 'melody' },
-    { kind: 'chord', duration: 2, track: 'accompaniment' },
-  ]);
+  expect(splitFirst['melodyEvents']).toHaveLength(1);
+  expect(splitFirst['accompanimentEvents']).toHaveLength(0);
+  expect(splitSecond['melodyEvents']).toHaveLength(1);
+  expect(splitSecond['accompanimentEvents']).toHaveLength(1);
+  expect(splitFirst['melodyEvents'][0]).toMatchObject({ kind: 'note', duration: 1 });
+  expect(splitSecond['melodyEvents'][0]).toMatchObject({ kind: 'note', duration: 1 });
+  expect(splitSecond['accompanimentEvents'][0]).toMatchObject({ kind: 'chord', duration: 2 });
 
   await page.getByTestId('undo-structure-editor').click();
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(4);
@@ -276,13 +291,16 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
   expect(exported['song']['lines'][0]['words'][0]).toMatchObject({
     text: 'Twin-',
     notation: '1',
-    eventTracks: ['melody'],
+    melodyEvents: [{ kind: 'note', duration: 1 }],
+    accompanimentEvents: [],
   });
   expect(exported['song']['lines'][0]['words'][1]).toMatchObject({
     text: 'kle,',
     notation: '1 (35)',
     eventDurations: [1, 2],
     eventTracks: ['melody', 'accompaniment'],
+    melodyEvents: [{ kind: 'note', duration: 1 }],
+    accompanimentEvents: [{ kind: 'chord', duration: 2 }],
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -351,13 +369,18 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   ]);
   expect(exported['fixtureVersion']).toBe(1);
 
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page.getByTestId('word-card-0-1').click();
+  await expect(page.getByTestId('track-row-melody')).toBeVisible();
+  await expect(page.getByTestId('track-row-accompaniment')).toBeVisible();
   await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(1);
+  await expectNoPageOverflow(page);
   expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
     'track-sentinel',
   );
 
+  await page.getByTestId('word-editor').locator('button[title*="Esc"]').click();
   await page.getByTestId('open-player').click();
   await expect(page.locator('.flow-event.accompaniment')).not.toHaveCount(0);
   await expect(page.locator('.score-event[data-track="accompaniment"]')).not.toHaveCount(0);
@@ -365,9 +388,12 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   await page.getByTestId('mixer-drawer').getByText('Mixer').click();
   await expect(page.getByTestId('track-melody')).toBeVisible();
   await expect(page.getByTestId('track-accompaniment')).toBeVisible();
+  await expectNoPageOverflow(page);
 });
 
-test('previews a line, block and event without changing selection or song data', async ({ page }) => {
+test('previews a line, block and event without changing selection or song data', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
@@ -425,7 +451,7 @@ test('edits title, word and raw notation and restores them after reload', async 
     }
   });
   expect(persistedWord).not.toHaveProperty('notation');
-  expect(persistedWord['events']).toEqual([
+  expect(persistedWord['melodyEvents']).toEqual([
     {
       kind: 'chord',
       pitches: [
@@ -437,6 +463,7 @@ test('edits title, word and raw notation and restores them after reload', async 
     { kind: 'note', pitch: { degree: 5, octave: 1 }, duration: 1 },
     { kind: 'separator' },
   ]);
+  expect(persistedWord['accompanimentEvents']).toEqual([]);
   expect(persistedWord['legacyNotation']).toMatchObject({ raw: '(13) 5′-x(' });
   await page.reload();
   await expect(page.getByTestId('song-title')).toHaveValue('Reload Song äöü');
@@ -497,8 +524,8 @@ test('restores a removed music event through central undo and persists the redon
   await expect(page.getByTestId('event-count')).toHaveText('1 Ereignis');
   await expect(page.getByTestId('word-card-0-0')).toBeFocused();
   await expect
-    .poll(async () => (await readStoredWord(page, 0, 0))['events'])
-    .toHaveLength(originalWord['events'].length - 1);
+    .poll(async () => (await readStoredWord(page, 0, 0))['melodyEvents'])
+    .toHaveLength(originalWord['melodyEvents'].length - 1);
 
   await page.reload();
   await page.getByTestId('word-card-0-0').click();
@@ -737,7 +764,9 @@ test('moves blocks and whole lines with drag-drop and keyboard without fidelity 
   await expect(page.locator('.word-card')).toHaveCount(6);
   await expect(page.getByTestId('song-line-0').locator('.word-card')).toHaveCount(2);
   await expect(page.getByTestId('song-line-1').locator('.word-card')).toHaveCount(3);
-  await expect(page.getByTestId('song-line-1').locator('.word-card').last()).toContainText('Grüße –');
+  await expect(page.getByTestId('song-line-1').locator('.word-card').last()).toContainText(
+    'Grüße –',
+  );
   await page.getByTestId('undo-structure').click();
   await expect(page.getByTestId('song-line-0').locator('.word-card')).toHaveCount(3);
 
@@ -814,9 +843,13 @@ async function dragWithMouse(
   await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(120);
-  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2 + 24, sourceBox!.y + sourceBox!.height / 2, {
-    steps: 3,
-  });
+  await page.mouse.move(
+    sourceBox!.x + sourceBox!.width / 2 + 24,
+    sourceBox!.y + sourceBox!.height / 2,
+    {
+      steps: 3,
+    },
+  );
   await page.mouse.move(targetBox!.x + targetBox!.width - 3, targetBox!.y + targetBox!.height - 3, {
     steps: 12,
   });
@@ -1042,7 +1075,10 @@ async function expectTwinkleState(page: Page): Promise<void> {
       return {
         keys: document['keys'].length,
         events: document['song']['lines'].flatMap((line: Record<string, any>) =>
-          line['words'].flatMap((word: Record<string, any>) => word['events']),
+          line['words'].flatMap((word: Record<string, any>) => [
+            ...word['melodyEvents'],
+            ...word['accompanimentEvents'],
+          ]),
         ),
       };
     } finally {
@@ -1083,7 +1119,9 @@ async function readPasteState(page: import('@playwright/test').Page): Promise<{
       return {
         targetTexts: targets.map((word: Record<string, any>) => word['text']),
         targetKinds: targets.map((word: Record<string, any>) =>
-          word['events'].map((event: Record<string, any>) => event['kind']),
+          [...word['melodyEvents'], ...word['accompanimentEvents']].map(
+            (event: Record<string, any>) => event['kind'],
+          ),
         ),
         unknownRoot: document['extra']['unknownRoot'],
         unknownSource: document['song']['lines'][0]['words'][0]['extra']['unknownWordField'],

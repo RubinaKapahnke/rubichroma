@@ -1,5 +1,4 @@
-import { SongDocument } from './song-document';
-import { replaceWithLegacyNotation } from './legacy-notation-codec';
+import { createTrackedWordFields, SongDocument } from './song-document';
 
 const values = [
   '2″',
@@ -65,8 +64,8 @@ export const DEFAULT_DOCUMENT: SongDocument = {
     lines: [
       {
         words: [
-          { text: 'Willkommen', ...replaceWithLegacyNotation('1 2 3 (135)'), extra: {} },
-          { text: '♪', ...replaceWithLegacyNotation('5′-3 1′'), toneCount: 3, extra: {} },
+          { text: 'Willkommen', ...createTrackedWordFields('1 2 3 (135)'), extra: {} },
+          { text: '♪', ...createTrackedWordFields('5′-3 1′'), toneCount: 3, extra: {} },
         ],
         extra: {},
       },

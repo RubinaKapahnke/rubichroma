@@ -2,11 +2,10 @@ import Dexie from 'dexie';
 import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
-import {
-  encodeLegacyNotation,
-  replaceWithLegacyNotation,
-} from '../../domain/legacy-notation-codec';
-import { stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
+import { encodeLegacyNotation, fidelityForEvents } from '../../domain/legacy-notation-codec';
+import { MusicEvent } from '../../domain/music-event';
+import { createTrackedWordFields, projectSongWordEvents } from '../../domain/song-document';
+import { parseLegacyV0, stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
 import { KalimbaDatabase } from './kalimba.database';
 import { SongRepository } from './song.repository';
 
@@ -60,15 +59,15 @@ describe('SongRepository', () => {
       extra: {},
     });
     imported.song.title = 'Bearbeitet';
-    Object.assign(imported.song.lines[0].words[0], replaceWithLegacyNotation('(13)-x('));
+    Object.assign(imported.song.lines[0].words[0], createTrackedWordFields('(13)-x('));
     const saved = await repo.save(imported);
     const secondRepo = repository();
     const reimported = await secondRepo.migrateLegacy(stringifyVanillaCompatible(saved), saved);
     expect(reimported.song.title).toBe('Bearbeitet');
     const reimportedWord = reimported.song.lines[0].words[0];
-    expect(encodeLegacyNotation(reimportedWord.events, reimportedWord.legacyNotation)).toBe(
-      '(13)-x(',
-    );
+    expect(
+      encodeLegacyNotation(projectSongWordEvents(reimportedWord), reimportedWord.legacyNotation),
+    ).toBe('(13)-x(');
     expect(reimported.extra['unknownRoot']).toEqual(COMPLETE_LEGACY['unknownRoot']);
   });
 
@@ -141,6 +140,68 @@ describe('SongRepository', () => {
     expect(stringifyVanillaCompatible(stored!.document)).toContain(
       JSON.stringify("1' 2′ 3″ (135)-7′"),
     );
+  });
+
+  it('atomically splits Dexie v2 events plus track identity and never duplicates on reopen', async () => {
+    const name = `upgrade-tracks-${crypto.randomUUID()}`;
+    const intermediate = parseLegacyV0(COMPLETE_LEGACY) as unknown as Record<string, any>;
+    for (const line of intermediate['song']['lines']) {
+      for (const word of line['words']) {
+        const canonicalWord = word as ReturnType<
+          typeof parseLegacyV0
+        >['song']['lines'][number]['words'][number];
+        word['events'] = projectSongWordEvents(canonicalWord);
+        delete word['melodyEvents'];
+        delete word['accompanimentEvents'];
+      }
+    }
+    const firstWord = intermediate['song']['lines'][0]['words'][0];
+    firstWord['events'][0]['eventUnknown'] = { nested: ['bleibt'] };
+    const accompaniment = {
+      kind: 'note',
+      pitch: { degree: 7, octave: 0 },
+      duration: 2,
+      track: 'accompaniment',
+      accompanimentUnknown: true,
+    } as unknown as MusicEvent;
+    firstWord['events'].splice(1, 0, accompaniment);
+    firstWord['legacyNotation'] = fidelityForEvents(
+      "1' 7 2â€² 3â€³ (135)-7â€²",
+      firstWord['events'],
+    );
+
+    const v2 = new Dexie(name);
+    v2.version(2).stores({ songs: 'id', meta: 'key' });
+    await v2.table('songs').put({
+      id: 'current',
+      document: intermediate,
+      revision: 8,
+      updatedAt: '2026-08-17T10:00:00.000Z',
+    });
+    v2.close();
+
+    const firstOpen = new KalimbaDatabase(name);
+    databases.push(firstOpen);
+    const firstStored = await firstOpen.songs.get('current');
+    const migratedWord = firstStored!.document.song.lines[0].words[0];
+    expect(firstStored).toMatchObject({ revision: 8, updatedAt: '2026-08-17T10:00:00.000Z' });
+    expect(migratedWord.melodyEvents).toHaveLength(6);
+    expect(migratedWord.accompanimentEvents).toHaveLength(1);
+    expect(migratedWord.melodyEvents[0]).toMatchObject({
+      eventUnknown: { nested: ['bleibt'] },
+    });
+    expect(migratedWord.accompanimentEvents[0]).toMatchObject({
+      duration: 2,
+      accompanimentUnknown: true,
+    });
+    expect('events' in migratedWord).toBe(false);
+    firstOpen.close();
+
+    const secondOpen = new KalimbaDatabase(name);
+    const secondStored = await secondOpen.songs.get('current');
+    expect(secondStored).toEqual(firstStored);
+    expect(secondStored!.document.song.lines[0].words[0].accompanimentEvents).toHaveLength(1);
+    secondOpen.close();
   });
 
   it('rolls back the Dexie v1 upgrade if a stored word cannot be migrated', async () => {

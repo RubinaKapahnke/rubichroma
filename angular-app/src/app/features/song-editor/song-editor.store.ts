@@ -14,7 +14,14 @@ import {
   MusicTrackId,
   Pitch,
 } from '../../domain/music-event';
-import { cloneDocument, SongDocument } from '../../domain/song-document';
+import {
+  cloneDocument,
+  projectSongWordEvents,
+  songWordEventsForTrack,
+  SongDocument,
+  SongWord,
+  splitEventsIntoTracks,
+} from '../../domain/song-document';
 import {
   MusicSelectionClipboard,
   MusicSelectionPasteResult,
@@ -137,11 +144,7 @@ export class SongEditorStore {
       return { ok: false, reason: 'unknown-legacy-fragments' };
     }
 
-    const existingEvents = cloneMusicEvents(currentWord.events).map((existing) =>
-      currentWord.events.some((candidate) => candidate.track !== undefined)
-        ? existing
-        : { ...existing, track: 'melody' as const },
-    );
+    const existingEvents = projectSongWordEvents(currentWord);
     const nextEvent = { ...cloneMusicEvents([event])[0], track } as MusicEvent;
     if (hasParallelTineCollision([...existingEvents, nextEvent])) {
       return { ok: false, reason: 'tine-collision' };
@@ -149,10 +152,12 @@ export class SongEditorStore {
 
     const document = cloneDocument(current);
     const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
-    const nextEvents = [...existingEvents, nextEvent];
-    const notation = encodeLegacyNotation(nextEvents);
-    target.events = nextEvents;
-    target.legacyNotation = fidelityForEvents(notation, nextEvents);
+    const previousTrackOrder = trackOrderFor(target);
+    const canonicalEvent = cloneMusicEvents([event])[0];
+    delete canonicalEvent.track;
+    trackEvents(target, track).push(canonicalEvent);
+    target.legacyNotation.trackOrder = [...previousTrackOrder, track];
+    updateWordFidelity(target, encodeLegacyNotation(projectSongWordEvents(target)));
     this.structureHistory.record({ document: current, selection });
     this.lastStructureSelection = { ...selection };
     this.syncHistoryAvailability();
@@ -161,10 +166,15 @@ export class SongEditorStore {
     return { ok: true, selection: { ...selection } };
   }
 
-  removeMusicEvent(selection: SongPosition, eventIndex: number): MusicEventRemovalResult {
+  removeMusicEvent(
+    selection: SongPosition,
+    track: MusicTrackId,
+    eventIndex: number,
+  ): MusicEventRemovalResult {
     const current = this.documentState();
     const currentWord = current?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
-    if (!current || !currentWord || eventIndex < 0 || eventIndex >= currentWord.events.length) {
+    const currentTrackEvents = currentWord ? songWordEventsForTrack(currentWord, track) : [];
+    if (!current || !currentWord || eventIndex < 0 || eventIndex >= currentTrackEvents.length) {
       return { ok: false, reason: 'invalid-selection' };
     }
     if (decodeLegacyNotation(currentWord.legacyNotation.raw).hasUnknownFragments) {
@@ -172,13 +182,10 @@ export class SongEditorStore {
     }
 
     const document = cloneDocument(current);
-    const nextEvents = cloneMusicEvents(
-      currentWord.events.filter((_, index) => index !== eventIndex),
-    );
-    const notation = encodeLegacyNotation(nextEvents);
     const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
-    target.events = nextEvents;
-    target.legacyNotation = fidelityForEvents(notation, nextEvents);
+    removeTrackOrderEntry(target, track, eventIndex);
+    trackEvents(target, track).splice(eventIndex, 1);
+    updateWordFidelity(target, encodeLegacyNotation(projectSongWordEvents(target)));
     this.structureHistory.record({ document: current, selection });
     this.lastStructureSelection = { ...selection };
     this.syncHistoryAvailability();
@@ -189,12 +196,15 @@ export class SongEditorStore {
 
   setMusicEventDuration(
     selection: SongPosition,
+    track: MusicTrackId,
     eventIndex: number,
     durationBeats: number,
   ): MusicEventRemovalResult {
     const current = this.documentState();
     const currentWord = current?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
-    const currentEvent = currentWord?.events[eventIndex];
+    const currentEvent = currentWord
+      ? songWordEventsForTrack(currentWord, track)[eventIndex]
+      : null;
     if (
       !current ||
       !currentWord ||
@@ -211,12 +221,13 @@ export class SongEditorStore {
 
     const document = cloneDocument(current);
     const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
-    const nextEvents = cloneMusicEvents(target.events);
+    const nextEvents = cloneMusicEvents(songWordEventsForTrack(target, track));
     const nextEvent = nextEvents[eventIndex];
     if (nextEvent.kind === 'separator') return { ok: false, reason: 'invalid-selection' };
     nextEvent.duration = durationBeats;
-    target.events = nextEvents;
-    target.legacyNotation = fidelityForEvents(target.legacyNotation.raw, nextEvents);
+    if (track === 'melody') target.melodyEvents = nextEvents;
+    else target.accompanimentEvents = nextEvents;
+    updateWordFidelity(target, target.legacyNotation.raw);
     this.structureHistory.record({ document: current, selection });
     this.lastStructureSelection = { ...selection };
     this.syncHistoryAvailability();
@@ -282,11 +293,21 @@ export class SongEditorStore {
         const target = candidate.song.lines[lineIndex]?.words[wordIndex];
         if (target) {
           target.text = word.text;
-          if (word.notation !== encodeLegacyNotation(target.events, target.legacyNotation)) {
+          const currentEvents = projectSongWordEvents(target);
+          if (word.notation !== encodeLegacyNotation(currentEvents, target.legacyNotation)) {
             const replacement = replaceWithLegacyNotation(word.notation);
-            const events = reconcileEventDurations(target.events, replacement.events);
-            target.events = events;
-            target.legacyNotation = fidelityForEvents(word.notation, events);
+            const events = reconcileEventMetadata(currentEvents, replacement.events);
+            const split = splitEventsIntoTracks(events);
+            target.melodyEvents = split.melodyEvents;
+            target.accompanimentEvents = split.accompanimentEvents;
+            target.legacyNotation = {
+              ...fidelityForEvents(word.notation, events),
+              trackOrder: split.trackOrder,
+              ...(target.legacyNotation.trackMetadataExplicit ||
+              split.accompanimentEvents.length > 0
+                ? { trackMetadataExplicit: true }
+                : {}),
+            };
           }
         }
       });
@@ -364,7 +385,7 @@ export class SongEditorStore {
   }
 }
 
-function reconcileEventDurations(
+function reconcileEventMetadata(
   previousEvents: readonly MusicEvent[],
   nextEvents: readonly MusicEvent[],
 ): MusicEvent[] {
@@ -372,13 +393,47 @@ function reconcileEventDurations(
   return nextEvents.map((event) => {
     const previousIndex = remaining.findIndex((candidate) => sameEventShape(candidate, event));
     const previous = previousIndex < 0 ? undefined : remaining.splice(previousIndex, 1)[0];
-    if (!previous || previous.kind === 'separator' || event.kind === 'separator') return event;
+    if (!previous) return { ...event, track: 'melody' };
+    if (previous.kind === 'separator' || event.kind === 'separator') {
+      return { ...event, track: previous.track ?? 'melody' };
+    }
     return {
       ...event,
       duration: eventDurationInBeats(previous),
       ...(previous.track === undefined ? {} : { track: previous.track }),
     };
   });
+}
+
+function trackEvents(word: SongWord, track: MusicTrackId): MusicEvent[] {
+  return track === 'melody' ? word.melodyEvents : word.accompanimentEvents;
+}
+
+function trackOrderFor(word: SongWord): MusicTrackId[] {
+  return projectSongWordEvents(word).map((event) => event.track ?? 'melody');
+}
+
+function removeTrackOrderEntry(word: SongWord, track: MusicTrackId, trackIndex: number): void {
+  const order = trackOrderFor(word);
+  let seen = -1;
+  const orderIndex = order.findIndex((candidate) => {
+    if (candidate !== track) return false;
+    seen += 1;
+    return seen === trackIndex;
+  });
+  if (orderIndex >= 0) order.splice(orderIndex, 1);
+  word.legacyNotation.trackOrder = order;
+}
+
+function updateWordFidelity(word: SongWord, raw: string): void {
+  const events = projectSongWordEvents(word);
+  const trackMetadataExplicit =
+    word.legacyNotation.trackMetadataExplicit || word.accompanimentEvents.length > 0;
+  word.legacyNotation = {
+    ...fidelityForEvents(raw, events),
+    trackOrder: events.map((event) => event.track ?? 'melody'),
+    ...(trackMetadataExplicit ? { trackMetadataExplicit: true } : {}),
+  };
 }
 
 function sameEventShape(left: MusicEvent, right: MusicEvent): boolean {

@@ -1,6 +1,6 @@
 import { decodeLegacyNotation } from './legacy-notation-codec';
-import { eventDurationInBeats, MusicEvent, musicEventTrack, Pitch } from './music-event';
-import { SongDocument } from './song-document';
+import { eventDurationInBeats, MusicEvent, Pitch } from './music-event';
+import { songWordEventsForTrack, SongDocument } from './song-document';
 import { SongPosition } from './song-structure-editing';
 
 export type PlayerTrackId = 'melody' | 'accompaniment';
@@ -93,42 +93,38 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
     line.words.forEach((word, wordIndex) => {
       const startBeat = beat;
       const eventIds: string[] = [];
-      const hasExplicitTracks = word.events.some((event) => event.track !== undefined);
       const trackOffsets: Record<PlayerTrackId, number> = { melody: 0, accompaniment: 0 };
-      let sequentialOffset = 0;
-      word.events.forEach((event, eventIndex) => {
-        if (event.kind === 'separator') return;
-        const track = musicEventTrack(event);
-        const eventStartBeat = startBeat + (hasExplicitTracks ? trackOffsets[track] : sequentialOffset);
-        const pitches = eventPitches(event);
-        const mappedKeys = pitches.flatMap((pitch) => {
-          const key = keyByPitch.get(pitchKey(pitch));
-          return key ? [key] : [];
+      for (const track of ['melody', 'accompaniment'] as const) {
+        songWordEventsForTrack(word, track).forEach((event, eventIndex) => {
+          if (event.kind === 'separator') return;
+          const eventStartBeat = startBeat + trackOffsets[track];
+          const pitches = eventPitches(event);
+          const mappedKeys = pitches.flatMap((pitch) => {
+            const key = keyByPitch.get(pitchKey(pitch));
+            return key ? [key] : [];
+          });
+          if (mappedKeys.length === 0) return;
+          const durationBeats = durationInBeats(event);
+          const id = `event-${lineIndex}-${wordIndex}-${track}-${eventIndex}`;
+          eventIds.push(id);
+          events.push({
+            id,
+            startBeat: eventStartBeat,
+            durationBeats,
+            lineIndex,
+            wordIndex,
+            pitches: mappedKeys.map((key) => key.pitch),
+            lanes: mappedKeys.map((key) => key.lane),
+            frequencies: mappedKeys.map((key) => frequencyOf(key.pitch)),
+            track,
+            barNumber: Math.floor(eventStartBeat / PLAYER_BEATS_PER_BAR) + 1,
+            laneDurationBeats: mappedKeys.map(() => durationBeats),
+            color: mappedKeys[0].color,
+          });
+          trackOffsets[track] += durationBeats;
         });
-        if (mappedKeys.length === 0) return;
-        const durationBeats = durationInBeats(event);
-        const id = `event-${lineIndex}-${wordIndex}-${eventIndex}`;
-        eventIds.push(id);
-        events.push({
-          id,
-          startBeat: eventStartBeat,
-          durationBeats,
-          lineIndex,
-          wordIndex,
-          pitches: mappedKeys.map((key) => key.pitch),
-          lanes: mappedKeys.map((key) => key.lane),
-          frequencies: mappedKeys.map((key) => frequencyOf(key.pitch)),
-          track,
-          barNumber: Math.floor(eventStartBeat / PLAYER_BEATS_PER_BAR) + 1,
-          laneDurationBeats: mappedKeys.map(() => durationBeats),
-          color: mappedKeys[0].color,
-        });
-        if (hasExplicitTracks) trackOffsets[track] += durationBeats;
-        else sequentialOffset += durationBeats;
-      });
-      beat += hasExplicitTracks
-        ? Math.max(trackOffsets.melody, trackOffsets.accompaniment)
-        : sequentialOffset;
+      }
+      beat += Math.max(trackOffsets.melody, trackOffsets.accompaniment);
       const text = visibleText(word.text);
       const continuesWord = text?.endsWith('-') ?? false;
       words.push({
@@ -155,7 +151,9 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
     ...event,
     laneDurationBeats: event.lanes.map((lane) => {
       const nextStart = orderedEvents
-        .filter((candidate) => candidate.startBeat > event.startBeat && candidate.lanes.includes(lane))
+        .filter(
+          (candidate) => candidate.startBeat > event.startBeat && candidate.lanes.includes(lane),
+        )
         .sort((left, right) => left.startBeat - right.startBeat)[0]?.startBeat;
       return Math.max(0, Math.min(event.durationBeats, (nextStart ?? Infinity) - event.startBeat));
     }),
