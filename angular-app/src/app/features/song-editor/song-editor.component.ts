@@ -657,7 +657,8 @@ export class SongEditorComponent {
 
   private historyFocusTarget(): string | null {
     const target = document.activeElement?.getAttribute('data-testid');
-    return target === 'song-title' || target?.startsWith('word-') ? target : null;
+    if (target === 'song-title' || /^word-\d+-\d+$/.test(target ?? '')) return target ?? null;
+    return null;
   }
 
   private clearSelection(): void {
