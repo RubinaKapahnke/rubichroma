@@ -634,3 +634,75 @@ app-word-editor .split-confirm {
     grid-template-columns: 1fr;
   }
 }
+
+/* Shared, non-layout-reserving tooltips for compact icon actions. */
+.tooltip-action {
+  position: relative;
+}
+
+.tooltip-action::after {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  width: max-content;
+  max-width: 12rem;
+  padding: 0.3rem 0.45rem;
+  pointer-events: none;
+  content: none;
+  opacity: 0;
+  color: #ffffff;
+  border-radius: 0.35rem;
+  background: #342e38;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transform: translate(-50%, -0.2rem);
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+
+.tooltip-action:hover::after,
+.tooltip-action:focus::after {
+  content: attr(data-tooltip);
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-action::after {
+    transition: none;
+  }
+}
+
+app-song-sheet .event-color-swatches {
+  display: flex;
+  height: 0.38rem;
+  margin-bottom: 0.18rem;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+app-song-sheet .event-color-swatches i {
+  flex: 1 1 0;
+}
+
+app-song-sheet .empty-track {
+  display: grid;
+  min-width: 2.25rem;
+  min-height: 1.75rem;
+  place-items: center;
+  color: var(--rc-color-text-muted);
+  border: 1px dashed var(--rc-color-border);
+  border-radius: 0.45rem;
+  font-size: 0.7rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  app-song-sheet
+    .word-card-shell:not(:hover, :focus-within, .is-selected)
+    :is(.word-drag-handle, .word-preview-action) {
+    opacity: 0;
+  }
+}

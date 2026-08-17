@@ -15,19 +15,20 @@
   </div>
   @if (structureHelpVisible()) {
     <section class="sheet-intro" aria-labelledby="song-structure-title" data-testid="sheet-intro">
-      <div>
-        <strong id="song-structure-title">Lied aus Blöcken aufbauen</strong>
-        <p>
-          Beispiel: „Hallo“ ist ein Textblock, ♪ ein Melodieblock. Tippe einen Block zum Bearbeiten
-          an oder lege direkt einen neuen an.
-        </p>
-      </div>
+      <p>
+        <strong id="song-structure-title">{{ selection() ? '2/3' : '1/3' }}</strong>
+        @if (selection()) {
+          Text oder Töne im Inspector bearbeiten. Danach oben „Im Player öffnen“.
+        } @else {
+          Einen Block auswählen, um Text oder Töne zu bearbeiten.
+        }
+      </p>
       <button
         class="dismiss-help-button"
         type="button"
         data-testid="dismiss-structure-help"
-        aria-label="Einstiegshilfe ausblenden"
-        title="Einstiegshilfe ausblenden"
+        aria-label="Kurzhilfe überspringen"
+        title="Kurzhilfe überspringen"
         (click)="dismissStructureHelp()"
       >
         <span aria-hidden="true">×</span>
@@ -40,7 +41,7 @@
       data-testid="show-structure-help"
       (click)="showStructureHelp()"
     >
-      Einstiegshilfe anzeigen
+      ? Hilfe
     </button>
   }
   <button
@@ -76,7 +77,7 @@
         @if (editMode()) {
           <div class="line-primary-actions">
             <span
-              class="line-icon-action drag-handle line-drag-handle"
+              class="line-icon-action drag-handle line-drag-handle tooltip-action"
               role="button"
               tabindex="0"
               draggable="true"
@@ -85,52 +86,64 @@
                 'Zeile ' + (lineIndex + 1) + ' verschieben; Pfeil hoch oder runter'
               "
               title="Zeile ziehen · Pfeil hoch/runter"
+              data-tooltip="Zeile verschieben"
               (dragstart)="startLineDrag($event, lineIndex)"
               (dragend)="clearDragState()"
               (keydown)="moveLineWithKeyboard($event, lineIndex)"
               >↕</span
             >
             <button
-              class="line-icon-action"
+              class="line-icon-action tooltip-action"
               type="button"
               [attr.data-testid]="'line-preview-' + lineIndex"
               [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' anhören'"
               title="Zeile anhören"
+              data-tooltip="Zeile vorhören"
               (click)="previewLine($event, lineIndex)"
             >
               <span aria-hidden="true">▶</span>
             </button>
-            <button
-              class="add-line-button"
-              type="button"
-              [attr.data-testid]="'line-add-' + lineIndex"
-              [attr.aria-label]="'Zeile nach Zeile ' + (lineIndex + 1) + ' einfügen'"
-              title="Zeile danach einfügen"
-              (click)="runStructureAction({ kind: 'insert-line', lineIndex })"
-            >
-              <span aria-hidden="true">+</span>
-            </button>
-            <button
-              class="line-icon-action"
-              type="button"
-              [attr.data-testid]="'line-duplicate-' + lineIndex"
-              [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' duplizieren'"
-              title="Zeile duplizieren"
-              (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"
-            >
-              <span aria-hidden="true">⧉</span>
-            </button>
-            <button
-              class="line-icon-action destructive"
-              type="button"
-              [attr.data-testid]="'line-delete-' + lineIndex"
-              [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' löschen'"
-              title="Zeile löschen"
-              [disabled]="lines().length === 1"
-              (click)="runStructureAction({ kind: 'delete-line', lineIndex })"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
+            <details class="line-actions" [attr.data-testid]="'line-actions-' + lineIndex">
+              <summary
+                class="line-icon-action tooltip-action"
+                [attr.aria-label]="'Weitere Aktionen für Zeile ' + (lineIndex + 1)"
+                title="Weitere Zeilenaktionen"
+                data-tooltip="Weitere Aktionen"
+              >
+                <span aria-hidden="true">⋯</span>
+              </summary>
+              <div class="line-actions-menu">
+                <button
+                  type="button"
+                  [attr.data-testid]="'line-add-' + lineIndex"
+                  [attr.aria-label]="'Zeile nach Zeile ' + (lineIndex + 1) + ' einfügen'"
+                  title="Zeile danach einfügen"
+                  (click)="runStructureAction({ kind: 'insert-line', lineIndex })"
+                >
+                  Zeile danach einfügen
+                </button>
+                <button
+                  type="button"
+                  [attr.data-testid]="'line-duplicate-' + lineIndex"
+                  [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' duplizieren'"
+                  title="Zeile duplizieren"
+                  (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"
+                >
+                  Zeile duplizieren
+                </button>
+                <button
+                  class="destructive"
+                  type="button"
+                  [attr.data-testid]="'line-delete-' + lineIndex"
+                  [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' löschen'"
+                  title="Zeile löschen"
+                  [disabled]="lines().length === 1"
+                  (click)="runStructureAction({ kind: 'delete-line', lineIndex })"
+                >
+                  Zeile löschen
+                </button>
+              </div>
+            </details>
           </div>
         }
       </div>
@@ -138,6 +151,7 @@
         @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
           <div
             class="word-card-shell"
+            [class.is-selected]="isSelected(lineIndex, wordIndex)"
             [class.is-block-drop-target]="isBlockDropTarget(lineIndex, wordIndex)"
             [class.drop-after]="isBlockDropTarget(lineIndex, wordIndex) && blockDropAfter()"
             (dragover)="markBlockDrop($event, lineIndex, wordIndex)"
@@ -145,7 +159,7 @@
           >
             @if (editMode()) {
               <span
-                class="word-drag-handle drag-handle"
+                class="word-drag-handle drag-handle tooltip-action"
                 role="button"
                 tabindex="0"
                 draggable="true"
@@ -154,6 +168,7 @@
                   wordLabel(word, lineIndex, wordIndex) + ' verschieben; Alt plus Pfeiltasten'
                 "
                 title="Block ziehen · Alt+Pfeiltasten"
+                data-tooltip="Block verschieben"
                 (dragstart)="startBlockDrag($event, lineIndex, wordIndex)"
                 (dragend)="clearDragState()"
                 (keydown)="moveBlockWithKeyboard($event, lineIndex, wordIndex)"
@@ -169,7 +184,7 @@
               [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
               [attr.aria-pressed]="editMode() ? isSelected(lineIndex, wordIndex) : null"
               [attr.aria-label]="
-                wordLabel(word, lineIndex, wordIndex) +
+                wordAccessibleLabel(word, lineIndex, wordIndex) +
                 ', Zeile ' +
                 (lineIndex + 1) +
                 ', Block ' +
@@ -184,30 +199,74 @@
               (click)="selectWord($event, lineIndex, wordIndex)"
               (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
             >
-              <span class="event-preview" aria-hidden="true">
-                @for (event of wordEvents(word); track $index) {
-                  <span [class.is-chord]="event.kind === 'chord'">
-                    {{ eventLabel(event) }}
-                  </span>
-                } @empty {
-                  <span class="empty-event">+</span>
-                }
-              </span>
               <strong>
                 @if (isMelody(lineIndex, wordIndex)) {
                   <span class="melody-marker" aria-hidden="true">♪</span>
                 }
                 {{ wordLabel(word, lineIndex, wordIndex) }}
               </strong>
+              <span class="track-previews" aria-hidden="true">
+                @for (track of trackOptions; track track) {
+                  <span
+                    class="track-preview"
+                    [class.is-accompaniment]="track === 'accompaniment'"
+                    [attr.data-testid]="'sheet-track-' + lineIndex + '-' + wordIndex + '-' + track"
+                  >
+                    <small>{{ trackLabel(track) }}</small>
+                    <span class="event-chips">
+                      @for (
+                        event of eventsForTrack(lineIndex, wordIndex, track);
+                        track $index;
+                        let eventIndex = $index
+                      ) {
+                        <span
+                          class="event-chip"
+                          [class.is-chord]="event.kind === 'chord'"
+                          [class.is-separator]="event.kind === 'separator'"
+                          [style.--event-color]="eventPrimaryColor(event)"
+                          [style.--event-ink]="eventInkColor(event)"
+                          [attr.data-profile-color]="eventPrimaryColor(event)"
+                          [attr.data-testid]="
+                            'sheet-event-' +
+                            lineIndex +
+                            '-' +
+                            wordIndex +
+                            '-' +
+                            track +
+                            '-' +
+                            eventIndex
+                          "
+                        >
+                          @if (event.kind === 'chord') {
+                            <span class="event-color-swatches">
+                              @for (color of eventColors(event); track $index) {
+                                <i
+                                  [style.background-color]="color"
+                                  [attr.data-profile-color]="color"
+                                ></i>
+                              }
+                            </span>
+                          }
+                          <b>{{ eventLabel(event) }}</b>
+                          <small>{{ eventDurationLabel(event) }}</small>
+                        </span>
+                      } @empty {
+                        <span class="empty-track">–</span>
+                      }
+                    </span>
+                  </span>
+                }
+              </span>
             </button>
             @if (editMode()) {
               <button
-                class="word-preview-action"
+                class="word-preview-action tooltip-action"
                 type="button"
                 [attr.data-testid]="'word-preview-' + lineIndex + '-' + wordIndex"
                 [attr.aria-label]="wordLabel(word, lineIndex, wordIndex) + ' anhören'"
                 title="Block anhören"
-                [disabled]="!hasPlayableEvents(word)"
+                data-tooltip="Block vorhören"
+                [disabled]="!hasPlayableEvents(lineIndex, wordIndex)"
                 (click)="previewWord($event, lineIndex, wordIndex)"
               >
                 <span aria-hidden="true">▶</span>

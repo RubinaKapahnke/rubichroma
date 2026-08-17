@@ -196,7 +196,25 @@ test('renders the canonical profile colors unchanged across editor and player su
   const targetColors = ['#2E7975', '#3CB8A6', '#A8DDBF', '#D41C33', '#F78853'];
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
+  for (const color of ['#2E7975', '#3CB8A6', '#D41C33', '#F78853']) {
+    const sheetColorSurface = page.locator(`[data-profile-color="${color}"]`).first();
+    await expect(sheetColorSurface).toBeVisible();
+    expect(
+      await sheetColorSurface.evaluate((element) => getComputedStyle(element).backgroundColor),
+    ).toBe(hexToRgb(color));
+  }
   await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await expect(page.getByTestId('sheet-track-0-0-melody')).toContainText('C · 1');
+  await expect(page.getByTestId('sheet-track-0-0-accompaniment')).toContainText('E · 3 + G · 5');
+  for (const color of ['#26562A', '#D41C33']) {
+    const accompanimentSwatch = page
+      .getByTestId('sheet-track-0-0-accompaniment')
+      .locator(`.event-color-swatches [data-profile-color="${color}"]`);
+    await expect(accompanimentSwatch).toBeVisible();
+    expect(
+      await accompanimentSwatch.evaluate((element) => getComputedStyle(element).backgroundColor),
+    ).toBe(hexToRgb(color));
+  }
   await page.getByTestId('word-card-0-0').click();
 
   for (const color of targetColors) {

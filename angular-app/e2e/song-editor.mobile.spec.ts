@@ -99,8 +99,11 @@ test('keeps compact line actions available and dismisses the mobile inspector sa
 }) => {
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
+  const lineActions = page.getByTestId('line-actions-0').locator(':scope > summary');
+  await lineActions.tap();
   await expect(page.getByTestId('line-duplicate-0')).toBeVisible();
   await expect(page.getByTestId('line-delete-0')).toBeDisabled();
+  await lineActions.tap();
   await page.getByTestId('word-card-0-0').tap();
   await expect(page.getByTestId('word-editor')).toBeVisible();
   await page.getByText('Musikereignisse', { exact: true }).tap();
