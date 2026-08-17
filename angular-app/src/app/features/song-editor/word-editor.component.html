@@ -5,6 +5,17 @@
       <h2 id="word-editor-title">Wort und Töne bearbeiten</h2>
     </div>
     <div class="inspector-header-actions">
+      <button
+        class="preview-action"
+        type="button"
+        data-testid="block-preview-editor"
+        aria-label="Aktuellen Block anhören"
+        title="Aktuellen Block anhören"
+        [disabled]="events().length === 0"
+        (click)="blockPreviewRequested.emit()"
+      >
+        <span aria-hidden="true">▶</span> Block
+      </button>
       <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
         <button
           class="history-action"
@@ -160,6 +171,20 @@
                     [style.--duration-beats]="eventDurationBeats(entry.event)"
                     [attr.data-duration-beats]="eventDurationBeats(entry.event)"
                   >
+                    @if (entry.event.kind !== 'separator') {
+                      <button
+                        class="event-preview-action"
+                        type="button"
+                        [attr.data-testid]="'event-preview-' + entry.index"
+                        [attr.aria-label]="
+                          eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' anhören'
+                        "
+                        title="Ereignis anhören"
+                        (click)="previewEvent(entry.index)"
+                      >
+                        <span aria-hidden="true">▶</span>
+                      </button>
+                    }
                     <button
                       class="event-remove-action"
                       type="button"
@@ -238,6 +263,15 @@
         </fieldset>
       </div>
       <p class="key-help">Umrandet = im Block vorhanden. Pink = für den neuen Akkord ausgewählt.</p>
+      <label class="key-audition-option">
+        <input
+          type="checkbox"
+          data-testid="audition-keys"
+          [checked]="auditionKeys()"
+          (change)="auditionKeys.set($any($event.target).checked)"
+        />
+        Ton beim Klick auf Zunge anhören
+      </label>
       <p class="key-scroll-hint" id="key-scroll-hint">
         Nach Spielhand gruppiert. Auf kleinen Bildschirmen je Hand seitlich wischen.
       </p>

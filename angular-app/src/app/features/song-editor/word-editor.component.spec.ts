@@ -37,7 +37,15 @@ describe('word editor syllable split', () => {
     fixture.detectChanges();
 
     const emitted: unknown[] = [];
+    const previewedEvents: number[] = [];
+    const previewedPitches: unknown[] = [];
     fixture.componentInstance.structureAction.subscribe((action) => emitted.push(action));
+    fixture.componentInstance.musicEventPreviewRequested.subscribe((index) =>
+      previewedEvents.push(index),
+    );
+    fixture.componentInstance.pitchPreviewRequested.subscribe((pitch) =>
+      previewedPitches.push(pitch),
+    );
     fixture.componentInstance.setSplitIndex('4');
     fixture.componentInstance.setFirstSplitEventCount('1');
 
@@ -48,5 +56,18 @@ describe('word editor syllable split', () => {
     expect(emitted).toEqual([]);
     fixture.componentInstance.splitSyllable();
     expect(emitted).toEqual([{ kind: 'split-block', splitIndex: 4, firstEventCount: 1 }]);
+
+    fixture.componentInstance.previewEvent(1);
+    fixture.componentInstance.auditionKeys.set(true);
+    fixture.componentInstance.handleKey({
+      id: 'c',
+      value: '1',
+      letter: 'C',
+      hand: 'R',
+      color: '#2E7975',
+      pitch: { degree: 1, octave: 0 },
+    });
+    expect(previewedEvents).toEqual([1]);
+    expect(previewedPitches).toEqual([{ degree: 1, octave: 0 }]);
   });
 });

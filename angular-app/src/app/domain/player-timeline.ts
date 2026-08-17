@@ -310,7 +310,7 @@ function durationInBeats(event: Exclude<MusicEvent, { kind: 'separator' }>): num
   return eventDurationInBeats(event);
 }
 
-function frequencyOf(pitch: Pitch): number {
+export function frequencyOf(pitch: Pitch): number {
   const semitones = DEGREE_SEMITONES[pitch.degree] + pitch.octave * 12;
   return CONCERT_C4 * 2 ** (semitones / 12);
 }

@@ -61,6 +61,16 @@
         <span class="line-number">{{ lineIndex + 1 }}</span>
         <div class="line-primary-actions">
           <button
+            class="line-icon-action"
+            type="button"
+            [attr.data-testid]="'line-preview-' + lineIndex"
+            [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' anhören'"
+            title="Zeile anhören"
+            (click)="previewLine($event, lineIndex)"
+          >
+            <span aria-hidden="true">▶</span>
+          </button>
+          <button
             class="add-line-button"
             type="button"
             [attr.data-testid]="'line-add-' + lineIndex"
@@ -76,45 +86,58 @@
       </div>
       <div class="words">
         @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
-          <button
-            class="word-card"
-            type="button"
-            [class.is-selected]="isSelected(lineIndex, wordIndex)"
-            [class.is-active]="isActive(lineIndex, wordIndex)"
-            [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
-            [attr.aria-pressed]="isSelected(lineIndex, wordIndex)"
-            [attr.aria-label]="
-              wordLabel(word, lineIndex, wordIndex) +
-              ', Zeile ' +
-              (lineIndex + 1) +
-              ', Block ' +
-              (wordIndex + 1) +
-              ', bearbeiten'
-            "
-            (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
-            (pointermove)="trackLongPress($event)"
-            (pointerup)="finishLongPress($event)"
-            (pointercancel)="finishLongPress($event)"
-            (contextmenu)="preventTouchContextMenu($event)"
-            (click)="selectWord($event, lineIndex, wordIndex)"
-            (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
-          >
-            <span class="event-preview" aria-hidden="true">
-              @for (event of wordEvents(word); track $index) {
-                <span [class.is-chord]="event.kind === 'chord'">
-                  {{ eventLabel(event) }}
-                </span>
-              } @empty {
-                <span class="empty-event">+</span>
-              }
-            </span>
-            <strong>
-              @if (isMelody(lineIndex, wordIndex)) {
-                <span class="melody-marker" aria-hidden="true">♪</span>
-              }
-              {{ wordLabel(word, lineIndex, wordIndex) }}
-            </strong>
-          </button>
+          <div class="word-card-shell">
+            <button
+              class="word-card"
+              type="button"
+              [class.is-selected]="isSelected(lineIndex, wordIndex)"
+              [class.is-active]="isActive(lineIndex, wordIndex)"
+              [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
+              [attr.aria-pressed]="isSelected(lineIndex, wordIndex)"
+              [attr.aria-label]="
+                wordLabel(word, lineIndex, wordIndex) +
+                ', Zeile ' +
+                (lineIndex + 1) +
+                ', Block ' +
+                (wordIndex + 1) +
+                ', bearbeiten'
+              "
+              (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
+              (pointermove)="trackLongPress($event)"
+              (pointerup)="finishLongPress($event)"
+              (pointercancel)="finishLongPress($event)"
+              (contextmenu)="preventTouchContextMenu($event)"
+              (click)="selectWord($event, lineIndex, wordIndex)"
+              (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
+            >
+              <span class="event-preview" aria-hidden="true">
+                @for (event of wordEvents(word); track $index) {
+                  <span [class.is-chord]="event.kind === 'chord'">
+                    {{ eventLabel(event) }}
+                  </span>
+                } @empty {
+                  <span class="empty-event">+</span>
+                }
+              </span>
+              <strong>
+                @if (isMelody(lineIndex, wordIndex)) {
+                  <span class="melody-marker" aria-hidden="true">♪</span>
+                }
+                {{ wordLabel(word, lineIndex, wordIndex) }}
+              </strong>
+            </button>
+            <button
+              class="word-preview-action"
+              type="button"
+              [attr.data-testid]="'word-preview-' + lineIndex + '-' + wordIndex"
+              [attr.aria-label]="wordLabel(word, lineIndex, wordIndex) + ' anhören'"
+              title="Block anhören"
+              [disabled]="!hasPlayableEvents(word)"
+              (click)="previewWord($event, lineIndex, wordIndex)"
+            >
+              <span aria-hidden="true">▶</span>
+            </button>
+          </div>
         }
       </div>
     </section>
