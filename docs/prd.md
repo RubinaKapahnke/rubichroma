@@ -210,7 +210,8 @@ Der erste fachliche Schwerpunkt bleibt die Kalimba. Musikmodell, Timeline und Pl
 - Stopp setzt die Position bei aktivem Loop an dessen Anfang, sonst an den Stückanfang zurück.
 - Am regulären Stückende bleibt die Position stehen; eine klar erkennbare Aktion **Wiederholen** startet erneut. Es gibt keinen automatischen Neustart.
 - Lautstärke und aktuelle Position sind jederzeit sichtbar beziehungsweise steuerbar.
-- Jedes Stück besitzt ein festgelegtes Originaltempo. Nutzer verändern davon getrennt die relative Übungsgeschwindigkeit über typische Schnellwerte wie 50 %, 75 % und 100 % sowie einen freien Regler.
+- Jedes Stück besitzt ein festgelegtes Originaltempo. Nutzer verändern davon getrennt die Übungsgeschwindigkeit über Presets und einen freien Regler. Anzeige und Eingabe lassen sich zwischen BPM und Prozent des Originaltempos umschalten; beim Öffnen ist BPM der Standard. Aktueller Wert, Presets und Regler sind in der gewählten Einheit eindeutig beschriftet.
+- Der Einheitenwechsel rechnet nur die Darstellung und Eingabewerte um. Eine kanonische interne Tempodarstellung verhindert, dass Rundung beim wiederholten Wechsel zwischen BPM und Prozent die reale Wiedergabegeschwindigkeit schleichend verändert.
 - Eine Geschwindigkeitsänderung wirkt während laufender Wiedergabe ohne Positionsverlust; bereits klingende und neu geplante Ereignisse bleiben musikalisch sauber.
 - Notenlängen, Pausen und gleichzeitig klingende Töne beziehungsweise Akkorde werden korrekt wiedergegeben.
 - Mehrere musikalische Ebenen wie Melodie und Begleitung gehören zum Zielbild. Sie lassen sich später einzeln ein- und ausschalten, in der Lautstärke regeln und solo schalten.
@@ -308,6 +309,7 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - Ein Stück mit Tönen, Akkorden, Pausen und unterschiedlichen Dauern bleibt über Start, Pause, Fortsetzen, Tempoänderung und Stopp hör- und sichtbar synchron.
 - Freie Playerflächen toggeln per Klick beziehungsweise Tap genau einmal zwischen Wiedergabe und Pause; interaktive Controls lösen nur ihre eigene Aktion aus. Die Leertaste toggelt bei freiem Playerfokus ohne Seitenscrollen, aber nicht in Eingabe- oder Auswahlelementen.
 - Eine Änderung der Übungsgeschwindigkeit verändert weder Originaltempo noch Lieddaten und verliert die aktuelle musikalische Position nicht.
+- Beim Umschalten zwischen BPM und Prozent bleiben reale Wiedergabegeschwindigkeit und Transportposition unverändert. Auch wiederholtes Hin- und Herschalten erzeugt durch Rundung keine Tempodrift; Presets und Regler sind in beiden Einheiten eindeutig.
 - Ein Nutzer springt während laufender beziehungsweise pausierter Wiedergabe über Timeline und Note; der Player behält den vorherigen Wiedergabestatus bei.
 - Derselbe Bereich lässt sich über Notenauswahl und Timeline-Griffe einstellen. Mehrere Loop-Durchläufe bleiben ohne zeitliche Drift und spielen kein Ereignis außerhalb der Auswahl an.
 - Nach erneutem Öffnen sind die bestätigten stückbezogenen Einstellungen und der letzte Loop-Bereich vorhanden, der Loop läuft aber nicht automatisch an.
