@@ -311,16 +311,19 @@ app-song-editor .player-action {
 
 @media (max-width: 600px) {
   app-song-editor .topbar {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    width: 100%;
     min-height: 3.5rem;
     gap: 0.35rem;
-    padding: 0.35rem 0.5rem;
+    padding-block: max(0.35rem, env(safe-area-inset-top)) 0.35rem;
+    padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right));
     white-space: normal;
   }
 
   app-song-editor .topbar .brand-lockup {
     min-width: 0;
-    flex: 1 1 auto;
   }
 
   app-song-editor .topbar .spacer {
@@ -333,11 +336,11 @@ app-song-editor .player-action {
 
   app-song-editor .topbar .save-state {
     width: auto;
-    max-width: 6.5rem;
+    max-width: 6.25rem;
     min-height: var(--rc-control-min-size);
-    flex: 0 1 auto;
     justify-content: center;
     text-align: center;
+    white-space: nowrap;
   }
 
   app-song-editor .save-state-long {
@@ -354,8 +357,12 @@ app-song-editor .player-action {
     white-space: normal;
   }
 
+  .theme-control {
+    min-width: 0;
+  }
+
   .theme-control select {
-    width: 5.5rem;
+    width: 5.25rem;
     min-width: 0;
   }
 
@@ -430,6 +437,33 @@ app-song-editor .player-action {
   app-song-editor .player-action {
     width: 100%;
     margin-inline-start: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  app-song-editor .topbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-song-editor .topbar .brand-lockup {
+    grid-column: 1 / -1;
+  }
+
+  app-song-editor .topbar .theme-control {
+    max-width: 100%;
+    justify-self: end;
+  }
+
+  app-song-editor .topbar .theme-control select {
+    max-width: 100%;
+  }
+
+  app-song-editor .topbar .save-state {
+    grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+    justify-self: end;
+    white-space: normal;
   }
 }
 
