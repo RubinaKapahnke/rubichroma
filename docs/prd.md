@@ -255,9 +255,11 @@ Für die Laufnotation gilt:
 Für die Kalimba gilt in Flow:
 
 - Alle Zungen des persönlichen Instrumentprofils erscheinen als feste Spuren in exakt der physischen Links-rechts-Anordnung. Sie werden nicht nach Tonhöhe umsortiert.
-- Die sichtbaren Zungen sind als Instrumentabbildung eindeutig erkennbar: metallische, unterschiedlich lange Zungen mit kalimbatypischer gerundeter Spielfläche statt gleichförmiger Tasten oder abstrakter Rechtecke.
+- Die sichtbaren Zungen sind als Instrumentabbildung eindeutig erkennbar: metallische, unterschiedlich lange Zungen mit kalimbatypischer Form statt gleichförmiger Tasten oder abstrakter Rechtecke. Das oben eingespannte Ende ist gerade; das unten liegende freie Spielende ist abgerundet.
 - Tonbuchstabe und Kalimba-Zahl beziehungsweise Oktavmarkierung stehen wie eine Prägung oder aufgedruckte Instrumentbeschriftung direkt auf der jeweiligen Zunge. Die Beschriftung bleibt auch bei abgeschwächter oder ausgeschalteter Farbhilfe lesbar.
 - Im Stück unbenutzte Zungen bleiben zur räumlichen Orientierung sichtbar, aber stark zurückgenommen.
+- Die aktuell zu spielende Zunge wird kräftig hervorgehoben; die Zunge des nächsten Ereignisses wird gleichzeitig schwächer vorangekündigt. Vorschau und aktive Markierung bleiben auch ohne Farbe durch mindestens ein weiteres Merkmal unterscheidbar.
+- Die kräftige Hervorhebung ist an den Einsatz und eine fachlich sinnvolle kurze sichtbare Dauer des aktuellen Ereignisses gebunden und verschwindet danach zuverlässig. Jedes neue Ereignis löst auf seiner Zunge einen klar erkennbaren neuen Impuls aus, auch wenn dieselbe Zunge unmittelbar zuvor bereits durch einen Akkord oder ein anderes Ereignis markiert war.
 - Der Vorschauzeitraum basiert auf musikalischer statt realer Zeit. Zwei Takte sind der bestätigte Ausgangspunkt; ob weitere Horizonte wählbar werden, ist noch offen.
 - Kommende Notenbalken erscheinen oben und laufen nach unten zur festen Anschlaglinie. Die darunter sichtbare Zunge reagiert beim Auftreffen.
 - Die Vorderkante eines Notenbalkens markiert den Einsatz, seine Länge in Bewegungsrichtung die Haltedauer und sein Ende das Loslassen.
@@ -302,6 +304,7 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - Die Laufnotation bewegt Ereignisse von rechts nach links zu einer festen Spiellinie; aktive Note, Akkord und Pause bleiben auch bei abgeschwächter oder ausgeschalteter Farbhilfe eindeutig erkennbar.
 - Die spätere Flow-Ansicht bewegt Ereignisse von oben nach unten auf die physische Zungenanordnung zu und bildet Einsatz, Haltedauer, Loslassen, Akkorde und Pausen korrekt ab.
 - Die Instrumentdarstellung ist ohne zusätzliche Erklärung als 17-Zungen-Kalimba erkennbar; Zungenlängen, Metallcharakter, reale Anordnung und direkt aufgebrachte Ton-/Zahlbeschriftung unterstützen die Zuordnung.
+- Aktuelle und nächste Zunge sind als starke beziehungsweise schwächere Markierung unterscheidbar. Die aktive Markierung endet zuverlässig, und zwei aufeinanderfolgende Ereignisse derselben Zunge bleiben als getrennte Einsätze sichtbar, einschließlich des Übergangs von Akkord zu Melodie.
 - Der Liedtext läuft synchron mit; aktuelles Wort beziehungsweise Textstück, vorauslesbare nächste Zeile und bereits gespielter Text bleiben zur musikalischen Position passend erkennbar.
 - Ein Wechsel zwischen Laufnotation und Flow unterbricht die Wiedergabe nicht und bewahrt Position, Tempo, Loop, Farbhilfe und Ebenenzustand.
 - Die Playeroberfläche bleibt als zusammenhängende Einheit erkennbar; sekundäre Loop- und Mixersteuerungen verdrängen die aktive Visualisierung nicht.
