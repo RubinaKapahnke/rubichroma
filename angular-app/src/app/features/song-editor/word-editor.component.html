@@ -168,6 +168,105 @@
         <h3 id="events-title">Musikereignisse</h3>
         <span data-testid="event-count">{{ eventCountLabel() }}</span>
       </div>
+      <div class="music-grid-toolbar">
+        <span><strong>Tastaturraster</strong> · {{ gridStatus() }}</span>
+        <span class="duration-choices"
+          >Notenwert-Kürzel: Y Ganze · X Halbe · C Viertel · V Achtel · B Sechzehntel</span
+        >
+      </div>
+      <div
+        class="music-grid"
+        role="grid"
+        tabindex="0"
+        data-testid="music-grid"
+        aria-label="Musikraster für Melodie und Begleitung"
+        aria-describedby="music-grid-help music-grid-status"
+        (keydown)="handleMusicGridKeydown($event)"
+      >
+        <span id="music-grid-status" class="visually-hidden" aria-live="polite">{{
+          gridStatus()
+        }}</span>
+        @for (track of trackOptions; track track) {
+          <div
+            class="music-grid-row"
+            role="row"
+            [class.is-active]="activeTrack() === track"
+            [attr.data-testid]="'music-grid-row-' + track"
+          >
+            <span class="music-grid-row-label" role="rowheader">{{ trackLabel(track) }}</span>
+            <div class="music-grid-cells" [style.grid-template-columns]="gridTemplateColumns()">
+              @for (slot of gridSlots(); track slot) {
+                <span
+                  class="music-grid-cell"
+                  role="gridcell"
+                  [class.is-beat]="slot % 4 === 0"
+                  [class.is-bar]="slot % 16 === 0"
+                  [class.is-cursor]="isGridCursor(track, slot)"
+                  [class.is-selected]="isGridSlotSelected(track, slot)"
+                  [attr.aria-selected]="isGridSlotSelected(track, slot)"
+                  [attr.aria-label]="trackLabel(track) + ', Rasterposition ' + (slot + 1)"
+                  (click)="focusGridSlot($event, track, slot)"
+                ></span>
+              }
+              @for (entry of gridEvents(track); track entry.eventIndex) {
+                <span
+                  class="music-grid-event"
+                  [class.is-chord]="entry.event.kind === 'chord'"
+                  [style.grid-column]="entry.startSlot + 1 + ' / span ' + entry.slotCount"
+                  [attr.data-testid]="'music-grid-event-' + track + '-' + entry.eventIndex"
+                  [attr.aria-label]="
+                    eventKindLabel(entry.event) +
+                    ' ' +
+                    eventLabel(entry.event) +
+                    ', ' +
+                    eventDurationLabel(entry.event)
+                  "
+                >
+                  <span class="event-color-strip" aria-hidden="true">
+                    @for (color of eventColors(entry.event); track $index) {
+                      <i [style.background-color]="color"></i>
+                    }
+                  </span>
+                  <strong>{{ eventLabel(entry.event) }}</strong>
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      <div
+        class="keyboard-reference"
+        aria-label="Deutsche Referenztasten im Zick-Zack-Layout: Q W E A S D F G H J K L Ö I O P Ü; alternativ 1 bis 9; 0 löscht"
+      >
+        <strong>Deutsche Referenztasten</strong>
+        <span class="reference-key-row reference-key-row-top" aria-hidden="true">
+          <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><i></i><i></i><i></i><i></i><kbd>I</kbd><kbd>O</kbd
+          ><kbd>P</kbd><kbd>Ü</kbd>
+        </span>
+        <span class="reference-key-row reference-key-row-home" aria-hidden="true">
+          <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd
+          ><kbd>K</kbd><kbd>L</kbd><kbd>Ö</kbd>
+        </span>
+        <small>Alternativ 1–9 · 0 löscht</small>
+      </div>
+      <details class="music-grid-help">
+        <summary>Kürzelhilfe fürs Raster</summary>
+        <div id="music-grid-help" class="shortcut-help">
+          <p><strong>Fokus:</strong> Erst ins Raster klicken. Tab und Shift+Tab bleiben nativ.</p>
+          <p>
+            <strong>Navigation:</strong> Pfeile · Alt+←/→ Ereignis · Strg/Cmd+←/→ Takt-/Blockgrenze
+            · Shift erweitert Auswahl.
+          </p>
+          <p>
+            <strong>Eingabe:</strong> Referenztaste oder 1–9 setzt/ersetzt · 0/Entf löscht ·
+            Notenlänge wählen mit Y/X/C/V/B (4/2/1/0,5/0,25 Schläge).
+          </p>
+          <p>
+            <strong>Akkord:</strong> In Begleitung Alt+Ton starten, weitere Töne umschalten, Enter
+            bestätigen, Escape abbrechen.
+          </p>
+        </div>
+      </details>
       <div class="track-rows">
         @for (track of trackOptions; track track) {
           <section
@@ -239,8 +338,11 @@
                             setEventDuration(track, entry.trackIndex, $any($event.target).value)
                           "
                         >
+                          <option value="0.25">¼ Schlag</option>
+                          <option value="0.5">½ Schlag</option>
                           <option value="1">1 Schlag</option>
                           <option value="2">2 Schläge</option>
+                          <option value="4">4 Schläge</option>
                         </select>
                       </label>
                     } @else {
@@ -282,6 +384,7 @@
               type="radio"
               name="insert-mode"
               value="chord"
+              [disabled]="activeTrack() !== 'accompaniment'"
               [checked]="insertMode() === 'chord'"
               (change)="setInsertMode('chord')"
             />

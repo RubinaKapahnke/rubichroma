@@ -793,6 +793,24 @@ export class SongEditorComponent {
     this.focusSelection(result.selection);
   }
 
+  replaceMusicTracks(replacements: Partial<Record<MusicTrackId, readonly MusicEvent[]>>): void {
+    const selection = this.selection();
+    if (!selection) return;
+    const result = this.store.replaceMusicTracks(selection, replacements);
+    if (!result.ok) {
+      this.actionNotice.set(
+        result.reason === 'tine-collision'
+          ? 'Diese Änderung würde eine neue Doppelbelegung derselben Zunge erzeugen.'
+          : result.reason === 'unknown-legacy-fragments'
+            ? 'Unbekannte Legacy-Fragmente verhindern die sichere Rasterbearbeitung.'
+            : 'Das Musikraster konnte nicht geändert werden.',
+      );
+      return;
+    }
+    this.setSingleSelection(result.selection, this.store.document() ?? undefined);
+    this.actionNotice.set('Musikraster geändert');
+  }
+
   setMusicEventDuration(request: {
     track: MusicTrackId;
     eventIndex: number;

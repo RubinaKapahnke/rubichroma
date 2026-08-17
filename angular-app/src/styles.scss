@@ -946,6 +946,191 @@ app-word-editor .word-editor .history-action {
   min-width: 2.5rem;
   height: 2.5rem;
 }
+
+app-word-editor {
+  .music-grid-toolbar,
+  .keyboard-reference,
+  .shortcut-help {
+    color: var(--rc-color-text-muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .music-grid-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.35rem 0.75rem;
+    margin-top: 0.65rem;
+  }
+
+  .duration-choices {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .music-grid {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+    margin-top: 0.45rem;
+    padding: 0.5rem;
+    overflow-x: auto;
+    border: 2px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface-subtle);
+    outline: none;
+    scroll-padding-inline: 5rem;
+
+    &:focus-visible {
+      border-color: var(--rc-color-focus);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--rc-color-focus) 28%, transparent);
+    }
+  }
+
+  .music-grid-row {
+    display: grid;
+    min-width: 40rem;
+    grid-template-columns: 6.5rem minmax(32rem, 1fr);
+    align-items: stretch;
+
+    &.is-active .music-grid-row-label {
+      color: var(--rc-color-primary-text);
+      background: var(--rc-color-primary-container);
+      font-weight: 800;
+    }
+  }
+
+  .music-grid-row-label {
+    display: flex;
+    align-items: center;
+    padding-inline: 0.45rem;
+    border: 1px solid var(--rc-color-border);
+    border-radius: 0.35rem 0 0 0.35rem;
+    font-size: 0.72rem;
+  }
+
+  .music-grid-cells {
+    position: relative;
+    display: grid;
+    min-height: 3rem;
+  }
+
+  .music-grid-cell {
+    position: relative;
+    min-width: 1.1rem;
+    border-right: 1px solid color-mix(in srgb, var(--rc-color-border) 45%, transparent);
+    background: var(--rc-color-surface);
+    cursor: text;
+
+    &.is-beat {
+      border-left: 1px solid var(--rc-color-border);
+    }
+    &.is-bar {
+      border-left: 2px solid var(--rc-color-text-muted);
+    }
+    &.is-selected {
+      background: color-mix(in srgb, var(--rc-color-primary) 22%, var(--rc-color-surface));
+      box-shadow: inset 0 -0.25rem 0 var(--rc-color-primary);
+    }
+    &.is-cursor::after {
+      position: absolute;
+      z-index: 3;
+      top: 0;
+      bottom: 0;
+      left: -1px;
+      width: 2px;
+      background: var(--rc-color-focus);
+      content: '';
+    }
+  }
+
+  .music-grid-event {
+    z-index: 2;
+    display: grid;
+    min-width: 0;
+    grid-row: 1;
+    align-self: center;
+    gap: 0.2rem;
+    margin: 0.25rem 0.12rem;
+    padding: 0.25rem 0.35rem;
+    overflow: hidden;
+    border: 1px solid var(--rc-color-border);
+    border-radius: 0.35rem;
+    background: var(--rc-color-primary-container);
+    pointer-events: none;
+
+    strong {
+      overflow: hidden;
+      font-size: 0.68rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .event-color-strip {
+      display: flex;
+      height: 0.22rem;
+      i {
+        min-width: 0.35rem;
+        flex: 1;
+      }
+    }
+    &.is-chord {
+      border-style: double;
+    }
+  }
+
+  .keyboard-reference {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 0.45rem;
+    font-weight: 650;
+  }
+  .reference-key-row {
+    display: grid;
+    max-width: 33rem;
+    grid-template-columns: repeat(11, minmax(1.65rem, 1fr));
+    gap: 0.2rem;
+
+    kbd {
+      display: grid;
+      min-height: 1.8rem;
+      place-items: center;
+      border: 1px solid var(--rc-color-border);
+      border-bottom-width: 3px;
+      border-radius: 0.3rem;
+      color: var(--rc-color-text);
+      background: var(--rc-color-surface);
+      font: inherit;
+    }
+  }
+  .reference-key-row-home {
+    width: calc(100% - 1rem);
+    max-width: 30rem;
+    margin-left: 1rem;
+    grid-template-columns: repeat(10, minmax(1.65rem, 1fr));
+  }
+  .music-grid-help {
+    margin-top: 0.35rem;
+    summary {
+      margin-bottom: 0;
+    }
+  }
+  .shortcut-help {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.55rem;
+    border-left: 3px solid var(--rc-color-primary);
+    p {
+      margin: 0;
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  app-word-editor .music-grid-row {
+    min-width: 34rem;
+    grid-template-columns: 5.5rem minmax(28rem, 1fr);
+  }
+}
 app-word-editor .block-management > summary {
   min-height: var(--rc-control-min-size);
   padding: 0.55rem 0.7rem;

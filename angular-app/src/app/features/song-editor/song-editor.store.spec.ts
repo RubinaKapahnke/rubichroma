@@ -560,6 +560,35 @@ Hallo
       duration: 2,
     });
   });
+
+  it('replaces both raster tracks as one history action and preserves event unknown fields', async () => {
+    await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const original = structuredClone(store.document()!);
+    const preserved = {
+      kind: 'note' as const,
+      pitch: { degree: 2 as const, octave: 0 as const },
+      duration: 0.25,
+      customEventField: ['bleibt'],
+    };
+
+    expect(
+      store.replaceMusicTracks(selection, {
+        melody: [preserved],
+        accompaniment: [{ kind: 'chord', pitches: [{ degree: 7, octave: 0 }], duration: 2 }],
+      }),
+    ).toEqual({ ok: true, selection });
+    expect(store.document()?.song.lines[0].words[0].melodyEvents[0]).toEqual(preserved);
+    expect(store.document()?.song.lines[0].words[0].accompanimentEvents[0]).toMatchObject({
+      kind: 'chord',
+      duration: 2,
+    });
+    await expectSaved(store);
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(original);
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()?.song.lines[0].words[0].melodyEvents[0]).toEqual(preserved);
+  });
 });
 
 describe('SongEditorStore multi-song save isolation', () => {

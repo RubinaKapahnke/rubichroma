@@ -13,6 +13,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import {
+  deleteMusicEventsInSlotRange,
+  eventAtMusicGridSlot,
+  MUSIC_GRID_SLOTS_PER_BAR,
+  musicGridLength,
+  projectMusicEventsToGrid,
+  replaceMusicEventAtSlot,
+} from '../../domain/music-grid-editing';
+import {
   durationLabel,
   eventDurationInBeats,
   hasParallelTineCollision,
@@ -37,6 +45,40 @@ export interface KalimbaKeyView {
 }
 
 type InsertMode = 'single' | 'chord';
+type GridSelection = {
+  anchorTrack: MusicTrackId;
+  anchorSlot: number;
+  focusTrack: MusicTrackId;
+  focusSlot: number;
+};
+
+const TRACKS = ['melody', 'accompaniment'] as const;
+const DURATION_BY_CODE: Readonly<Record<string, number>> = {
+  KeyZ: 4,
+  KeyX: 2,
+  KeyC: 1,
+  KeyV: 0.5,
+  KeyB: 0.25,
+};
+const TONE_INDEX_BY_CODE: Readonly<Record<string, number>> = {
+  KeyH: 0,
+  KeyG: 1,
+  KeyJ: 2,
+  KeyF: 3,
+  KeyK: 4,
+  KeyD: 5,
+  KeyL: 6,
+  KeyS: 7,
+  Semicolon: 8,
+  KeyA: 9,
+  KeyI: 10,
+  KeyE: 11,
+  KeyO: 12,
+  KeyW: 13,
+  KeyP: 14,
+  KeyQ: 15,
+  BracketLeft: 16,
+};
 
 @Component({
   selector: 'app-word-editor',
@@ -69,6 +111,7 @@ export class WordEditorComponent {
     durationBeats: number;
   }>();
   readonly musicEventAppendRequested = output<{ event: MusicEvent; track: MusicTrackId }>();
+  readonly musicGridEditRequested = output<Partial<Record<MusicTrackId, readonly MusicEvent[]>>>();
   readonly musicEventPreviewRequested = output<{
     track: MusicTrackId;
     eventIndex: number;
@@ -80,8 +123,12 @@ export class WordEditorComponent {
 
   readonly insertMode = signal<InsertMode>('single');
   readonly activeTrack = signal<MusicTrackId>('melody');
-  readonly trackOptions = ['melody', 'accompaniment'] as const;
+  readonly trackOptions = TRACKS;
   readonly chordDraft = signal<Pitch[]>([]);
+  readonly keyboardChordDraft = signal(false);
+  readonly gridCursorSlot = signal(0);
+  readonly gridSelection = signal<GridSelection | null>(null);
+  readonly selectedDuration = signal(1);
   readonly notice = signal<string | null>(null);
   readonly moreActionsOpen = signal(false);
   readonly auditionKeys = signal(false);
@@ -120,6 +167,10 @@ export class WordEditorComponent {
       this.splitIndex.set(null);
       this.firstSplitMelodyCount.set(null);
       this.firstSplitAccompanimentCount.set(null);
+      this.gridCursorSlot.set(0);
+      this.gridSelection.set(null);
+      this.keyboardChordDraft.set(false);
+      this.chordDraft.set([]);
     });
   }
 
@@ -242,6 +293,10 @@ export class WordEditorComponent {
   }
 
   setInsertMode(mode: InsertMode): void {
+    if (mode === 'chord' && this.activeTrack() !== 'accompaniment') {
+      this.notice.set('Akkorde können nur in der Begleitung eingefügt werden.');
+      return;
+    }
     this.insertMode.set(mode);
     this.chordDraft.set([]);
     this.notice.set(null);
@@ -249,8 +304,180 @@ export class WordEditorComponent {
 
   setActiveTrack(track: MusicTrackId): void {
     this.activeTrack.set(track);
+    if (track === 'melody') this.insertMode.set('single');
     this.chordDraft.set([]);
     this.notice.set(null);
+  }
+
+  gridEvents(track: MusicTrackId) {
+    return projectMusicEventsToGrid(this.trackEvents(track));
+  }
+
+  gridSlots(): number[] {
+    const length = Math.max(
+      MUSIC_GRID_SLOTS_PER_BAR,
+      ...TRACKS.map((track) => musicGridLength(this.trackEvents(track))),
+      this.gridCursorSlot() + 1,
+    );
+    return Array.from({ length }, (_, index) => index);
+  }
+
+  gridTemplateColumns(): string {
+    return `repeat(${this.gridSlots().length}, minmax(1.1rem, 1fr))`;
+  }
+
+  gridStatus(): string {
+    const selection = this.gridSelection();
+    const draft = this.keyboardChordDraft() ? `, Akkordentwurf ${this.draftLabel()}` : '';
+    return `${this.trackLabel(this.activeTrack())}, Rasterposition ${this.gridCursorSlot() + 1}, ${durationLabel(this.selectedDuration())}${selection ? ', Auswahl aktiv' : ''}${draft}`;
+  }
+
+  isGridCursor(track: MusicTrackId, slot: number): boolean {
+    return this.activeTrack() === track && this.gridCursorSlot() === slot;
+  }
+
+  isGridSlotSelected(track: MusicTrackId, slot: number): boolean {
+    const selection = this.gridSelection();
+    if (!selection) return false;
+    const firstTrack = Math.min(
+      TRACKS.indexOf(selection.anchorTrack),
+      TRACKS.indexOf(selection.focusTrack),
+    );
+    const lastTrack = Math.max(
+      TRACKS.indexOf(selection.anchorTrack),
+      TRACKS.indexOf(selection.focusTrack),
+    );
+    const firstSlot = Math.min(selection.anchorSlot, selection.focusSlot);
+    const lastSlot = Math.max(selection.anchorSlot, selection.focusSlot);
+    const trackIndex = TRACKS.indexOf(track);
+    return (
+      trackIndex >= firstTrack && trackIndex <= lastTrack && slot >= firstSlot && slot <= lastSlot
+    );
+  }
+
+  focusGridSlot(event: MouseEvent, track: MusicTrackId, slot: number): void {
+    this.setActiveTrack(track);
+    this.gridCursorSlot.set(slot);
+    this.gridSelection.set(null);
+    (event.currentTarget as HTMLElement).closest<HTMLElement>('[role="grid"]')?.focus();
+  }
+
+  handleMusicGridKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Tab') return;
+
+    const toneKey = this.toneKeyForCode(event.code);
+    if (this.keyboardChordDraft()) {
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && toneKey) {
+        event.preventDefault();
+        this.toggleDraftPitch(toneKey.pitch);
+        this.pitchPreviewRequested.emit(toneKey.pitch);
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        this.confirmKeyboardChord();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        this.cancelKeyboardChord();
+      }
+      return;
+    }
+
+    if (
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !event.shiftKey &&
+      DURATION_BY_CODE[event.code]
+    ) {
+      event.preventDefault();
+      this.chooseGridDuration(DURATION_BY_CODE[event.code]);
+      return;
+    }
+    if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && toneKey) {
+      event.preventDefault();
+      if (this.activeTrack() !== 'accompaniment') {
+        this.notice.set('Akkordentwürfe sind nur in der Begleitung möglich.');
+        return;
+      }
+      this.keyboardChordDraft.set(true);
+      this.chordDraft.set([{ ...toneKey.pitch }]);
+      this.notice.set(null);
+      this.pitchPreviewRequested.emit(toneKey.pitch);
+      return;
+    }
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && toneKey) {
+      event.preventDefault();
+      this.placeGridEvent({
+        kind: 'note',
+        pitch: toneKey.pitch,
+        duration: this.selectedDuration(),
+      });
+      this.pitchPreviewRequested.emit(toneKey.pitch);
+      return;
+    }
+    if (
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !event.shiftKey &&
+      (event.code === 'Digit0' || event.code === 'Numpad0')
+    ) {
+      event.preventDefault();
+      this.deleteGridCursorOrSelection();
+      return;
+    }
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      this.deleteGridCursorOrSelection();
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (this.gridSelection()) this.gridSelection.set(null);
+      else (event.currentTarget as HTMLElement).blur();
+      return;
+    }
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+    if (event.shiftKey && !this.gridSelection()) {
+      this.gridSelection.set({
+        anchorTrack: this.activeTrack(),
+        anchorSlot: this.gridCursorSlot(),
+        focusTrack: this.activeTrack(),
+        focusSlot: this.gridCursorSlot(),
+      });
+    } else if (!event.shiftKey) {
+      this.gridSelection.set(null);
+    }
+
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const nextTrack =
+        TRACKS[
+          Math.max(0, Math.min(TRACKS.length - 1, TRACKS.indexOf(this.activeTrack()) + direction))
+        ];
+      this.activeTrack.set(nextTrack);
+    } else if (event.altKey && !event.ctrlKey && !event.metaKey) {
+      this.moveToGridEvent(direction);
+    } else if (event.ctrlKey || event.metaKey) {
+      this.moveToGridBoundary(direction);
+    } else {
+      this.gridCursorSlot.update((slot) =>
+        Math.max(0, Math.min(this.gridSlots().length - 1, slot + direction)),
+      );
+    }
+    if (event.shiftKey) {
+      this.gridSelection.update((selection) =>
+        selection
+          ? {
+              ...selection,
+              focusTrack: this.activeTrack(),
+              focusSlot: this.gridCursorSlot(),
+            }
+          : null,
+      );
+    }
   }
 
   handleKey(key: KalimbaKeyView): void {
@@ -273,6 +500,115 @@ export class WordEditorComponent {
     if (pitches.length < 2) return;
     this.append({ kind: 'chord', pitches, duration: 1 });
     this.chordDraft.set([]);
+  }
+
+  private chooseGridDuration(duration: number): void {
+    this.selectedDuration.set(duration);
+    const occupied = eventAtMusicGridSlot(
+      this.trackEvents(this.activeTrack()),
+      this.gridCursorSlot(),
+    );
+    if (!occupied || occupied.event.kind === 'separator') return;
+    const replacement = { ...occupied.event, duration } as MusicEvent;
+    const next = [...this.trackEvents(this.activeTrack())];
+    next[occupied.eventIndex] = replacement;
+    this.musicGridEditRequested.emit({ [this.activeTrack()]: next });
+  }
+
+  private placeGridEvent(event: MusicEvent): void {
+    if (this.hasUnknownFragments()) {
+      this.notice.set('Unbekannte Legacy-Fragmente verhindern die sichere Rasterbearbeitung.');
+      return;
+    }
+    const track = this.activeTrack();
+    const occupied = eventAtMusicGridSlot(this.trackEvents(track), this.gridCursorSlot());
+    const startSlot = occupied?.startSlot ?? musicGridLength(this.trackEvents(track));
+    const next = replaceMusicEventAtSlot(this.trackEvents(track), this.gridCursorSlot(), event);
+    this.musicGridEditRequested.emit({ [track]: next });
+    this.gridCursorSlot.set(startSlot + Math.max(1, Math.round(this.selectedDuration() * 4)));
+    this.gridSelection.set(null);
+    this.notice.set(null);
+  }
+
+  private deleteGridCursorOrSelection(): void {
+    const selection = this.gridSelection();
+    const tracks = selection
+      ? TRACKS.slice(
+          Math.min(TRACKS.indexOf(selection.anchorTrack), TRACKS.indexOf(selection.focusTrack)),
+          Math.max(TRACKS.indexOf(selection.anchorTrack), TRACKS.indexOf(selection.focusTrack)) + 1,
+        )
+      : [this.activeTrack()];
+    const fromSlot = selection ? selection.anchorSlot : this.gridCursorSlot();
+    const toSlot = selection ? selection.focusSlot : this.gridCursorSlot();
+    const replacements: Partial<Record<MusicTrackId, readonly MusicEvent[]>> = {};
+    for (const track of tracks) {
+      const current = this.trackEvents(track);
+      const next = deleteMusicEventsInSlotRange(current, fromSlot, toSlot);
+      if (next.length !== current.length) replacements[track] = next;
+    }
+    if (Object.keys(replacements).length) this.musicGridEditRequested.emit(replacements);
+    this.gridSelection.set(null);
+  }
+
+  private confirmKeyboardChord(): void {
+    const pitches = this.chordDraft();
+    if (pitches.length < 2) {
+      this.notice.set('Wähle mindestens zwei Töne für den Akkord.');
+      return;
+    }
+    this.placeGridEvent({ kind: 'chord', pitches, duration: this.selectedDuration() });
+    this.cancelKeyboardChord();
+  }
+
+  private cancelKeyboardChord(): void {
+    this.keyboardChordDraft.set(false);
+    this.chordDraft.set([]);
+    this.notice.set(null);
+  }
+
+  private toggleDraftPitch(pitch: Pitch): void {
+    this.chordDraft.update((draft) =>
+      draft.some((candidate) => samePitch(candidate, pitch))
+        ? draft.filter((candidate) => !samePitch(candidate, pitch))
+        : [...draft, { ...pitch }],
+    );
+  }
+
+  private moveToGridEvent(direction: number): void {
+    const starts = this.gridEvents(this.activeTrack()).map((entry) => entry.startSlot);
+    const target =
+      direction > 0
+        ? starts.find((slot) => slot > this.gridCursorSlot())
+        : [...starts].reverse().find((slot) => slot < this.gridCursorSlot());
+    if (target !== undefined) this.gridCursorSlot.set(target);
+  }
+
+  private moveToGridBoundary(direction: number): void {
+    const slot = this.gridCursorSlot();
+    const length = Math.max(...TRACKS.map((track) => musicGridLength(this.trackEvents(track))));
+    const target =
+      direction > 0
+        ? Math.min(
+            length,
+            Math.floor(slot / MUSIC_GRID_SLOTS_PER_BAR + 1) * MUSIC_GRID_SLOTS_PER_BAR,
+          )
+        : Math.max(0, Math.ceil(slot / MUSIC_GRID_SLOTS_PER_BAR - 1) * MUSIC_GRID_SLOTS_PER_BAR);
+    this.gridCursorSlot.set(target);
+  }
+
+  private toneKeyForCode(code: string): KalimbaKeyView | undefined {
+    let index = TONE_INDEX_BY_CODE[code];
+    const digit = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+    if (digit) index = Number(digit[1]) - 1;
+    if (index === undefined) return undefined;
+    return [...this.keys()].sort(
+      (left, right) =>
+        left.pitch.octave - right.pitch.octave || left.pitch.degree - right.pitch.degree,
+    )[index];
+  }
+
+  private trackEvents(track: MusicTrackId): MusicEvent[] {
+    return this.eventsForTrack(track).map(({ event }) => event);
   }
 
   insertSeparator(): void {
