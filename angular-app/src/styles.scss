@@ -157,6 +157,50 @@ app-song-editor .structure-toolbar {
   flex-wrap: wrap;
 }
 
+.history-actions,
+.editor-history-actions,
+.line-primary-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.history-actions {
+  flex: 0 0 auto;
+}
+
+.history-action {
+  display: grid;
+  width: var(--rc-control-min-size);
+  min-width: var(--rc-control-min-size);
+  height: var(--rc-control-min-size);
+  padding: 0;
+  place-items: center;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+  font-size: 1.25rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.add-line-button {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.55rem;
+  color: var(--rc-color-primary-text);
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-sm);
+  background: var(--rc-color-primary-container);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .selection-toolbar {
   display: flex;
   width: min(72rem, calc(100% - 1rem));

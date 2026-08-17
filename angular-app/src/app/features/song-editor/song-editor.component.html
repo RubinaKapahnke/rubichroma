@@ -74,15 +74,32 @@
       </mat-card-header>
       <mat-card-content>
         <div class="structure-toolbar">
-          <button
-            mat-stroked-button
-            type="button"
-            data-testid="undo-structure"
-            [disabled]="!store.canUndo()"
-            (click)="undoStructure()"
-          >
-            Rückgängig
-          </button>
+          <div class="history-actions" role="group" aria-label="Änderungsverlauf">
+            <button
+              class="history-action"
+              type="button"
+              data-testid="undo-structure"
+              aria-label="Rückgängig"
+              aria-keyshortcuts="Control+Z Meta+Z"
+              title="Rückgängig (Strg+Z)"
+              [disabled]="!store.canUndo()"
+              (click)="undoStructure()"
+            >
+              <span aria-hidden="true">↶</span>
+            </button>
+            <button
+              class="history-action"
+              type="button"
+              data-testid="redo-structure"
+              aria-label="Wiederholen"
+              aria-keyshortcuts="Control+Y Meta+Shift+Z"
+              title="Wiederholen (Strg+Y)"
+              [disabled]="!store.canRedo()"
+              (click)="redoStructure()"
+            >
+              <span aria-hidden="true">↷</span>
+            </button>
+          </div>
           @if (actionNotice(); as message) {
             <span role="status" aria-live="polite" data-testid="structure-status">{{
               message
@@ -159,9 +176,11 @@
       [canDeleteBlock]="canDeleteSelectedBlock()"
       [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
       [canUndo]="store.canUndo()"
+      [canRedo]="store.canRedo()"
       (closed)="closeWordEditor()"
       (structureAction)="applyStructureAction($event)"
       (undoRequested)="undoStructure()"
+      (redoRequested)="redoStructure()"
     />
   }
 </ng-template>

@@ -38,20 +38,27 @@
     <section class="song-line" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">
       <div class="line-heading">
         <span class="line-number">{{ lineIndex + 1 }}</span>
-        <details
-          class="line-actions"
-          [attr.data-testid]="'line-actions-' + lineIndex"
-          [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)"
-        >
-          <summary>Weitere Zeilenaktionen</summary>
-          <div class="line-action-menu">
-            <button
-              type="button"
-              [attr.data-testid]="'line-add-' + lineIndex"
-              (click)="structureAction.emit({ kind: 'insert-line', lineIndex })"
+        <div class="line-primary-actions">
+          <button
+            class="add-line-button"
+            type="button"
+            [attr.data-testid]="'line-add-' + lineIndex"
+            (click)="structureAction.emit({ kind: 'insert-line', lineIndex })"
+          >
+            + Zeile
+          </button>
+          <details
+            class="line-actions"
+            [attr.data-testid]="'line-actions-' + lineIndex"
+            [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)"
+          >
+            <summary
+              [attr.aria-label]="'Weitere Aktionen für Zeile ' + (lineIndex + 1)"
+              title="Weitere Zeilenaktionen"
             >
-              Neue Liedzeile danach
-            </button>
+              <span aria-hidden="true">•••</span>
+            </summary>
+            <div class="line-action-menu">
             <button
               type="button"
               [attr.data-testid]="'line-duplicate-' + lineIndex"
@@ -67,8 +74,9 @@
             >
               Zeile löschen
             </button>
-          </div>
-        </details>
+            </div>
+          </details>
+        </div>
       </div>
       <div class="words">
         @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {

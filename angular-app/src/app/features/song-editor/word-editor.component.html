@@ -10,6 +10,30 @@
   </header>
 
   <div class="word-editor-content">
+    <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
+      <button
+        class="history-action"
+        type="button"
+        data-testid="undo-structure-editor"
+        aria-label="Rückgängig"
+        title="Rückgängig (Strg+Z)"
+        [disabled]="!canUndo()"
+        (click)="undoRequested.emit()"
+      >
+        <span aria-hidden="true">↶</span>
+      </button>
+      <button
+        class="history-action"
+        type="button"
+        data-testid="redo-structure-editor"
+        aria-label="Wiederholen"
+        title="Wiederholen (Strg+Y)"
+        [disabled]="!canRedo()"
+        (click)="redoRequested.emit()"
+      >
+        <span aria-hidden="true">↷</span>
+      </button>
+    </div>
     <section class="add-next-block" aria-labelledby="add-next-block-title">
       <div>
         <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
@@ -33,16 +57,6 @@
         </button>
       </div>
     </section>
-    <div class="editor-utility-actions">
-      <button
-        type="button"
-        data-testid="undo-structure-editor"
-        [disabled]="!canUndo()"
-        (click)="undoRequested.emit()"
-      >
-        Rückgängig
-      </button>
-    </div>
     <details class="more-block-actions" data-testid="more-block-actions">
       <summary>Weitere Blockaktionen</summary>
       <div class="block-actions" aria-label="Weitere Blockaktionen">

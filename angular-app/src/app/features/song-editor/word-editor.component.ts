@@ -34,9 +34,11 @@ export class WordEditorComponent {
   readonly canDeleteBlock = input.required<boolean>();
   readonly canCopyToNextLine = input.required<boolean>();
   readonly canUndo = input.required<boolean>();
+  readonly canRedo = input.required<boolean>();
   readonly closed = output<void>();
   readonly structureAction = output<SongStructureAction>();
   readonly undoRequested = output<void>();
+  readonly redoRequested = output<void>();
 
   readonly insertMode = signal<InsertMode>('single');
   readonly chordDraft = signal<Pitch[]>([]);

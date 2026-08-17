@@ -4,6 +4,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  HostListener,
   inject,
   signal,
   viewChild,
@@ -315,23 +316,31 @@ export class SongEditorComponent {
     const previousSelectionState = this.selectionState();
     const selection = this.store.undoStructure();
     if (!selection) return;
-    const document = this.store.document();
-    if (
-      document &&
-      previousSelectionState.positions.length > 1 &&
-      previousSelectionState.positions.some(
-        (position) =>
-          position.lineIndex === selection.lineIndex && position.wordIndex === selection.wordIndex,
-      )
-    ) {
-      this.selectionState.set(
-        normalizeSongSelection(document, { ...previousSelectionState, active: selection }),
-      );
-    } else {
-      this.setSingleSelection(selection, document ?? undefined);
-    }
+    this.restoreHistorySelection(selection, previousSelectionState);
     this.actionNotice.set('Letzte Strukturaktion rückgängig gemacht');
-    this.focusSelection(selection);
+  }
+
+  redoStructure(): void {
+    const previousSelectionState = this.selectionState();
+    const selection = this.store.redoStructure();
+    if (!selection) return;
+    this.restoreHistorySelection(selection, previousSelectionState);
+    this.actionNotice.set('Letzte Strukturaktion wiederholt');
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleHistoryShortcut(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+    const key = event.key.toLowerCase();
+    const redoRequested = key === 'y' || (key === 'z' && event.shiftKey);
+    const undoRequested = key === 'z' && !event.shiftKey;
+    if (redoRequested && this.store.canRedo()) {
+      event.preventDefault();
+      this.redoStructure();
+    } else if (undoRequested && this.store.canUndo()) {
+      event.preventDefault();
+      this.undoStructure();
+    }
   }
 
   canDeleteSelectedBlock(): boolean {
@@ -436,6 +445,28 @@ export class SongEditorComponent {
     this.selectionState.set(
       updateSongSelection(document, EMPTY_SONG_SELECTION, selection, 'single'),
     );
+  }
+
+  private restoreHistorySelection(
+    selection: SongPosition,
+    previousSelectionState: SongSelectionState,
+  ): void {
+    const document = this.store.document();
+    if (
+      document &&
+      previousSelectionState.positions.length > 1 &&
+      previousSelectionState.positions.some(
+        (position) =>
+          position.lineIndex === selection.lineIndex && position.wordIndex === selection.wordIndex,
+      )
+    ) {
+      this.selectionState.set(
+        normalizeSongSelection(document, { ...previousSelectionState, active: selection }),
+      );
+    } else {
+      this.setSingleSelection(selection, document ?? undefined);
+    }
+    this.focusSelection(selection);
   }
 
   private clearSelection(): void {

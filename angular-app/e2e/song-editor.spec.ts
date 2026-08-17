@@ -68,6 +68,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('word-card-0-2')).toContainText('Melodieblock ♪');
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
+  await expect(page.getByTestId('redo-structure')).toBeDisabled();
 });
 
 test('offers a clear primary entry for a new song block and hides advanced actions', async ({
@@ -178,6 +179,11 @@ test('opens and closes the focused word editor as a mobile bottom sheet', async 
   await page.getByTestId('undo-structure-editor').click();
   await expect(page.getByTestId('word-card-0-1')).toContainText('♪');
   await expect(page.getByTestId('word-editor')).toContainText('Block 1');
+  await page.getByTestId('redo-structure-editor').click();
+  await expect(page.getByTestId('word-editor')).toContainText('Block 2');
+  await expect(page.getByTestId('word-0-1')).toHaveValue('Neues Wort');
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(page.getByTestId('word-editor')).toContainText('Block 1');
   expect(
     await page.evaluate(() => !!document.activeElement?.closest('[data-testid="word-editor"]')),
   ).toBe(true);
@@ -219,7 +225,6 @@ test('performs block and line structure actions, transfers only events and resto
   await page.getByTestId('line-delete-1').click();
   await expect(page.locator('.song-line')).toHaveCount(1);
 
-  await openLineActions(page, 0);
   await page.getByTestId('line-add-0').click();
   await expect(page.locator('.song-line')).toHaveCount(2);
   await page.getByTestId('word-card-0-0').click();
@@ -241,14 +246,13 @@ test('performs block and line structure actions, transfers only events and resto
   await expect(page.getByTestId('word-1-0')).toHaveValue('Neue Zeile');
   await expect(page.getByTestId('notation-1-0')).toHaveValue('1 2 3 (135)');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
+  await expect(page.getByTestId('redo-structure')).toBeDisabled();
   expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
     'user-sentinel',
   );
 });
 
-test('undoes structure actions in session order and restores selection and keyboard focus', async ({
-  page,
-}) => {
+test('undoes and redoes structure actions with buttons and keyboard shortcuts', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('word-card-0-0').focus();
   await page.getByTestId('word-card-0-0').press('Enter');
@@ -266,10 +270,25 @@ test('undoes structure actions in session order and restores selection and keybo
   await expect(page.getByTestId('word-card-0-1')).toBeFocused();
   await expect(page.getByTestId('word-card-0-1')).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByTestId('undo-structure').click();
+  await page.getByTestId('redo-structure').click();
+  await expect(page.locator('.song-line')).toHaveCount(2);
+  await expect(page.getByTestId('word-card-1-0')).toBeFocused();
+
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.song-line')).toHaveCount(1);
+  await page.keyboard.press('Control+y');
+  await expect(page.locator('.song-line')).toHaveCount(2);
+
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(2);
   await expect(page.getByTestId('word-card-0-0')).toBeFocused();
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
+  await expect(page.getByTestId('redo-structure')).toBeEnabled();
+
+  await page.getByTestId('line-add-0').click();
+  await expect(page.locator('.song-line')).toHaveCount(2);
+  await expect(page.getByTestId('redo-structure')).toBeDisabled();
   expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
 });
 
@@ -341,6 +360,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   await targetLast.click({ modifiers: ['Shift'] });
   await expect(page.getByTestId('selection-count')).toHaveText('2 Blöcke ausgewählt');
   await page.getByTestId('paste-selection').click();
+  await expect(page.getByTestId('redo-structure')).toBeDisabled();
 
   await expect(targetLast).toBeFocused();
   await expect(targetFirst).toHaveAttribute('aria-pressed', 'true');
