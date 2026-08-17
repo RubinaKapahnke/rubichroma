@@ -179,7 +179,7 @@
   .grid-wrap {
     outline: none;
     padding: 18px 18px 20px;
-    min-width: 760px;
+    min-width: 1700px;
   }
 
   .grid-wrap:focus-visible .cursor-cell {
@@ -188,9 +188,9 @@
 
   .row {
     display: grid;
-    grid-template-columns: 108px repeat(16, 1fr);
+    grid-template-columns: 108px repeat(64, 1fr);
     align-items: center;
-    column-gap: 3px;
+    column-gap: 2px;
   }
   .row + .row { margin-top: 6px; }
 
@@ -205,7 +205,7 @@
   .cell {
     position: relative;
     height: 52px;
-    border-radius: 8px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -256,7 +256,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    border-radius: 8px;
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -264,7 +264,12 @@
     color: #fff;
     font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
     line-height: 1.1;
+    overflow: hidden;
     transition: transform 120ms ease;
+  }
+  .chip-draft {
+    outline: 2px dashed #fff;
+    outline-offset: -3px;
   }
   .duration-badge {
     position: absolute;
@@ -278,8 +283,8 @@
     background: rgba(0, 0, 0, 0.32);
     color: #fff;
   }
-  .chip .note { font-size: 16px; font-weight: 600; }
-  .chip .degree { font-size: 10px; opacity: 0.85; }
+  .chip .note { font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .chip .degree { font-size: 10px; opacity: 0.85; white-space: nowrap; }
   .chip.chip-chord .note { font-size: 12px; }
   .chip.chip-chord .degree { font-size: 9px; }
 
@@ -341,6 +346,7 @@
   }
   .keycap-row {
     display: flex;
+    align-items: center;
     gap: 4px;
   }
   .keycap-row.offset { margin-left: 14px; }
@@ -361,6 +367,7 @@
   }
   .keycap.active { color: #fff; border-color: transparent; }
   .keycap.center { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .keycap.duration { color: #fff; border-color: transparent; background: var(--accent); font-size: 9px; }
 
   .keycap-note {
     margin-top: 8px;
@@ -409,7 +416,7 @@
 <header>
   <div>
     <h1>Kalimba-<span>Tastensteuerung</span></h1>
-    <p class="subtitle">Testprototyp für Rasternavigation, Ton-Direkteingabe und Mehrfachauswahl im geplanten dreizeiligen Editor &mdash; klicken oder Tab drücken, dann tippen.</p>
+    <p class="subtitle">Testprototyp für Rasternavigation, Ton-Direkteingabe und Mehrfachauswahl im geplanten dreizeiligen Editor &mdash; Tab betritt/verlässt das Raster, Pfeiltasten navigieren darin.</p>
   </div>
   <div class="header-controls">
     <label class="audio-toggle" for="audioToggle">
@@ -423,7 +430,7 @@
 <div class="status-bar">
   <span class="status-label">Erkannter Befehl</span>
   <span id="statusText" class="mono">Klicke ins Raster, um zu starten.</span>
-  <span class="status-label" style="margin-left:auto;">Dauer-Modus (F1–F5)</span>
+  <span class="status-label" style="margin-left:auto;">Dauer-Modus (R/T/U/C/V)</span>
   <span id="durationIndicator" class="mono"></span>
 </div>
 
@@ -436,7 +443,7 @@
     <div class="panel">
       <h2>Kalimba-Tastenbild (vorläufig)</h2>
       <div class="keycap-diagram" id="keycapDiagram"></div>
-      <p class="keycap-note">17 Zungen, diatonisch in C, H = mittleres C. Zahlenreihe 1&ndash;7 setzt C&ndash;B in der Grundoktave, 8&ndash;9 setzen C′&ndash;D′, 0 löscht. Nummernblock mit NumLock an tut dasselbe, mit NumLock aus navigiert er stattdessen (Standard-Tastaturverhalten). Endgültige Zungenreihenfolge folgt in einer eigenen Runde &mdash; das hier ist nur Testbelegung.</p>
+      <p class="keycap-note">17 Zungen, diatonisch in C, H = mittleres C. Erkennung über die physische Tastenposition (KeyboardEvent.code) &mdash; bleibt auf QWERTZ und QWERTY stabil, gezeigte Buchstaben sind nur die deutsche Referenzbeschriftung. Zahlenreihe 1&ndash;7 setzt C&ndash;B in der Grundoktave, 8&ndash;9 setzen C′&ndash;D′, 0 löscht. R/T/U/C/V = Dauer. Endgültige Zungenreihenfolge folgt in einer eigenen Runde &mdash; das hier ist nur Testbelegung.</p>
     </div>
 
     <div class="panel">
@@ -445,7 +452,7 @@
     </div>
 
     <div class="panel note-box">
-      <strong>Bewusst nicht enthalten:</strong> Speichern der Belegung, Einstellungsoberfläche, mobile Bedienung, echtes Datenmodell, Silbentrennung/Wortzuordnung, komplexere Akkordarten. Achtel/Sechzehntel bleiben auf eine Rasterspalte begrenzt (keine echte Unterteilung unter einer Spalte); eine Notenlinie mitten in einer breiten Note wird nicht angezeigt. Nur zum Testen des Bedienrhythmus.
+      <strong>Bewusst nicht enthalten:</strong> Speichern der Belegung, Einstellungsoberfläche, mobile Bedienung, echtes Datenmodell, Silbentrennung/Wortzuordnung, Akkord-Umkehrungen und Duplikat-Warnung für doppelte Zungen. Arpeggio-Darstellung (gleichzeitig vs. nacheinander) ist laut PRD ausdrücklich noch offen und wird hier bewusst nicht vorweggenommen &mdash; der Akkordmodus erzeugt nur einen gleichzeitig klingenden Akkord. Nur zum Testen des Bedienrhythmus.
     </div>
   </aside>
 </div>
@@ -455,8 +462,10 @@
   "use strict";
 
   var BEATS_PER_MEASURE = 4;
+  var SIXTEENTHS_PER_BEAT = 4;
   var MEASURES = 4;
-  var COLS = BEATS_PER_MEASURE * MEASURES;
+  var MEASURE_COLS = BEATS_PER_MEASURE * SIXTEENTHS_PER_BEAT;
+  var COLS = MEASURE_COLS * MEASURES;
   var ROWS = ["text", "melody", "accomp"];
   var ROW_LABELS = { text: "Text", melody: "Melodie", accomp: "Begleitung" };
 
@@ -464,22 +473,34 @@
   var DEGREE_SEMIS = [0, 2, 4, 5, 7, 9, 11];
   var DEGREE_COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6", "--c7"];
 
-  // Reales Zick-Zack-Layout laut Foto: Mitte H=C, rechts gerade Stufen aufsteigend
-  // (G J F K D L S OE A I E O W P Q UE), linke Haelfte teilt sich denselben Ring.
+  // Erkennung ueber KeyboardEvent.code (physische Tastenposition), damit die
+  // Belegung auf QWERTZ und QWERTY stabil bleibt (Codex-Review). CODE_LABELS
+  // haelt nur die deutsche Referenzbeschriftung fuer Anzeige/Diagramm.
   var TONE_KEYS = {
-    h: 0,
-    g: 1, j: 2, f: 3, k: 4, d: 5, l: 6, s: 7, "ö": 8,
-    a: 9, i: 10, e: 11, o: 12, w: 13, p: 14, q: 15, "ü": 16
+    KeyH: 0,
+    KeyG: 1, KeyJ: 2, KeyF: 3, KeyK: 4, KeyD: 5, KeyL: 6, KeyS: 7, Semicolon: 8,
+    KeyA: 9, KeyI: 10, KeyE: 11, KeyO: 12, KeyW: 13, KeyP: 14, KeyQ: 15, BracketLeft: 16
+  };
+  var CODE_LABELS = {
+    KeyQ: "Q", KeyW: "W", KeyE: "E", KeyA: "A", KeyS: "S", KeyD: "D", KeyF: "F", KeyG: "G",
+    KeyH: "H", KeyJ: "J", KeyK: "K", KeyL: "L", Semicolon: "Ö", KeyI: "I", KeyO: "O", KeyP: "P", BracketLeft: "Ü"
+  };
+  // Nur fuers Tastenbild-Diagramm, entkoppelt von der Code-basierten Erkennung oben.
+  var DIAGRAM_TONE_STEPS = {
+    H: 0, G: 1, J: 2, F: 3, K: 4, D: 5, L: 6, S: 7, "Ö": 8,
+    A: 9, I: 10, E: 11, O: 12, W: 13, P: 14, Q: 15, "Ü": 16
   };
 
   // Zahlenreihe (und Nummernblock mit NumLock an): 1-7 = Grundoktave C-B, 8-9 = C'-D'. 0 = Loeschen.
   var DIGIT_TONE_KEYS = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8 };
 
-  // Dauer in Viertel-Einheiten (1 Rasterspalte = 1 Viertel)
-  var F_KEY_DURATIONS = { F1: 4, F2: 2, F3: 1, F4: 0.5, F5: 0.25 };
-  var DURATION_LABELS = { 4: "1/1", 2: "1/2", 1: "1/4", 0.5: "1/8", 0.25: "1/16" };
-  var DURATION_NAMES = { 4: "Ganze", 2: "Halbe", 1: "Viertel", 0.5: "Achtel", 0.25: "Sechzehntel" };
-  var currentDuration = 1;
+  // Dauer direkt in Rasterspalten (1 Spalte = 1 Sechzehntel): echtes Unterraster
+  // statt gemeinsamer Spaltenbreite (Codex-Review). R/T/U/C/V statt F1-F5, weil
+  // F-Tasten browserseitig reserviert sind (F1 Hilfe, F5 Neuladen).
+  var DURATION_KEY_CODES = { KeyR: 16, KeyT: 8, KeyU: 4, KeyC: 2, KeyV: 1 };
+  var DURATION_LABELS = { 16: "1/1", 8: "1/2", 4: "1/4", 2: "1/8", 1: "1/16" };
+  var DURATION_NAMES = { 16: "Ganze", 8: "Halbe", 4: "Viertel", 2: "Achtel", 1: "Sechzehntel" };
+  var currentDuration = 4;
 
   function stepInfo(step) {
     var oct = Math.floor(step / 7);
@@ -495,13 +516,10 @@
     return info.name + info.octMark + " (Stufe " + info.degree + ")";
   }
 
-  // --- Beispielsong: "Alle meine Entchen", erste Zeile ---
+  // --- Beispielsong: "Alle meine Entchen", erste Zeile (Positionen auf das
+  // Sechzehntel-Raster skaliert: 1 Viertel = 4 Spalten) ---
   var state = {
-    grid: {
-      text: {},
-      melody: {},
-      accomp: {}
-    },
+    grid: { text: {}, melody: {}, accomp: {} },
     cursor: { row: "melody", col: 0 },
     selection: null // {anchorRow, anchorCol, focusRow, focusCol}
   };
@@ -509,15 +527,15 @@
   function initialContent() {
     var melodySteps = [0, 1, 2, 3, 4, 4, 5, 4];
     var syllables = ["Al-", "le", "mei-", "ne", "Ent-", "chen", "schwimm-", "en"];
-    var cols = [0, 2, 4, 6, 8, 10, 12, 14];
+    var cols = [0, 8, 16, 24, 32, 40, 48, 56];
     var g = { text: {}, melody: {}, accomp: {} };
     cols.forEach(function (c, i) {
-      g.melody[c] = { step: melodySteps[i] };
+      g.melody[c] = { step: melodySteps[i], duration: 4 };
       g.text[c] = { syllable: syllables[i] };
     });
     var accompSteps = [0, 3, 4, 0];
-    [0, 4, 8, 12].forEach(function (c, i) {
-      g.accomp[c] = { step: accompSteps[i] };
+    [0, 16, 32, 48].forEach(function (c, i) {
+      g.accomp[c] = { step: accompSteps[i], duration: 4 };
     });
     return g;
   }
@@ -567,31 +585,6 @@
     } catch (err) { /* Audio optional im Prototyp */ }
   }
 
-  function playArpeggio(steps) {
-    if (!audioEnabled) return;
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      var t0 = audioCtx.currentTime;
-      steps.forEach(function (step, i) {
-        var freq = stepInfo(step).freq;
-        var start = t0 + i * 0.11;
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        osc.type = "triangle";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.18, start + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
-        osc.connect(gain).connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + 0.44);
-      });
-    } catch (err) { /* Audio optional im Prototyp */ }
-  }
-
-  function chordSteps(root) { return [root, root + 2, root + 4]; }
-  function chordSteps4(root) { return [root, root + 2, root + 4, root + 2]; }
-
   function describeEntry(entry) {
     if (!entry) return "";
     if (entry.steps) return entry.steps.map(describeStep).join(" · ");
@@ -605,10 +598,10 @@
     if (entry.steps) playChord(entry.steps); else playTone(entry.step);
   }
 
-  // Ganze/Halbe = mehrere Rasterspalten breit; Achtel/Sechzehntel bleiben auf 1 Spalte
-  // begrenzt (echte Unterteilung unter einer Spalte ist bewusst nicht Teil dieses Prototyps).
+  // Dauer bestimmt jetzt die tatsaechliche Rasterbreite: Ganze=16, Halbe=8,
+  // Viertel=4, Achtel=2, Sechzehntel=1 Spalte (1 Spalte = 1 Sechzehntel).
   function noteWidth(entry) {
-    return Math.max(1, Math.round(entry.duration || 1));
+    return Math.max(1, Math.round(entry.duration || 4));
   }
 
   // Liest die tatsaechlich belegten Spalten aus dem Grid aus (statt aus der
@@ -683,15 +676,20 @@
     return keyLabel + " → Ton gesetzt: " + describeStep(step) + " (" + DURATION_LABELS[currentDuration] + "); weiter zur nächsten Position.";
   }
 
+  // Akkordmodus: Alt startet mit einem Ton, weitere Ton-Tasten fuellen frei auf,
+  // Enter bestaetigt, Escape bricht ohne jede Aenderung am Song ab (Codex-Review:
+  // ersetzt die vorige automatische Grundton+Terz+Quinte-Harmonisierung).
+  var chordDraft = null; // { row, col, steps: [] }
+
   // --- Auswahl-Helfer ---
   function rowIndex(rowName) { return ROWS.indexOf(rowName); }
 
   function measureRightBoundary(col) {
-    return Math.min(COLS - 1, (Math.floor(col / BEATS_PER_MEASURE) + 1) * BEATS_PER_MEASURE);
+    return Math.min(COLS - 1, (Math.floor(col / MEASURE_COLS) + 1) * MEASURE_COLS);
   }
   function measureLeftBoundary(col) {
-    if (col % BEATS_PER_MEASURE !== 0) return Math.floor(col / BEATS_PER_MEASURE) * BEATS_PER_MEASURE;
-    return Math.max(0, col - BEATS_PER_MEASURE);
+    if (col % MEASURE_COLS !== 0) return Math.floor(col / MEASURE_COLS) * MEASURE_COLS;
+    return Math.max(0, col - MEASURE_COLS);
   }
 
   function ensureSelectionAnchor() {
@@ -739,6 +737,10 @@
     durationIndicatorEl.textContent = DURATION_NAMES[currentDuration] + " (" + DURATION_LABELS[currentDuration] + ")";
   }
 
+  function arrowGlyph(key) {
+    return { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" }[key] || key;
+  }
+
   function describeKeyEvent(e) {
     var parts = [];
     if (e.ctrlKey) parts.push("Strg");
@@ -762,20 +764,63 @@
     var mapped = true;
     var rIdx = rowIndex(state.cursor.row);
 
-    var plainArrow = !e.ctrlKey && !e.altKey && !e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
-    var shiftArrow = !e.ctrlKey && !e.altKey && e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
-    var ctrlArrowLR = e.ctrlKey && !e.shiftKey && !e.altKey && (key === "ArrowLeft" || key === "ArrowRight");
-    var ctrlArrowUD = e.ctrlKey && !e.shiftKey && !e.altKey && (key === "ArrowUp" || key === "ArrowDown");
-    var ctrlShiftArrow = e.ctrlKey && e.shiftKey && !e.altKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
-
     var isTopRowDigit = e.code && e.code.indexOf("Digit") === 0;
     var isNumpadKey = e.code && e.code.indexOf("Numpad") === 0;
     var isDigitKey = isTopRowDigit || isNumpadKey;
     var isDigitTone = isDigitKey && DIGIT_TONE_KEYS.hasOwnProperty(lower);
-    var toneRoot = TONE_KEYS.hasOwnProperty(lower) ? TONE_KEYS[lower] : (isDigitTone ? DIGIT_TONE_KEYS[lower] : null);
+    var isLetterTone = TONE_KEYS.hasOwnProperty(e.code);
+    var toneRoot = isLetterTone ? TONE_KEYS[e.code] : (isDigitTone ? DIGIT_TONE_KEYS[lower] : null);
+    var toneKeyDisplay = isLetterTone ? CODE_LABELS[e.code] : (isDigitTone ? lower : null);
 
-    if (F_KEY_DURATIONS.hasOwnProperty(key)) {
-      currentDuration = F_KEY_DURATIONS[key];
+    // --- Akkordmodus ist modal: solange aktiv, greifen nur diese Tasten ---
+    if (chordDraft) {
+      if (!e.ctrlKey && !e.altKey && !e.shiftKey && toneRoot !== null) {
+        chordDraft.steps.push(toneRoot);
+        playTone(toneRoot);
+        lastPlayedCell = chordDraft.row + ":" + chordDraft.col;
+        label = "Taste „" + toneKeyDisplay + "“ → zum Akkord hinzugefügt: " + chordDraft.steps.map(describeStep).join(" · ");
+      } else if (key === "Backspace" || key === "Delete") {
+        chordDraft.steps.pop();
+        if (chordDraft.steps.length === 0) {
+          label = key + " → letzter Ton entfernt, Akkordmodus leer und abgebrochen.";
+          chordDraft = null;
+        } else {
+          label = key + " → letzten Ton entfernt: " + chordDraft.steps.map(describeStep).join(" · ");
+        }
+      } else if (key === "Enter") {
+        var finalSteps = chordDraft.steps.slice();
+        var finalEntry = finalSteps.length === 1
+          ? { step: finalSteps[0], duration: currentDuration }
+          : { steps: finalSteps, duration: currentDuration };
+        var placedW = placeNoteSpan(chordDraft.row, chordDraft.col, finalEntry);
+        if (finalSteps.length > 1) playChord(finalSteps); else playTone(finalSteps[0]);
+        lastPlayedCell = chordDraft.row + ":" + chordDraft.col;
+        state.cursor.col = Math.min(COLS - 1, chordDraft.col + placedW);
+        clearSelection();
+        label = "Enter → Akkord bestätigt: " + describeEntry(finalEntry) + "; weiter zur nächsten Position.";
+        chordDraft = null;
+      } else if (key === "Escape") {
+        label = "Escape → Akkordmodus abgebrochen, keine Änderung am Song.";
+        chordDraft = null;
+      } else {
+        label = "Im Akkordmodus: erst Enter bestätigen oder Escape abbrechen.";
+        mapped = false;
+      }
+      e.preventDefault();
+      setStatus(label, mapped);
+      render();
+      return;
+    }
+
+    var plainArrow = !e.ctrlKey && !e.altKey && !e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
+    var shiftArrow = !e.ctrlKey && !e.altKey && e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
+    var altArrow = e.altKey && !e.ctrlKey && !e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight");
+    var ctrlArrowLR = e.ctrlKey && !e.shiftKey && !e.altKey && (key === "ArrowLeft" || key === "ArrowRight");
+    var ctrlArrowUD = e.ctrlKey && !e.shiftKey && !e.altKey && (key === "ArrowUp" || key === "ArrowDown");
+    var ctrlShiftArrow = e.ctrlKey && e.shiftKey && !e.altKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
+
+    if (DURATION_KEY_CODES.hasOwnProperty(e.code) && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      currentDuration = DURATION_KEY_CODES[e.code];
       updateDurationIndicator();
       var existingEntry = state.grid[state.cursor.row][state.cursor.col];
       var changedExisting = !!existingEntry && !existingEntry.covered && state.cursor.row !== "text";
@@ -783,73 +828,32 @@
         var resizedData = existingEntry.steps ? { steps: existingEntry.steps, duration: currentDuration } : { step: existingEntry.step, duration: currentDuration };
         placeNoteSpan(state.cursor.row, state.cursor.col, resizedData);
       }
-      label = key + " → Dauer-Modus: " + DURATION_NAMES[currentDuration] + " (" + DURATION_LABELS[currentDuration] + ")" +
+      label = key.toUpperCase() + " → Dauer-Modus: " + DURATION_NAMES[currentDuration] + " (" + DURATION_LABELS[currentDuration] + ")" +
         (changedExisting ? "; Ton unter Cursor angepasst." : "; gilt für neu gesetzte Töne.");
-    } else if (!e.ctrlKey && !e.altKey && !e.shiftKey && TONE_KEYS.hasOwnProperty(lower) && state.cursor.row !== "text") {
-      label = placeToneAndAdvance(TONE_KEYS[lower], "Taste „" + key.toUpperCase() + "“");
+    } else if (!e.ctrlKey && !e.altKey && !e.shiftKey && isLetterTone && state.cursor.row !== "text") {
+      label = placeToneAndAdvance(TONE_KEYS[e.code], "Taste „" + toneKeyDisplay + "“");
     } else if (!e.ctrlKey && !e.altKey && !e.shiftKey && isDigitTone && state.cursor.row !== "text") {
       var digitKeyLabel = isNumpadKey ? ("Numpad " + lower + " (NumLock an)") : ("Zifferntaste „" + lower + "“");
       label = placeToneAndAdvance(DIGIT_TONE_KEYS[lower], digitKeyLabel);
-    } else if (e.ctrlKey && e.shiftKey && e.altKey && toneRoot !== null) {
-      if (state.cursor.row === "accomp") {
-        var a4Steps = chordSteps4(toneRoot);
-        var startCol4 = state.cursor.col;
-        var cursor4 = startCol4;
-        var placed4 = [];
-        var placedCols4 = [];
-        for (var bi = 0; bi < a4Steps.length && cursor4 < COLS; bi++) {
-          placedCols4.push(cursor4);
-          var w4 = placeNoteSpan("accomp", cursor4, { step: a4Steps[bi], duration: currentDuration });
-          placed4.push(a4Steps[bi]);
-          cursor4 += w4;
-        }
-        clearSelection();
-        playArpeggio(placed4);
-        lastPlayedCell = placedCols4.map(function (c) { return "accomp:" + c; });
-        state.cursor.col = Math.min(COLS - 1, cursor4);
-        var arp4Desc = placed4.map(describeStep).join(" → ");
-        label = "Strg+Shift+Alt+" + key.toUpperCase() + " → Arpeggio eingefügt (4 Einzeltöne, hoch-runter): " + arp4Desc +
-          (placed4.length < a4Steps.length ? "; Rasterende, nur " + placed4.length + " von 4 Tönen gepasst." : "; weiter zur nächsten Position.");
-      } else {
-        label = "Strg+Shift+Alt+Taste — Arpeggio-Direkteingabe ist aktuell nur in der Begleitung vorgesehen.";
-        mapped = false;
-      }
-    } else if (e.altKey && e.shiftKey && !e.ctrlKey && toneRoot !== null) {
-      if (state.cursor.row === "accomp") {
-        var aSteps = chordSteps(toneRoot);
-        var startCol = state.cursor.col;
-        var cursorA = startCol;
-        var placedSteps = [];
-        var placedColsA = [];
-        for (var ai = 0; ai < aSteps.length && cursorA < COLS; ai++) {
-          placedColsA.push(cursorA);
-          var wA = placeNoteSpan("accomp", cursorA, { step: aSteps[ai], duration: currentDuration });
-          placedSteps.push(aSteps[ai]);
-          cursorA += wA;
-        }
-        clearSelection();
-        playArpeggio(placedSteps);
-        lastPlayedCell = placedColsA.map(function (c) { return "accomp:" + c; });
-        state.cursor.col = Math.min(COLS - 1, cursorA);
-        var arpDesc = placedSteps.map(describeStep).join(" → ");
-        label = "Shift+Alt+" + key.toUpperCase() + " → Arpeggio eingefügt (drei Einzeltöne): " + arpDesc +
-          (placedSteps.length < aSteps.length ? "; Rasterende, nur " + placedSteps.length + " von 3 Tönen gepasst." : "; weiter zur nächsten Position.");
-      } else {
-        label = "Shift+Alt+Taste — Arpeggio-Direkteingabe ist aktuell nur in der Begleitung vorgesehen.";
-        mapped = false;
-      }
     } else if (e.altKey && !e.ctrlKey && !e.shiftKey && toneRoot !== null) {
       if (state.cursor.row === "accomp") {
-        var cSteps = chordSteps(toneRoot);
-        var entryChord = { steps: cSteps, duration: currentDuration };
-        var placedWidthC = placeNoteSpan("accomp", state.cursor.col, entryChord);
-        clearSelection();
-        playChord(cSteps);
+        chordDraft = { row: "accomp", col: state.cursor.col, steps: [toneRoot] };
+        playTone(toneRoot);
         lastPlayedCell = "accomp:" + state.cursor.col;
-        label = "Alt+" + key.toUpperCase() + " → Akkord eingefügt: " + describeEntry(entryChord) + "; weiter zur nächsten Position.";
-        state.cursor.col = Math.min(COLS - 1, state.cursor.col + placedWidthC);
+        label = "Alt+" + toneKeyDisplay + " → Akkordmodus gestartet mit " + describeStep(toneRoot) + ". Weitere Töne tippen, Enter bestätigt, Escape bricht ohne Änderung ab.";
       } else {
-        label = "Alt+Taste — Akkord-Direkteingabe ist aktuell nur in der Begleitung vorgesehen.";
+        label = "Alt+Taste — Akkordmodus ist aktuell nur in der Begleitung vorgesehen.";
+        mapped = false;
+      }
+    } else if (altArrow) {
+      var dirAlt = key === "ArrowRight" ? 1 : -1;
+      var nextChip = findNextChip(state.cursor.row, state.cursor.col, dirAlt);
+      if (nextChip !== null) {
+        state.cursor.col = nextChip;
+        clearSelection();
+        label = "Alt+" + arrowGlyph(key) + " → " + (dirAlt === 1 ? "nächster" : "vorheriger") + " vorhandener Chip in „" + ROW_LABELS[state.cursor.row] + "“.";
+      } else {
+        label = "Alt+" + arrowGlyph(key) + " — kein weiterer Chip in dieser Zeile.";
         mapped = false;
       }
     } else if (ctrlArrowUD) {
@@ -901,7 +905,7 @@
       var boundaryColLR = key === "ArrowRight" ? measureRightBoundary(state.cursor.col) : measureLeftBoundary(state.cursor.col);
       state.cursor.col = resolveCol(state.cursor.row, boundaryColLR);
       clearSelection();
-      label = "Strg+" + arrowGlyph(key) + " → zur " + (key === "ArrowRight" ? "nächsten" : "vorherigen") + " Taktgrenze gesprungen (Takt " + (Math.floor(state.cursor.col / BEATS_PER_MEASURE) + 1) + ").";
+      label = "Strg+" + arrowGlyph(key) + " → zur " + (key === "ArrowRight" ? "nächsten" : "vorherigen") + " Taktgrenze gesprungen (Takt " + (Math.floor(state.cursor.col / MEASURE_COLS) + 1) + ").";
     } else if (shiftArrow) {
       ensureSelectionAnchor();
       if (key === "ArrowLeft" || key === "ArrowRight") {
@@ -916,7 +920,7 @@
       clearSelection();
       if (key === "ArrowLeft" || key === "ArrowRight") {
         state.cursor.col = key === "ArrowRight" ? stepColRight(state.cursor.row, state.cursor.col) : stepColLeft(state.cursor.row, state.cursor.col);
-        label = arrowGlyph(key) + " → Rasterposition " + (state.cursor.col + 1) + " (Takt " + (Math.floor(state.cursor.col / BEATS_PER_MEASURE) + 1) + ").";
+        label = arrowGlyph(key) + " → Rasterposition " + (state.cursor.col + 1) + " (Takt " + (Math.floor(state.cursor.col / MEASURE_COLS) + 1) + ").";
       } else {
         var newIdx = Math.min(ROWS.length - 1, Math.max(0, rIdx + (key === "ArrowDown" ? 1 : -1)));
         state.cursor.row = ROWS[newIdx];
@@ -928,17 +932,9 @@
       state.cursor.col = stepColRight(state.cursor.row, state.cursor.col);
       label = "Leertaste → Position " + (beforeCol + 1) + " bleibt leer, weiter zu Rasterposition " + (state.cursor.col + 1) + ".";
     } else if (key === "Tab") {
-      var dir = e.shiftKey ? -1 : 1;
-      var next = findNextChip(state.cursor.row, state.cursor.col, dir);
-      if (next !== null) {
-        state.cursor.col = next;
-        clearSelection();
-        label = (e.shiftKey ? "Shift+Tab" : "Tab") + " → " + (e.shiftKey ? "vorheriger" : "nächster") + " vorhandener Chip in „" + ROW_LABELS[state.cursor.row] + "“.";
-      } else {
-        handled = false;
-        label = (e.shiftKey ? "Shift+Tab" : "Tab") + " — kein weiterer Chip, Raster wird verlassen.";
-        mapped = false;
-      }
+      handled = false;
+      label = "Tab → verlässt das Raster (natives Tastaturverhalten, kein Eingriff hier).";
+      mapped = null;
     } else if (key === "Enter") {
       state.cursor.col = stepColRight(state.cursor.row, state.cursor.col);
       clearSelection();
@@ -966,10 +962,6 @@
     render();
   }
 
-  function arrowGlyph(key) {
-    return { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" }[key] || key;
-  }
-
   // --- Rendering ---
   function isInSelection(rIdx, col) {
     var rect = selectionRect();
@@ -990,15 +982,21 @@
 
       for (var col = 0; col < COLS; col++) {
         var cellEl = document.createElement("div");
-        cellEl.className = "cell" + (col % BEATS_PER_MEASURE === 0 ? " measure-start" : "");
+        cellEl.className = "cell" + (col % MEASURE_COLS === 0 ? " measure-start" : "");
         var isCursor = state.cursor.row === rowName && state.cursor.col === col;
         if (isCursor) cellEl.classList.add("cursor-cell");
         if (isInSelection(rIdx, col)) cellEl.classList.add("selected");
 
         var entry = state.grid[rowName][col];
-        if (entry && entry.covered) continue;
+        var isDraftCell = !!(chordDraft && chordDraft.row === rowName && chordDraft.col === col);
+        if (isDraftCell) {
+          entry = chordDraft.steps.length === 1
+            ? { step: chordDraft.steps[0], duration: currentDuration, draft: true }
+            : { steps: chordDraft.steps.slice(), duration: currentDuration, draft: true };
+        }
+        if (!isDraftCell && entry && entry.covered) continue;
         if (entry && rowName !== "text") {
-          var spanWidth = actualNoteWidth(rowName, col);
+          var spanWidth = isDraftCell ? Math.min(noteWidth(entry), COLS - col) : actualNoteWidth(rowName, col);
           if (spanWidth > 1) cellEl.style.gridColumn = "span " + spanWidth;
         }
 
@@ -1023,16 +1021,6 @@
                   clearSelection();
                   setStatus("Enter → Text bestätigt, weiter zur nächsten Position.", true);
                   render();
-                } else if (ev.key === "Tab") {
-                  ev.preventDefault();
-                  var dir = ev.shiftKey ? -1 : 1;
-                  var next = findNextChip("text", col, dir);
-                  if (next !== null) {
-                    state.cursor.col = next;
-                    clearSelection();
-                    setStatus((ev.shiftKey ? "Shift+Tab" : "Tab") + " → " + (ev.shiftKey ? "vorheriger" : "nächster") + " vorhandener Textabschnitt.", true);
-                    render();
-                  }
                 } else if (ev.key === "Escape") {
                   ev.preventDefault();
                   state.cursor.row = "melody";
@@ -1040,6 +1028,7 @@
                   setStatus("Escape → Textbearbeitung verlassen, zurück zur Melodie.", true);
                   render();
                 }
+                // Tab bewusst nicht abgefangen: verlaesst das Feld nativ (ARIA-Grid-Vertrag).
               });
             })(col);
             cellEl.appendChild(inputEl);
@@ -1053,6 +1042,7 @@
         } else if (entry) {
           var chip = document.createElement("div");
           chip.className = "chip";
+          if (entry.draft) chip.classList.add("chip-draft");
           var cellKey = rowName + ":" + col;
           var wasJustPlayed = Array.isArray(lastPlayedCell) ? lastPlayedCell.indexOf(cellKey) > -1 : lastPlayedCell === cellKey;
           if (wasJustPlayed) {
@@ -1064,7 +1054,7 @@
             chip.style.background = "linear-gradient(135deg, " + infos.map(function (i) { return "var(" + i.colorVar + ")"; }).join(", ") + ")";
             var noteElC = document.createElement("div");
             noteElC.className = "note";
-            noteElC.textContent = infos[0].name + infos[0].octMark + "-Akkord";
+            noteElC.textContent = infos[0].name + infos[0].octMark + (entry.draft ? " …" : "-Akkord");
             var degElC = document.createElement("div");
             degElC.className = "degree";
             degElC.textContent = "Stufen " + infos.map(function (i) { return i.degree; }).join("/");
@@ -1075,7 +1065,7 @@
             chip.style.background = "var(" + info.colorVar + ")";
             var noteEl = document.createElement("div");
             noteEl.className = "note";
-            noteEl.textContent = info.name + info.octMark;
+            noteEl.textContent = info.name + info.octMark + (entry.draft ? " …" : "");
             var degEl = document.createElement("div");
             degEl.className = "degree";
             degEl.textContent = "Stufe " + info.degree;
@@ -1084,7 +1074,7 @@
           }
           var durBadge = document.createElement("div");
           durBadge.className = "duration-badge";
-          durBadge.textContent = DURATION_LABELS[entry.duration || 1];
+          durBadge.textContent = DURATION_LABELS[entry.duration || 4];
           chip.appendChild(durBadge);
           cellEl.appendChild(chip);
         } else {
@@ -1093,6 +1083,7 @@
 
         (function (rowName, col) {
           cellEl.addEventListener("click", function () {
+            if (chordDraft) return;
             state.cursor = { row: rowName, col: col };
             clearSelection();
             setStatus("Klick → Fokus auf „" + ROW_LABELS[rowName] + "“, Rasterposition " + (col + 1) + ".", true);
@@ -1125,7 +1116,7 @@
     state.grid = initialContent();
     state.cursor = { row: "melody", col: 0 };
     clearSelection();
-    currentDuration = 1;
+    currentDuration = 4;
     updateDurationIndicator();
     setStatus("Zurückgesetzt. Klicke ins Raster, um zu starten.", null);
     render();
@@ -1141,7 +1132,7 @@
   var homeRow = ["A", "S", "D", "F", "G", "H", "J", "K", "L", "Ö"];
 
   function buildKeycapRow(letters, offsetClass, mapObj) {
-    mapObj = mapObj || TONE_KEYS;
+    mapObj = mapObj || DIAGRAM_TONE_STEPS;
     var rowEl = document.createElement("div");
     rowEl.className = "keycap-row" + (offsetClass ? " offset" : "");
     letters.forEach(function (letter) {
@@ -1187,6 +1178,22 @@
   deleteCap.appendChild(zeroLabel);
   keycapDiagram.appendChild(deleteCap);
 
+  var durationRowLabel = document.createElement("p");
+  durationRowLabel.className = "keycap-note";
+  durationRowLabel.style.margin = "10px 0 2px";
+  durationRowLabel.textContent = "Dauer (statt F1–F5, die Browser reservieren)";
+  keycapDiagram.appendChild(durationRowLabel);
+  var durRow = document.createElement("div");
+  durRow.className = "keycap-row";
+  [["R", "1/1"], ["T", "1/2"], ["U", "1/4"], ["C", "1/8"], ["V", "1/16"]].forEach(function (pair) {
+    var cap = document.createElement("div");
+    cap.className = "keycap duration";
+    cap.textContent = pair[1];
+    cap.title = pair[0] + " = " + pair[1];
+    durRow.appendChild(cap);
+  });
+  keycapDiagram.appendChild(durRow);
+
   var shortcutList = document.getElementById("shortcutList");
   var shortcutGroups = [
     {
@@ -1194,7 +1201,8 @@
       items: [
         ["← / →", "eine Rasterposition zurück/weiter"],
         ["↑ / ↓", "gleiche Zeitposition, andere Zeile"],
-        ["Tab / Shift+Tab", "nächster/vorheriger vorhandener Chip"],
+        ["Alt+←/→", "nächster/vorheriger vorhandener Chip"],
+        ["Tab / Shift+Tab", "verlässt das Raster nativ (ARIA-Grid-Vertrag) — kein Eingriff hier"],
         ["Strg+←/→", "vorherige/nächste Taktgrenze"]
       ]
     },
@@ -1221,22 +1229,25 @@
       items: [
         ["Strg+↑/↓", "nächster spielbarer Kalimbaton"],
         ["Bild ↑/↓", "eine Oktave höher/tiefer"],
-        ["F1–F5", "Dauer: Ganze(4)/Halbe(2)/Viertel(1)/Achtel/Sechzehntel — setzt Breite + Ton unter Cursor"]
+        ["R/T/U/C/V", "Dauer: Ganze/Halbe/Viertel/Achtel/Sechzehntel — setzt Breite + Ton unter Cursor"]
       ]
     },
     {
-      title: "Akkorde in der Begleitung",
+      title: "Akkordmodus (nur Begleitung)",
       items: [
-        ["Alt + Ton-Taste/Ziffer", "Dreiklang gleichzeitig"],
-        ["Shift+Alt + Ton-Taste/Ziffer", "Dreiklang als Arpeggio (3 Einzeltöne)"],
-        ["Strg+Shift+Alt + Ton-Taste/Ziffer", "Arpeggio hoch-runter (4 Einzeltöne, z. B. C-E-G-E)"]
+        ["Alt + Ton-Taste/Ziffer", "startet Akkordmodus mit diesem Ton"],
+        ["weitere Ton-Taste/Ziffer", "fügt Ton zum Akkord hinzu (frei befüllbar)"],
+        ["Backspace/Entf", "entfernt letzten hinzugefügten Ton"],
+        ["Enter", "bestätigt den Akkord"],
+        ["Escape", "bricht ab, keine Änderung am Song"]
       ]
     },
     {
       title: "Textzeile",
       items: [
         ["tippen", "Text direkt eintippen (normales Textfeld)"],
-        ["Enter / Tab", "bestätigen, weiter zur nächsten Position"],
+        ["Enter", "bestätigt, weiter zur nächsten Position"],
+        ["Tab / Shift+Tab", "verlässt das Feld nativ"],
         ["Escape", "Textbearbeitung verlassen, zurück zur Melodie"]
       ]
     },
