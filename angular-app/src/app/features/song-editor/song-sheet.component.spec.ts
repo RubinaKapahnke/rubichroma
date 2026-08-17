@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
+import { cloneDocument } from '../../domain/song-document';
 import { createSongLinesForm } from './song-editor-form';
 import {
   SONG_STRUCTURE_HELP_HIDDEN_KEY,
@@ -147,6 +148,55 @@ describe('SongSheetComponent desktop selection gestures', () => {
     expect(words).toEqual([{ lineIndex: 0, wordIndex: 0 }]);
     expect(lines).toEqual([0]);
     expect(selections).toEqual([]);
+  });
+
+  it('emits lossless block and line moves for drag-drop and keyboard alternatives', async () => {
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.lines.push(structuredClone(document.song.lines[0]));
+    fixture.componentRef.setInput('lines', createSongLinesForm(document));
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    const actions: unknown[] = [];
+    fixture.componentInstance.structureAction.subscribe((action) => actions.push(action));
+    fixture.detectChanges();
+
+    fixture.componentInstance.draggedBlock.set({ lineIndex: 0, wordIndex: 0 });
+    fixture.componentInstance.blockDropTarget.set({ lineIndex: 0, wordIndex: 1 });
+    fixture.componentInstance.blockDropAfter.set(true);
+    fixture.componentInstance.dropBlockNative({
+      preventDefault: () => undefined,
+      stopPropagation: () => undefined,
+    } as DragEvent);
+    fixture.componentInstance.moveBlockWithKeyboard(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true }),
+      0,
+      1,
+    );
+    fixture.componentInstance.draggedLine.set(0);
+    fixture.componentInstance.lineDropTarget.set(1);
+    fixture.componentInstance.lineDropAfter.set(true);
+    fixture.componentInstance.dropLineNative({ preventDefault: () => undefined } as DragEvent);
+
+    expect(actions).toEqual([
+      {
+        kind: 'move-block',
+        lineIndex: 0,
+        wordIndex: 0,
+        targetLineIndex: 0,
+        targetWordIndex: 1,
+      },
+      {
+        kind: 'move-block',
+        lineIndex: 0,
+        wordIndex: 1,
+        targetLineIndex: 0,
+        targetWordIndex: 0,
+      },
+      { kind: 'move-line', lineIndex: 0, targetLineIndex: 1 },
+    ]);
   });
 
   it('remembers a dismissed structure help without touching song storage', async () => {

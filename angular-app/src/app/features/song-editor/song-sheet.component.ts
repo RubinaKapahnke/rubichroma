@@ -44,6 +44,12 @@ export class SongSheetComponent {
   readonly wordPreviewRequested = output<WordSelection>();
   readonly linePreviewRequested = output<number>();
   readonly structureHelpVisible = signal(readStructureHelpVisibility());
+  readonly draggedBlock = signal<WordSelection | null>(null);
+  readonly blockDropTarget = signal<WordSelection | null>(null);
+  readonly blockDropAfter = signal(false);
+  readonly draggedLine = signal<number | null>(null);
+  readonly lineDropTarget = signal<number | null>(null);
+  readonly lineDropAfter = signal(false);
   private readonly destroyRef = inject(DestroyRef);
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;
   private touchPointerId: number | null = null;
@@ -153,6 +159,137 @@ export class SongSheetComponent {
     return this.wordEvents(word).some((event) => event.kind !== 'separator');
   }
 
+  startBlockDrag(event: DragEvent, lineIndex: number, wordIndex: number): void {
+    event.stopPropagation();
+    event.dataTransfer?.setData('text/plain', `block:${lineIndex}:${wordIndex}`);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    this.draggedBlock.set({ lineIndex, wordIndex });
+  }
+
+  markBlockDrop(event: DragEvent, lineIndex: number, wordIndex: number): void {
+    if (!this.draggedBlock()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const target = event.currentTarget as HTMLElement;
+    const after = event.clientX >= target.getBoundingClientRect().left + target.offsetWidth / 2;
+    this.blockDropTarget.set({ lineIndex, wordIndex });
+    this.blockDropAfter.set(after);
+  }
+
+  dropBlockNative(event: DragEvent): void {
+    const source = this.draggedBlock();
+    const target = this.blockDropTarget();
+    const dropAfter = this.blockDropAfter();
+    event.preventDefault();
+    event.stopPropagation();
+    this.clearDragState();
+    if (!source || !target) return;
+    let targetWordIndex = target.wordIndex + (dropAfter ? 1 : 0);
+    if (source.lineIndex === target.lineIndex && source.wordIndex < targetWordIndex) {
+      targetWordIndex -= 1;
+    }
+    if (source.lineIndex === target.lineIndex && source.wordIndex === targetWordIndex) return;
+    this.structureAction.emit({
+      kind: 'move-block',
+      lineIndex: source.lineIndex,
+      wordIndex: source.wordIndex,
+      targetLineIndex: target.lineIndex,
+      targetWordIndex,
+    });
+  }
+
+  startLineDrag(event: DragEvent, lineIndex: number): void {
+    event.stopPropagation();
+    event.dataTransfer?.setData('text/plain', `line:${lineIndex}`);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    this.draggedLine.set(lineIndex);
+  }
+
+  markLineDrop(event: DragEvent, lineIndex: number): void {
+    if (this.draggedLine() === null) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const target = event.currentTarget as HTMLElement;
+    const after = event.clientY >= target.getBoundingClientRect().top + target.offsetHeight / 2;
+    this.lineDropTarget.set(lineIndex);
+    this.lineDropAfter.set(after);
+  }
+
+  dropLineNative(event: DragEvent): void {
+    const sourceLineIndex = this.draggedLine();
+    let targetLineIndex = this.lineDropTarget();
+    const dropAfter = this.lineDropAfter();
+    event.preventDefault();
+    this.clearDragState();
+    if (sourceLineIndex === null || targetLineIndex === null) return;
+    targetLineIndex += dropAfter ? 1 : 0;
+    if (sourceLineIndex < targetLineIndex) targetLineIndex -= 1;
+    if (sourceLineIndex === targetLineIndex) return;
+    this.structureAction.emit({ kind: 'move-line', lineIndex: sourceLineIndex, targetLineIndex });
+  }
+
+  clearDragState(): void {
+    this.draggedBlock.set(null);
+    this.blockDropTarget.set(null);
+    this.blockDropAfter.set(false);
+    this.draggedLine.set(null);
+    this.lineDropTarget.set(null);
+    this.lineDropAfter.set(false);
+  }
+
+  isBlockDropTarget(lineIndex: number, wordIndex: number): boolean {
+    const target = this.blockDropTarget();
+    return target?.lineIndex === lineIndex && target.wordIndex === wordIndex;
+  }
+
+  isLineDropTarget(lineIndex: number): boolean {
+    const target = this.lineDropTarget();
+    return target === lineIndex;
+  }
+
+  moveBlockWithKeyboard(event: KeyboardEvent, lineIndex: number, wordIndex: number): void {
+    if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      return;
+    }
+    const line = this.lines().at(lineIndex);
+    let targetLineIndex = lineIndex;
+    let targetWordIndex = wordIndex;
+    if (event.key === 'ArrowLeft') targetWordIndex -= 1;
+    if (event.key === 'ArrowRight') targetWordIndex += 1;
+    if (event.key === 'ArrowUp') targetLineIndex -= 1;
+    if (event.key === 'ArrowDown') targetLineIndex += 1;
+    const targetLine = this.lines().at(targetLineIndex);
+    if (!line || !targetLine) return;
+    if (targetLineIndex !== lineIndex) {
+      if (line.controls.words.length === 1) return;
+      targetWordIndex = Math.min(wordIndex, targetLine.controls.words.length);
+    }
+    const maximumTargetIndex =
+      targetLineIndex === lineIndex
+        ? line.controls.words.length - 1
+        : targetLine.controls.words.length;
+    if (targetWordIndex < 0 || targetWordIndex > maximumTargetIndex) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.structureAction.emit({
+      kind: 'move-block',
+      lineIndex,
+      wordIndex,
+      targetLineIndex,
+      targetWordIndex,
+    });
+  }
+
+  moveLineWithKeyboard(event: KeyboardEvent, lineIndex: number): void {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    const targetLineIndex = lineIndex + (event.key === 'ArrowUp' ? -1 : 1);
+    if (targetLineIndex < 0 || targetLineIndex >= this.lines().length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.structureAction.emit({ kind: 'move-line', lineIndex, targetLineIndex });
+  }
+
   dismissStructureHelp(): void {
     this.structureHelpVisible.set(false);
     try {
@@ -187,6 +324,10 @@ export class SongSheetComponent {
   }
 
   handleWordKeydown(event: KeyboardEvent, lineIndex: number, wordIndex: number): void {
+    if (event.altKey) {
+      this.moveBlockWithKeyboard(event, lineIndex, wordIndex);
+      return;
+    }
     if (event.key === 'Escape') {
       event.preventDefault();
       this.selectionChange.emit(null);

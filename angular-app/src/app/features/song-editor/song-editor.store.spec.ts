@@ -133,6 +133,41 @@ describe('SongEditorStore structure persistence', () => {
     expect(await repository.load()).toEqual(split);
   });
 
+  it('moves a block through central history and persists exact fidelity on redo', async () => {
+    await store.initialize();
+    expect(
+      store.applyStructureAction(
+        { kind: 'duplicate-line', lineIndex: 0 },
+        { lineIndex: 0, wordIndex: 0 },
+      ).ok,
+    ).toBe(true);
+    await expectSaved(store);
+    const beforeMove = structuredClone(store.document()!);
+    const sourceWord = structuredClone(beforeMove.song.lines[0].words[0]);
+
+    const moved = store.applyStructureAction(
+      {
+        kind: 'move-block',
+        lineIndex: 0,
+        wordIndex: 0,
+        targetLineIndex: 1,
+        targetWordIndex: 1,
+      },
+      { lineIndex: 0, wordIndex: 0 },
+    );
+    expect(moved.ok).toBe(true);
+    const afterMove = structuredClone(store.document()!);
+    expect(afterMove.song.lines[1].words[1]).toEqual(sourceWord);
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(afterMove);
+
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 0 });
+    expect(store.document()).toEqual(beforeMove);
+    expect(store.redoStructure()).toEqual({ lineIndex: 1, wordIndex: 1 });
+    expect(store.document()).toEqual(afterMove);
+    await expectSaved(store);
+  });
+
   it('does not let an older structure snapshot overwrite a newer editor state', async () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
     await store.initialize();
