@@ -4,94 +4,16 @@
       <p class="eyebrow">{{ location() }}</p>
       <h2 id="word-editor-title">Wort und Töne bearbeiten</h2>
     </div>
-    <button class="icon-button" type="button" aria-label="Editor schließen" (click)="closed.emit()">
-      ×
-    </button>
+    <div class="inspector-header-actions">
+      <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
+        <button class="history-action" type="button" data-testid="undo-structure-editor" aria-label="Rückgängig" title="Rückgängig (Strg+Z)" [disabled]="!canUndo()" (click)="undoRequested.emit()"><span aria-hidden="true">↶</span></button>
+        <button class="history-action" type="button" data-testid="redo-structure-editor" aria-label="Wiederholen" title="Wiederholen (Strg+Y)" [disabled]="!canRedo()" (click)="redoRequested.emit()"><span aria-hidden="true">↷</span></button>
+      </div>
+      <button class="icon-button" type="button" aria-label="Editor schließen" title="Editor schließen (Esc)" (click)="closed.emit()">×</button>
+    </div>
   </header>
 
   <div class="word-editor-content">
-    <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
-      <button
-        class="history-action"
-        type="button"
-        data-testid="undo-structure-editor"
-        aria-label="Rückgängig"
-        title="Rückgängig (Strg+Z)"
-        [disabled]="!canUndo()"
-        (click)="undoRequested.emit()"
-      >
-        <span aria-hidden="true">↶</span>
-      </button>
-      <button
-        class="history-action"
-        type="button"
-        data-testid="redo-structure-editor"
-        aria-label="Wiederholen"
-        title="Wiederholen (Strg+Y)"
-        [disabled]="!canRedo()"
-        (click)="redoRequested.emit()"
-      >
-        <span aria-hidden="true">↷</span>
-      </button>
-    </div>
-    <section class="add-next-block" aria-labelledby="add-next-block-title">
-      <div>
-        <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
-        <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
-      </div>
-      <div class="add-next-block-actions">
-        <button
-          class="primary-block-action"
-          type="button"
-          data-testid="block-add-word"
-          (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
-        >
-          + Textblock
-        </button>
-        <button
-          type="button"
-          data-testid="block-add-melody"
-          (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
-        >
-          + Melodieblock
-        </button>
-      </div>
-    </section>
-    <details class="more-block-actions" data-testid="more-block-actions" [open]="moreActionsOpen()">
-      <summary
-        aria-controls="more-block-actions-menu"
-        [attr.aria-expanded]="moreActionsOpen()"
-        (click)="toggleMoreActions($event)"
-      >
-        Weitere Blockaktionen
-      </summary>
-      <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
-        <button
-          type="button"
-          data-testid="block-duplicate"
-          (click)="runStructureAction({ kind: 'duplicate-block' })"
-        >
-          Block duplizieren
-        </button>
-        <button
-          type="button"
-          data-testid="block-copy-next-line"
-          [disabled]="!canCopyToNextLine()"
-          (click)="runStructureAction({ kind: 'copy-events-to-next-line' })"
-        >
-          Töne in nächste Zeile
-        </button>
-        <button
-          type="button"
-          data-testid="block-delete"
-          [disabled]="!canDeleteBlock()"
-          (click)="runStructureAction({ kind: 'delete-block' })"
-        >
-          Block löschen
-        </button>
-      </div>
-    </details>
-
     @if (isMelodyBlock()) {
       <div class="melody-block-marker" data-testid="melody-block-marker">
         <span aria-hidden="true">♪</span>
@@ -115,52 +37,77 @@
         <h3 id="events-title">Musikereignisse</h3>
         <span data-testid="event-count">{{ eventCountLabel() }}</span>
       </div>
-      @if (events().length) {
-        <div class="event-list">
-          @for (event of events(); track $index) {
-            <div
-              class="event-chip"
-              [attr.data-profile-colors]="eventColors(event).join(',')"
-              [style.--duration-beats]="eventDurationBeats(event)"
-              [attr.data-duration-beats]="eventDurationBeats(event)"
-            >
+      <div class="track-rows">
+        @for (track of trackOptions; track track) {
+          <section
+            class="track-row"
+            [class.is-target]="activeTrack() === track"
+            [attr.data-testid]="'track-row-' + track"
+          >
+            <header>
+              <strong>{{ trackLabel(track) }}</strong>
               <button
-                class="event-remove-action"
                 type="button"
-                [attr.data-testid]="'event-remove-' + $index"
-                [attr.aria-label]="eventKindLabel(event) + ' ' + eventLabel(event) + ' entfernen'"
-                (click)="removeEvent($index)"
+                [attr.data-testid]="'track-target-' + track"
+                [attr.aria-pressed]="activeTrack() === track"
+                (click)="setActiveTrack(track)"
               >
-                <small>{{ eventKindLabel(event) }}</small>
-                <strong>{{ eventLabel(event) }}</strong>
-                <span class="event-remove-mark" aria-hidden="true">×</span>
+                {{ activeTrack() === track ? 'Aktive Zielspur' : 'Hier einfügen' }}
               </button>
-              <span class="event-color-strip" aria-hidden="true">
-                @for (color of eventColors(event); track $index) {
-                  <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
-                }
-              </span>
-              @if (event.kind !== 'separator') {
-                <label class="event-duration-control">
-                  <span>Dauer</span>
-                  <select
-                    [attr.data-testid]="'event-duration-' + $index"
-                    [value]="eventDurationBeats(event)"
-                    [attr.aria-label]="'Dauer von ' + eventLabel(event)"
-                    (change)="setEventDuration($index, $any($event.target).value)"
+            </header>
+            @if (eventsForTrack(track).length) {
+              <div class="event-list">
+                @for (entry of eventsForTrack(track); track entry.index) {
+                  <div
+                    class="event-chip"
+                    [attr.data-track]="track"
+                    [attr.data-profile-colors]="eventColors(entry.event).join(',')"
+                    [style.--duration-beats]="eventDurationBeats(entry.event)"
+                    [attr.data-duration-beats]="eventDurationBeats(entry.event)"
                   >
-                    <option value="1">1 Schlag</option>
-                    <option value="2">2 Schläge</option>
-                  </select>
-                </label>
-              } @else {
-                <span class="event-duration-label">{{ eventDurationLabel(event) }}</span>
-              }
-            </div>
-          }
-        </div>
-      } @else {
-        <p class="empty-state">Noch keine Töne in diesem Block.</p>
+                    <button
+                      class="event-remove-action"
+                      type="button"
+                      [attr.data-testid]="'event-remove-' + entry.index"
+                      [attr.aria-label]="eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' entfernen'"
+                      (click)="removeEvent(entry.index)"
+                    >
+                      <small>{{ eventKindLabel(entry.event) }}</small>
+                      <strong>{{ eventLabel(entry.event) }}</strong>
+                      <span class="event-remove-mark" aria-hidden="true">×</span>
+                    </button>
+                    <span class="event-color-strip" aria-hidden="true">
+                      @for (color of eventColors(entry.event); track $index) {
+                        <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
+                      }
+                    </span>
+                    @if (entry.event.kind !== 'separator') {
+                      <label class="event-duration-control">
+                        <span>Dauer</span>
+                        <select
+                          [attr.data-testid]="'event-duration-' + entry.index"
+                          [value]="eventDurationBeats(entry.event)"
+                          [attr.aria-label]="'Dauer von ' + eventLabel(entry.event)"
+                          (change)="setEventDuration(entry.index, $any($event.target).value)"
+                        >
+                          <option value="1">1 Schlag</option>
+                          <option value="2">2 Schläge</option>
+                        </select>
+                      </label>
+                    } @else {
+                      <span class="event-duration-label">{{ eventDurationLabel(entry.event) }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="empty-state">Noch keine Ereignisse in dieser Spur.</p>
+            }
+          </section>
+        }
+      </div>
+      @if (parallelCollisionWarning(); as warning) {
+        <p class="editor-notice" role="alert">{{ warning }}</p>
       }
     </section>
 
@@ -273,7 +220,29 @@
       <p class="editor-notice" role="alert">{{ message }}</p>
     }
 
-    <details open>
+    <details class="block-management" data-testid="block-management">
+      <summary>Block einfügen und verwalten</summary>
+      <section class="add-next-block" aria-labelledby="add-next-block-title">
+        <div>
+          <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
+          <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
+        </div>
+        <div class="add-next-block-actions">
+          <button class="primary-block-action" type="button" data-testid="block-add-word" (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })">+ Textblock</button>
+          <button type="button" data-testid="block-add-melody" (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })">+ Melodieblock</button>
+        </div>
+      </section>
+      <details class="more-block-actions" data-testid="more-block-actions" [open]="moreActionsOpen()">
+        <summary aria-controls="more-block-actions-menu" [attr.aria-expanded]="moreActionsOpen()" (click)="toggleMoreActions($event)">Seltene und destruktive Aktionen</summary>
+        <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
+          <button type="button" data-testid="block-duplicate" (click)="runStructureAction({ kind: 'duplicate-block' })">Block duplizieren</button>
+          <button type="button" data-testid="block-copy-next-line" [disabled]="!canCopyToNextLine()" (click)="runStructureAction({ kind: 'copy-events-to-next-line' })">Töne in nächste Zeile</button>
+          <button class="destructive-action" type="button" data-testid="block-delete" [disabled]="!canDeleteBlock()" (click)="runStructureAction({ kind: 'delete-block' })">Block löschen</button>
+        </div>
+      </details>
+    </details>
+
+    <details>
       <summary>Textnotation und Kompatibilität</summary>
       <mat-form-field appearance="outline">
         <mat-label>Legacy-Notation</mat-label>

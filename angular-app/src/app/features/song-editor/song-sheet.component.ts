@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  HostListener,
   inject,
   input,
   output,
@@ -43,7 +42,6 @@ export class SongSheetComponent {
   readonly blockAddRequested = output<void>();
   readonly structureAction = output<SongStructureAction>();
   readonly structureHelpVisible = signal(readStructureHelpVisibility());
-  readonly openLineMenuIndex = signal<number | null>(null);
   private readonly destroyRef = inject(DestroyRef);
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;
   private touchPointerId: number | null = null;
@@ -56,7 +54,6 @@ export class SongSheetComponent {
   }
 
   selectWord(event: MouseEvent, lineIndex: number, wordIndex: number): void {
-    this.closeLineActions();
     const isTouchClick =
       this.touchClickPending ||
       (typeof PointerEvent !== 'undefined' &&
@@ -81,7 +78,6 @@ export class SongSheetComponent {
   startLongPress(event: PointerEvent, lineIndex: number, wordIndex: number): void {
     if (event.pointerType !== 'touch' || !event.isPrimary) return;
 
-    this.closeLineActions();
     this.cancelLongPress();
     this.suppressNextTouchClick = false;
     this.touchPointerId = event.pointerId;
@@ -137,13 +133,7 @@ export class SongSheetComponent {
     return text || 'Leerer Textblock';
   }
 
-  toggleLineActions(event: MouseEvent, lineIndex: number): void {
-    event.preventDefault();
-    this.openLineMenuIndex.update((current) => (current === lineIndex ? null : lineIndex));
-  }
-
   runStructureAction(action: SongStructureAction): void {
-    this.closeLineActions();
     this.structureAction.emit(action);
   }
 
@@ -165,17 +155,6 @@ export class SongSheetComponent {
     }
   }
 
-  @HostListener('document:click', ['$event'])
-  closeLineActionsOnOutsideClick(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element) || !target.closest('.line-actions')) this.closeLineActions();
-  }
-
-  @HostListener('document:keydown.escape')
-  closeLineActions(): void {
-    this.openLineMenuIndex.set(null);
-  }
-
   eventLabel(event: MusicEvent): string {
     switch (event.kind) {
       case 'note':
@@ -194,7 +173,6 @@ export class SongSheetComponent {
   handleWordKeydown(event: KeyboardEvent, lineIndex: number, wordIndex: number): void {
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.closeLineActions();
       this.selectionChange.emit(null);
       return;
     }
@@ -213,7 +191,6 @@ export class SongSheetComponent {
     if (!target) return;
 
     event.preventDefault();
-    this.closeLineActions();
     this.selectionChange.emit(target);
     queueMicrotask(() =>
       document

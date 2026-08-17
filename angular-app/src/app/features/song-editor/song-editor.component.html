@@ -111,7 +111,7 @@
           <input matInput data-testid="song-title" [formControl]="title" autocomplete="off" />
         </mat-form-field>
 
-        <div class="editor-layout">
+        <div class="editor-layout" (click)="dismissInspectorOnBackground($event)">
           <app-song-sheet
             [lines]="lines()"
             [selection]="selection()"
@@ -191,6 +191,7 @@
       [canRedo]="store.canRedo()"
       (closed)="closeWordEditor()"
       (structureAction)="applyStructureAction($event)"
+      (musicEventAppendRequested)="addMusicEvent($event)"
       (musicEventRemovalRequested)="removeMusicEvent($event)"
       (musicEventDurationRequested)="setMusicEventDuration($event)"
       (undoRequested)="undoStructure()"

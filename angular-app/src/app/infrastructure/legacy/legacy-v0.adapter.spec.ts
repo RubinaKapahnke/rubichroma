@@ -67,6 +67,34 @@ describe('legacy-v0 adapter', () => {
     expect(legacyWord).not.toHaveProperty('eventDurations');
   });
 
+  it('round-trips explicit melody and accompaniment identity without changing legacy defaults', () => {
+    const input = structuredClone(COMPLETE_LEGACY) as Record<string, any>;
+    const firstWord = input['song']['lines'][0]['words'][0] as Record<string, unknown>;
+    firstWord['eventTracks'] = [
+      'melody',
+      'melody',
+      'melody',
+      'accompaniment',
+      null,
+      'melody',
+    ];
+
+    const imported = parseLegacyV0(input);
+    expect(imported.song.lines[0].words[0].events.map((event) => event.track ?? null)).toEqual(
+      firstWord['eventTracks'],
+    );
+    const exported = exportVanillaCompatible(imported);
+    const exportedWord = (exported['song'] as { lines: { words: Record<string, unknown>[] }[] })
+      .lines[0].words[0];
+    expect(exportedWord['eventTracks']).toEqual(firstWord['eventTracks']);
+    expect(exportedWord['notation']).toBe(firstWord['notation']);
+
+    const legacyOnly = exportVanillaCompatible(parseLegacyV0(COMPLETE_LEGACY));
+    const legacyWord = (legacyOnly['song'] as { lines: { words: Record<string, unknown>[] }[] })
+      .lines[0].words[0];
+    expect(legacyWord).not.toHaveProperty('eventTracks');
+  });
+
   it.each([
     ['invalid JSON', '{'],
     ['invalid key count', INVALID_KEYS],

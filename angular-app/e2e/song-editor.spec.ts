@@ -83,55 +83,51 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('redo-structure')).toBeDisabled();
 });
 
-test('offers a clear primary entry for a new song block and hides advanced actions', async ({
+test('offers compact direct line actions and keeps advanced block actions secondary', async ({
   page,
 }) => {
   await page.goto('/');
 
   await expect(page.getByText('Lied aus Blöcken aufbauen')).toBeVisible();
   await expect(page.getByTestId('add-song-block')).toHaveText(/Block am Liedende hinzufügen/);
-  await expect(page.getByTestId('line-duplicate-0')).toBeHidden();
+  await expect(page.getByTestId('line-duplicate-0')).toBeVisible();
+  await expect(page.getByTestId('line-delete-0')).toBeDisabled();
   await page.getByTestId('add-song-block').click();
 
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(3);
   await expect(page.getByTestId('word-0-2')).toHaveValue('Neues Wort');
-  await expect(page.getByText('Nächsten Liedblock anlegen')).toBeVisible();
+  await expect(page.getByText('Nächsten Liedblock anlegen')).toBeHidden();
   await expect(page.getByTestId('block-duplicate')).toBeHidden();
 });
 
-test('closes line and block action menus on selection, outside click and Escape', async ({
+test('switches the inspector directly and dismisses it outside or with Escape', async ({
   page,
 }) => {
   await page.goto('/');
-  const lineActions = page.getByTestId('line-actions-0');
-  const lineToggle = lineActions.locator('summary');
-
-  await lineToggle.click();
-  await expect(lineActions).toHaveJSProperty('open', true);
-  await expect(lineToggle).toHaveAttribute('aria-expanded', 'true');
   await page.getByTestId('word-card-0-0').click();
-  await expect(lineActions).toHaveJSProperty('open', false);
   await expect(page.getByTestId('word-editor')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Editor schließen' }).click();
-  await lineToggle.click();
-  await page.getByTestId('song-title').click();
-  await expect(lineActions).toHaveJSProperty('open', false);
-
-  await lineToggle.click();
+  await page.getByTestId('word-card-0-1').click();
+  await expect(page.getByTestId('word-editor')).toContainText('Block 2');
+  await page.getByText('Musikereignisse', { exact: true }).click();
+  await expect(page.getByTestId('word-editor')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(lineActions).toHaveJSProperty('open', false);
+  await expect(page.getByTestId('word-editor')).toBeHidden();
 
   await page.getByTestId('word-card-0-0').click();
+  await page.locator('.song-line').click({ position: { x: 4, y: 4 } });
+  await expect(page.getByTestId('word-editor')).toBeHidden();
+
+  await page.getByTestId('word-card-0-0').click();
+  await openBlockManagement(page);
   const blockActions = page.getByTestId('more-block-actions');
-  const blockToggle = blockActions.locator('summary');
+  const blockToggle = blockActions.locator(':scope > summary');
   await blockToggle.click();
   await expect(blockToggle).toHaveAttribute('aria-expanded', 'true');
   await page.getByText('Musikereignisse', { exact: true }).click();
   await expect(blockActions).toHaveJSProperty('open', false);
   await blockToggle.click();
   await page.keyboard.press('Escape');
-  await expect(blockActions).toHaveJSProperty('open', false);
+  await expect(page.getByTestId('word-editor')).toBeHidden();
 });
 
 test('keeps help preference, product labels and song storage separate', async ({ page }) => {
@@ -144,7 +140,7 @@ test('keeps help preference, product labels and song storage separate', async ({
   await expect(
     page.getByText(/Dein Song wird nur in diesem Browser gespeichert.*nicht in eine Cloud/),
   ).toBeVisible();
-  await expect(page.getByTestId('line-add-0')).toHaveText(/Zeile danach/);
+  await expect(page.getByTestId('line-add-0')).toHaveAccessibleName(/Zeile nach Zeile 1/);
   await expect(page.getByTestId('line-add-0')).toHaveAttribute('title', 'Zeile danach einfügen');
   await expect(page.getByTestId('undo-structure')).toHaveAttribute('title', /Strg\+Z/);
   await expect(page.getByTestId('redo-structure')).toHaveAttribute('title', /Strg\+Y/);
@@ -186,6 +182,7 @@ test('keeps melody identity separate from optional text across autosave and relo
     events: expect.arrayContaining([expect.objectContaining({ kind: 'note' })]),
   });
 
+  await openBlockManagement(page);
   await page.getByTestId('block-add-melody').click();
   await expect(page.getByTestId('melody-block-marker')).toBeVisible();
   await expect(page.getByTestId('word-0-2')).toHaveValue('');
@@ -198,7 +195,7 @@ test('keeps melody identity separate from optional text across autosave and relo
   await expect(page.getByTestId('event-count')).toHaveText('1 Ereignis');
 });
 
-test('imports, reloads and exports the canonical Twinkle fixture without inventing durations', async ({
+test('imports, reloads and exports the canonical Twinkle fixture with durations and tracks', async ({
   page,
 }) => {
   await page.goto('/');
@@ -220,54 +217,75 @@ test('imports, reloads and exports the canonical Twinkle fixture without inventi
   >;
   expect(exported['song']['title']).toBe('Twinkle, Twinkle, Little Star');
   expect(exported['song']['lines']).toHaveLength(6);
+  const exportedWords = exported['song']['lines'].flatMap(
+    (line: Record<string, any>) => line['words'],
+  );
+  expect(exportedWords).toHaveLength(24);
+  expect(exportedWords.filter((word: Record<string, any>) => word['eventTracks'])).toHaveLength(6);
   expect(
-    exported['song']['lines'].flatMap((line: Record<string, any>) =>
-      line['words'].flatMap((word: Record<string, any>) => word['notation'].split(/\s+/)),
-    ),
-  ).toEqual([
-    '1',
-    '1',
-    '5',
-    '5',
-    '6',
-    '6',
-    '5',
-    '4',
-    '4',
-    '3',
-    '3',
-    '2',
-    '2',
-    '1',
-    '5',
-    '5',
-    '4',
-    '4',
-    '3',
-    '3',
-    '2',
-    '5',
-    '5',
-    '4',
-    '4',
-    '3',
-    '3',
-    '2',
-    '1',
-    '1',
-    '5',
-    '5',
-    '6',
-    '6',
-    '5',
-    '4',
-    '4',
-    '3',
-    '3',
-    '2',
-    '2',
-    '1',
+    exportedWords
+      .flatMap((word: Record<string, any>) => word['eventTracks'] ?? [])
+      .filter((track: string | null) => track === 'accompaniment'),
+  ).toHaveLength(6);
+});
+
+test('edits parallel melody and accompaniment tracks through undo, reload and player handoff', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'track-sentinel'));
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('word-card-0-1').click();
+
+  await expect(page.getByTestId('track-row-melody').locator('.event-chip')).toHaveCount(2);
+  await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(0);
+  await page.getByTestId('track-target-accompaniment').click();
+  await expect(page.getByTestId('track-target-accompaniment')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.getByTestId('key-10-5-0').click();
+  await expect(page.getByText(/Zunge.*anderen Spur/i)).toBeVisible();
+  await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(0);
+
+  await page.getByTestId('key-9-3-0').click();
+  const accompaniment = page.getByTestId('track-row-accompaniment').locator('.event-chip');
+  await expect(accompaniment).toHaveCount(1);
+  await expect(accompaniment).toContainText('E · 3');
+  await expect(accompaniment.locator('[data-profile-color="#26562A"]')).toHaveCount(1);
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(0);
+  await page.getByTestId('redo-structure-editor').click();
+  await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(1);
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByTestId('export-button').click();
+  const exported = JSON.parse(
+    await readFile((await (await downloadPromise).path())!, 'utf8'),
+  ) as Record<string, any>;
+  expect(exported['song']['lines'][0]['words'][1]['eventTracks']).toEqual([
+    'melody',
+    'melody',
+    'accompaniment',
   ]);
+  expect(exported['fixtureVersion']).toBe(1);
+
+  await page.reload();
+  await page.getByTestId('word-card-0-1').click();
+  await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(1);
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'track-sentinel',
+  );
+
+  await page.getByTestId('open-player').click();
+  await expect(page.locator('.flow-event.accompaniment')).not.toHaveCount(0);
+  await expect(page.locator('.score-event[data-track="accompaniment"]')).not.toHaveCount(0);
+  await page.getByTestId('practice-settings').locator(':scope > summary').click();
+  await page.getByTestId('mixer-drawer').getByText('Mixer').click();
+  await expect(page.getByTestId('track-melody')).toBeVisible();
+  await expect(page.getByTestId('track-accompaniment')).toBeVisible();
 });
 
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
@@ -277,6 +295,7 @@ test('edits title, word and raw notation and restores them after reload', async 
   await title.fill('Reload Song äöü');
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('word-0-0').fill('Märchen');
+  await page.getByText('Textnotation und Kompatibilität', { exact: true }).click();
   await page.getByTestId('notation-0-0').fill('(13) 5′-x(');
   // Autosave is debounced by 350 ms; cross that boundary before asserting persistence.
   await page.waitForTimeout(700);
@@ -392,6 +411,7 @@ test('opens and closes the focused word editor as a mobile bottom sheet', async 
   await expect(page.getByTestId('word-editor')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
+  await openBlockManagement(page);
   await page.getByTestId('block-add-word').click();
   await expect(page.getByTestId('word-card-0-1')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('word-editor')).toContainText('Block 2');
@@ -477,6 +497,7 @@ test('performs block and line structure actions, transfers only events and resto
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
 
   await page.getByTestId('word-card-0-0').click();
+  await openBlockManagement(page);
   await page.getByTestId('block-add-word').click();
   await expect(page.getByTestId('word-0-1')).toHaveValue('Neues Wort');
   await openBlockActions(page);
@@ -484,6 +505,7 @@ test('performs block and line structure actions, transfers only events and resto
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(2);
 
   await page.getByTestId('word-card-0-0').click();
+  await openBlockManagement(page);
   await page.getByTestId('block-add-melody').click();
   await expect(page.getByTestId('word-0-1')).toHaveValue('');
   await expect(page.getByTestId('melody-block-marker')).toBeVisible();
@@ -572,16 +594,21 @@ test('undoes and redoes structure actions with buttons and keyboard shortcuts', 
 });
 
 async function openBlockActions(page: Page): Promise<void> {
+  await openBlockManagement(page);
   const actions = page.getByTestId('more-block-actions');
   if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
-    await actions.locator('summary').click();
+    await actions.locator(':scope > summary').click();
   }
 }
 
 async function openLineActions(page: Page, lineIndex: number): Promise<void> {
-  const actions = page.getByTestId(`line-actions-${lineIndex}`);
-  if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
-    await actions.locator('summary').click();
+  await expect(page.getByTestId(`line-duplicate-${lineIndex}`)).toBeVisible();
+}
+
+async function openBlockManagement(page: Page): Promise<void> {
+  const management = page.getByTestId('block-management');
+  if (!(await management.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await management.locator(':scope > summary').click();
   }
 }
 
@@ -801,9 +828,9 @@ async function expectTwinkleState(page: Page): Promise<void> {
     }
   });
   expect(state.keys).toBe(17);
-  expect(state.events).toHaveLength(42);
+  expect(state.events).toHaveLength(48);
   expect(state.events.filter((event: Record<string, any>) => event['duration'] === 2)).toHaveLength(
-    6,
+    12,
   );
   expect(
     state.events.every((event: Record<string, any>) => [1, 2].includes(event['duration'])),

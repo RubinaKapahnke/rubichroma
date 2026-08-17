@@ -68,41 +68,10 @@
             title="Zeile danach einfügen"
             (click)="runStructureAction({ kind: 'insert-line', lineIndex })"
           >
-            + Zeile danach
+            <span aria-hidden="true">+</span>
           </button>
-          <details
-            class="line-actions"
-            [open]="openLineMenuIndex() === lineIndex"
-            [attr.data-testid]="'line-actions-' + lineIndex"
-            [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)"
-          >
-            <summary
-              [attr.aria-label]="'Weitere Aktionen für Zeile ' + (lineIndex + 1)"
-              [attr.aria-expanded]="openLineMenuIndex() === lineIndex"
-              [attr.aria-controls]="'line-action-menu-' + lineIndex"
-              title="Weitere Zeilenaktionen"
-              (click)="toggleLineActions($event, lineIndex)"
-            >
-              <span aria-hidden="true">•••</span>
-            </summary>
-            <div class="line-action-menu" [id]="'line-action-menu-' + lineIndex">
-              <button
-                type="button"
-                [attr.data-testid]="'line-duplicate-' + lineIndex"
-                (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"
-              >
-                Zeile duplizieren
-              </button>
-              <button
-                type="button"
-                [attr.data-testid]="'line-delete-' + lineIndex"
-                [disabled]="lines().length === 1"
-                (click)="runStructureAction({ kind: 'delete-line', lineIndex })"
-              >
-                Zeile löschen
-              </button>
-            </div>
-          </details>
+          <button class="line-icon-action" type="button" [attr.data-testid]="'line-duplicate-' + lineIndex" [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' duplizieren'" title="Zeile duplizieren" (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"><span aria-hidden="true">⧉</span></button>
+          <button class="line-icon-action destructive" type="button" [attr.data-testid]="'line-delete-' + lineIndex" [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' löschen'" title="Zeile löschen" [disabled]="lines().length === 1" (click)="runStructureAction({ kind: 'delete-line', lineIndex })"><span aria-hidden="true">×</span></button>
         </div>
       </div>
       <div class="words">

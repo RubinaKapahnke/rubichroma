@@ -101,6 +101,33 @@ describe('player timeline', () => {
     expect(timeline.totalBeats).toBe(8);
   });
 
+  it('projects explicitly identified melody and accompaniment in parallel within one word', () => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.lines[0].words = [document.song.lines[0].words[0]];
+    document.song.lines[0].words[0].events = [
+      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1, track: 'melody' },
+      { kind: 'note', pitch: { degree: 2, octave: 0 }, duration: 1, track: 'melody' },
+      {
+        kind: 'chord',
+        pitches: [
+          { degree: 3, octave: 0 },
+          { degree: 5, octave: 0 },
+        ],
+        duration: 2,
+        track: 'accompaniment',
+      },
+    ];
+
+    const timeline = buildPlayerTimeline(document);
+    expect(timeline.events.map((event) => [event.startBeat, event.track])).toEqual([
+      [0, 'melody'],
+      [0, 'accompaniment'],
+      [1, 'melody'],
+    ]);
+    expect(timeline.words[0]).toMatchObject({ startBeat: 0, endBeat: 2 });
+    expect(timeline.totalBeats).toBe(2);
+  });
+
   it('carries only a contiguous editor selection into a non-empty practice range', () => {
     expect(contiguousPlayerRange(DEFAULT_DOCUMENT, [{ lineIndex: 0, wordIndex: 0 }])).toEqual({
       startBeat: 0,

@@ -12,11 +12,13 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
-import { appendMusicEvent } from '../../domain/music-event-editing';
 import {
   durationLabel,
   eventDurationInBeats,
+  hasParallelTineCollision,
   MusicEvent,
+  musicEventTrack,
+  MusicTrackId,
   Pitch,
 } from '../../domain/music-event';
 import { SongStructureAction } from '../../domain/song-structure-editing';
@@ -55,10 +57,13 @@ export class WordEditorComponent {
   readonly structureAction = output<SongStructureAction>();
   readonly musicEventRemovalRequested = output<number>();
   readonly musicEventDurationRequested = output<{ eventIndex: number; durationBeats: number }>();
+  readonly musicEventAppendRequested = output<{ event: MusicEvent; track: MusicTrackId }>();
   readonly undoRequested = output<void>();
   readonly redoRequested = output<void>();
 
   readonly insertMode = signal<InsertMode>('single');
+  readonly activeTrack = signal<MusicTrackId>('melody');
+  readonly trackOptions = ['melody', 'accompaniment'] as const;
   readonly chordDraft = signal<Pitch[]>([]);
   readonly notice = signal<string | null>(null);
   readonly moreActionsOpen = signal(false);
@@ -136,6 +141,12 @@ export class WordEditorComponent {
     this.notice.set(null);
   }
 
+  setActiveTrack(track: MusicTrackId): void {
+    this.activeTrack.set(track);
+    this.chordDraft.set([]);
+    this.notice.set(null);
+  }
+
   handleKey(key: KalimbaKeyView): void {
     if (this.insertMode() === 'single') {
       this.append({ kind: 'note', pitch: key.pitch, duration: 1 });
@@ -178,7 +189,7 @@ export class WordEditorComponent {
   }
 
   isPitchUsed(pitch: Pitch): boolean {
-    return this.events().some((event) => {
+    return this.eventsForTrack(this.activeTrack()).some(({ event }) => {
       if (event.kind === 'note') return samePitch(event.pitch, pitch);
       if (event.kind === 'chord') return event.pitches.some((item) => samePitch(item, pitch));
       return false;
@@ -192,9 +203,9 @@ export class WordEditorComponent {
   eventLabel(event: MusicEvent): string {
     switch (event.kind) {
       case 'note':
-        return formatPitch(event.pitch);
+        return this.pitchLabel(event.pitch);
       case 'chord':
-        return event.pitches.map(formatPitch).join(' + ');
+        return event.pitches.map((pitch) => this.pitchLabel(pitch)).join(' + ');
       case 'separator':
         return '–';
     }
@@ -225,23 +236,42 @@ export class WordEditorComponent {
   }
 
   draftLabel(): string {
-    return this.chordDraft().map(formatPitch).join(' + ') || 'Noch keine Töne gewählt';
+    return (
+      this.chordDraft().map((pitch) => this.pitchLabel(pitch)).join(' + ') ||
+      'Noch keine Töne gewählt'
+    );
+  }
+
+  eventsForTrack(track: MusicTrackId): { event: MusicEvent; index: number }[] {
+    return this.events().flatMap((event, index) =>
+      musicEventTrack(event) === track ? [{ event, index }] : [],
+    );
+  }
+
+  trackLabel(track: MusicTrackId): string {
+    return track === 'melody' ? 'Melodie' : 'Akkord / Begleitung';
+  }
+
+  parallelCollisionWarning(): string | null {
+    return hasParallelTineCollision(this.events())
+      ? 'Importhinweis: Dieselbe Kalimba-Zunge liegt in beiden Spuren auf demselben Anschlag. Die Daten bleiben erhalten; ändere vor dem Abspielen eine der beiden Spuren.'
+      : null;
   }
 
   private append(event: MusicEvent): void {
-    this.applyEdit(appendMusicEvent(this.notationControl().value, event));
-  }
-
-  private applyEdit(result: ReturnType<typeof appendMusicEvent>): void {
-    if (!result.ok) {
+    if (this.hasUnknownFragments()) {
       this.notice.set(
         'Diese Notation enthält unbekannte Legacy-Fragmente. Bearbeite sie zuerst im Textfeld, damit nichts verloren geht.',
       );
       return;
     }
-
-    this.notationControl().setValue(result.notation);
+    this.musicEventAppendRequested.emit({ event, track: this.activeTrack() });
     this.notice.set(null);
+  }
+
+  private pitchLabel(pitch: Pitch): string {
+    const key = this.keys().find((candidate) => samePitch(candidate.pitch, pitch));
+    return key ? `${key.letter} · ${formatPitch(pitch)}` : formatPitch(pitch);
   }
 }
 

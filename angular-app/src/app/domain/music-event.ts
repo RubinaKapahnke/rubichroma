@@ -1,4 +1,5 @@
 export type NoteDuration = number | 'quarter';
+export type MusicTrackId = 'melody' | 'accompaniment';
 
 export interface Pitch {
   degree: 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -9,16 +10,41 @@ export interface NoteEvent {
   kind: 'note';
   pitch: Pitch;
   duration?: NoteDuration;
+  track?: MusicTrackId;
 }
 
 export interface ChordEvent {
   kind: 'chord';
   pitches: Pitch[];
   duration?: NoteDuration;
+  track?: MusicTrackId;
 }
 
 export interface SeparatorEvent {
   kind: 'separator';
+  track?: MusicTrackId;
+}
+
+export function musicEventTrack(event: MusicEvent): MusicTrackId {
+  return event.track ?? (event.kind === 'chord' ? 'accompaniment' : 'melody');
+}
+
+export function hasParallelTineCollision(events: readonly MusicEvent[]): boolean {
+  if (!events.some((event) => event.track !== undefined)) return false;
+  const offsets: Record<MusicTrackId, number> = { melody: 0, accompaniment: 0 };
+  const attacks = new Map<string, MusicTrackId>();
+  for (const event of events) {
+    const track = musicEventTrack(event);
+    if (event.kind === 'separator') continue;
+    for (const pitch of event.kind === 'note' ? [event.pitch] : event.pitches) {
+      const key = `${offsets[track]}:${pitch.degree}:${pitch.octave}`;
+      const previousTrack = attacks.get(key);
+      if (previousTrack && previousTrack !== track) return true;
+      attacks.set(key, track);
+    }
+    offsets[track] += eventDurationInBeats(event);
+  }
+  return false;
 }
 
 export type MusicEvent = NoteEvent | ChordEvent | SeparatorEvent;
@@ -35,7 +61,7 @@ export function cloneMusicEvents(events: readonly MusicEvent[]): MusicEvent[] {
           duration: eventDurationInBeats(event),
         };
       case 'separator':
-        return { kind: 'separator' };
+        return { ...event };
     }
   });
 }
