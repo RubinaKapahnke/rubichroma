@@ -214,7 +214,7 @@ Der erste fachliche Schwerpunkt bleibt die Kalimba. Musikmodell, Timeline und Pl
 - Der Einheitenwechsel rechnet nur die Darstellung und Eingabewerte um. Eine kanonische interne Tempodarstellung verhindert, dass Rundung beim wiederholten Wechsel zwischen BPM und Prozent die reale Wiedergabegeschwindigkeit schleichend verändert.
 - Eine Geschwindigkeitsänderung wirkt während laufender Wiedergabe ohne Positionsverlust; bereits klingende und neu geplante Ereignisse bleiben musikalisch sauber.
 - Notenlängen, Pausen und gleichzeitig klingende Töne beziehungsweise Akkorde werden korrekt wiedergegeben.
-- Mehrere musikalische Ebenen wie Melodie und Begleitung gehören zum Zielbild. Sie lassen sich später einzeln ein- und ausschalten, in der Lautstärke regeln und solo schalten.
+- Mehrere musikalische Ebenen wie Melodie und Begleitung gehören zum Zielbild. Der Mixer bietet je Spur ausschließlich Ein/Aus; spurbezogene Lautstärkeregler und eine Solo-Funktion sind nicht vorgesehen. Die Gesamtlautstärke bleibt davon getrennt steuerbar.
 - Ein späteres Metronom ist optional, lautstärkeregelbar und an Tempo und Loop gekoppelt.
 - Ein späterer Einzähler ist optional und für normalen Start sowie Loop-Wiederholungen getrennt steuerbar. Während des Einzählers bleibt die visuelle Vorschau aktiv und läuft sichtbar auf den Einsatz zu.
 
@@ -248,7 +248,7 @@ Beide Darstellungen sind Projektionen derselben Timeline. Ein Wechsel unterbrich
 
 Der Liedtext läuft in beiden Darstellungen synchron mit derselben Timeline mit. Für den gesamten musikalischen Verlauf sind die tatsächlich zum Stück gehörenden vollständigen Textzeilen hinterlegt und zeitlich passend zugeordnet; frühere Zeilen werden nicht als Platzhalter für fehlenden späteren Text wiederholt, und instrumentale Abschnitte erhalten keinen künstlichen Text. Der Text wird in musikalisch passende Silben segmentiert und jede Silbe eindeutig einem zugehörigen Musikereignis beziehungsweise Zeitabschnitt zugeordnet. Ausschließlich die aktuell gesungene oder gespielte Silbe ist aktiv hervorgehoben; weder das ganze Wort oder die ganze Zeile noch bereits gespielte Silben bleiben gleichzeitig aktiv. Beim nächsten Silbenereignis endet die vorherige Hervorhebung zuverlässig, in Pausen ist keine vergangene Silbe aktiv. Die nächste Textzeile bleibt vorauslesbar und bereits Gespieltes tritt zurück. Der Text gehört zur zusammenhängenden Playeroberfläche und wird nicht als unabhängiger, separat gesteuerter Scroller umgesetzt. Ein Wechsel zwischen Flow und Laufnotation bewahrt Textposition und Hervorhebung.
 
-Unterhalb des Players steht zusätzlich ein vollständiges Notenblatt für das gesamte Lied. Es projiziert dieselben Editor-/Tabdaten in unveränderter musikalischer Reihenfolge: Die zu einer Silbe oder Textstelle gehörenden Töne und Akkorde stehen unmittelbar darüber; es existiert keine separat gepflegte Playerfassung. Klick beziehungsweise Tippen auf eine Silbe oder Textstelle springt die gemeinsame Timeline exakt zum zugehörigen Ereignis und aktualisiert Transport, Flow oder Laufnotation, Zungenmarkierung und aktive Silbe gemeinsam. Das Notenblatt bleibt auf Desktop vollständig nutzbar und wird auf Mobilgeräten responsiv dargestellt, ohne die Seite horizontal zu verbreitern.
+Unterhalb des Players steht zusätzlich ein vollständiges Notenblatt für das gesamte Lied. Es projiziert dieselben Editor-/Tabdaten in unveränderter musikalischer Reihenfolge: Die zu einer Silbe oder Textstelle gehörenden Töne und Akkorde stehen unmittelbar darüber; es existiert keine separat gepflegte Playerfassung. Klick beziehungsweise Tippen auf eine Silbe oder Textstelle springt die gemeinsame Timeline exakt zum zugehörigen Ereignis und aktualisiert Transport, Flow oder Laufnotation, Zungenmarkierung und aktive Silbe gemeinsam. Während der Wiedergabe wird das Notenblatt automatisch nach oben nachgeführt, sodass die exklusiv aktive Silbe im sichtbaren Bereich bleibt; ein expliziter Sprung führt auch die Scrollposition unmittelbar passend nach. Das Notenblatt bleibt auf Desktop vollständig nutzbar und wird auf Mobilgeräten responsiv dargestellt, ohne die Seite horizontal zu verbreitern.
 
 Als späterer Ausbau kann eine ausgewählte Stelle des Notenblatts den Editor direkt an der entsprechenden Lied-/Notenposition öffnen. Diese Rücknavigation gehört nicht zum aktuellen Playerumfang.
 
@@ -263,6 +263,7 @@ Für die Kalimba gilt in Flow:
 
 - Alle Zungen des persönlichen Instrumentprofils erscheinen als feste Spuren in exakt der physischen Links-rechts-Anordnung. Sie werden nicht nach Tonhöhe umsortiert.
 - Die 17 Fallspuren, die Ziel- beziehungsweise Jetzt-Linie und die 17 sichtbaren Zungen verwenden eine gemeinsame responsive Geometrie- und Positionsquelle. Die Mittellinie jedes Notenbalkens trifft auf die Mitte der Zunge desselben Tons; diese Zuordnung bleibt auf Desktop, Mobilgeräten und nach Größenänderungen stabil.
+- Der Holzkorpus liegt mit realistisch schmalen Seitenrändern eng um die 17 Zungen. Die Zungen werden weder künstlich auseinandergezogen noch unabhängig von den Fallspuren skaliert.
 - Die sichtbaren Zungen sind als Instrumentabbildung eindeutig erkennbar: metallische, unterschiedlich lange und eher schlanke Zungen mit kalimbatypischer Form statt kurzer breiter Tasten oder abstrakter Rechtecke. Das oben eingespannte Ende ist gerade; das unten liegende freie Spielende ist nur moderat abgerundet und wirkt nicht pillenförmig.
 - In der kompakten Playerdarstellung wird kein dekorativer Steg gezeigt, wenn er wegen der verfügbaren Größe nicht mit glaubwürdiger Position und Proportion dargestellt werden kann.
 - Tonbuchstabe und Kalimba-Zahl beziehungsweise Oktavmarkierung stehen wie eine Prägung oder aufgedruckte Instrumentbeschriftung direkt auf der jeweiligen Zunge. Die Beschriftung bleibt auch bei abgeschwächter oder ausgeschalteter Farbhilfe lesbar.
@@ -270,10 +271,11 @@ Für die Kalimba gilt in Flow:
 - Im Stück unbenutzte Zungen bleiben zur räumlichen Orientierung sichtbar, aber stark zurückgenommen.
 - Die aktuell zu spielende Zunge wird kräftig hervorgehoben; die Zunge des nächsten Ereignisses wird gleichzeitig schwächer vorangekündigt. Vorschau und aktive Markierung bleiben auch ohne Farbe durch mindestens ein weiteres Merkmal unterscheidbar.
 - Die kräftige Hervorhebung ist an den Einsatz und eine fachlich sinnvolle kurze sichtbare Dauer des aktuellen Ereignisses gebunden und verschwindet danach zuverlässig. Jedes neue Ereignis löst auf seiner Zunge einen klar erkennbaren neuen Impuls aus, auch wenn dieselbe Zunge unmittelbar zuvor bereits durch einen Akkord oder ein anderes Ereignis markiert war.
-- Der Vorschauzeitraum basiert auf musikalischer statt realer Zeit. Zwei Takte sind der bestätigte Ausgangspunkt; ob weitere Horizonte wählbar werden, ist noch offen.
+- Der Vorschauzeitraum basiert auf musikalischer statt realer Zeit und ist auf 1, 2 oder 4 Takte einstellbar; beim Öffnen sind 2 Takte der Standard.
 - Kommende Notenbalken erscheinen oben und laufen nach unten zur festen Anschlaglinie. Die darunter sichtbare Zunge reagiert beim Auftreffen.
 - Die Vorderkante eines Notenbalkens markiert den Einsatz, seine Länge in Bewegungsrichtung die Haltedauer und sein Ende das Loslassen.
 - Akkorde werden durch gleichzeitiges Eintreffen und eine dezente visuelle Gruppierung als Einheit kenntlich, ohne die Instrumentenspuren zu verwischen.
+- Arpeggien bestehen dagegen aus zeitlich nacheinander eintreffenden Einzeltönen. Eine Begleitfigur darf nur dann mehrere Zungen gleichzeitig anzeigen oder anschlagen, wenn die gemeinsame Timeline tatsächlich einen Akkord enthält.
 - Pausen erscheinen primär als zeitliche Lücke und bei ausreichendem Platz zusätzlich mit einem dezenten Pausensymbol.
 - Kalimba-Zahl und Tonbuchstabe lassen sich unabhängig voneinander ein- und ausschalten.
 
@@ -299,7 +301,7 @@ Der Player soll später erkennen können, was ein Nutzer tatsächlich spielt. Mi
 | Darstellung | synchronisierte Tab-/Laufnotation und aktive Hervorhebung | eine gemeinsame Playeroberfläche mit umschaltbarer Laufnotation und Kalimba-Flow; gleichzeitige Darstellung nur optional |
 | Transport | Start, Pause, Stopp, Lautstärke und sichtbare Position | zusätzlich erweiterte Navigation und persönliche Ansichtspräferenzen |
 | Üben | Bereich, Loop und relative Übungsgeschwindigkeit | zusätzlich Metronom und getrennt steuerbarer Einzähler |
-| Ebenen | mehrere Ebenen im Datenmodell vorbereitet, zunächst ohne vollständigen Mixer | Ein/Aus, Lautstärke und Solo je Ebene |
+| Ebenen | mehrere Ebenen im Datenmodell vorbereitet, zunächst ohne vollständigen Mixer | Ein/Aus je Ebene; keine spurbezogene Lautstärke oder Solo-Funktion |
 | Spielerkennung | keine Mikrofon-, MIDI- oder Bewertungsfunktion | trennbare Eingabe und sachliches Feedback für gespielte Ereignisse |
 
 ### Testbare Player-Anforderungen
@@ -315,21 +317,21 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - Nach erneutem Öffnen sind die bestätigten stückbezogenen Einstellungen und der letzte Loop-Bereich vorhanden, der Loop läuft aber nicht automatisch an.
 - Die Laufnotation bewegt Ereignisse von rechts nach links zu einer festen Spiellinie; aktive Note, Akkord und Pause bleiben auch bei abgeschwächter oder ausgeschalteter Farbhilfe eindeutig erkennbar.
 - Die spätere Flow-Ansicht bewegt Ereignisse von oben nach unten auf die physische Zungenanordnung zu und bildet Einsatz, Haltedauer, Loslassen, Akkorde und Pausen korrekt ab.
+- Der Flow-Horizont lässt sich auf 1, 2 oder 4 Takte umschalten und startet mit 2 Takten, ohne Transportposition oder reale Wiedergabe zu verändern. Begleitungs-Arpeggien erscheinen und erklingen als nacheinander folgende Einzeltöne; nur echte Akkorde sind gleichzeitig.
 - Für alle 17 Töne endet die Mittellinie des Flow-Balkens auf der Mitte der tonidentischen Zunge in physischer Kalimba-Reihenfolge. Die Abweichung beträgt auf Desktop, 390 Pixel Breite und nach dynamischer Größenänderung höchstens zwei CSS-Pixel; auch gleichzeitig eintreffende Akkordbalken bleiben korrekt ausgerichtet.
-- Die Instrumentdarstellung ist ohne zusätzliche Erklärung als 17-Zungen-Kalimba erkennbar; schlanke Zungenproportionen, Metallcharakter, reale Anordnung, moderate Rundung am freien Ende und direkt aufgebrachte Ton-/Zahlbeschriftung unterstützen die Zuordnung. Die kompakte Darstellung verzichtet auf einen sachlich falsch proportionierten Steg.
+- Die Instrumentdarstellung ist ohne zusätzliche Erklärung als 17-Zungen-Kalimba erkennbar; schlanke Zungenproportionen, Metallcharakter, reale Anordnung, moderate Rundung am freien Ende und direkt aufgebrachte Ton-/Zahlbeschriftung unterstützen die Zuordnung. Die kompakte Darstellung verzichtet auf einen sachlich falsch proportionierten Steg; der Holzkorpus umschließt die Zungen mit schmalen realistischen Seitenrändern.
 - Die Zungenprägung zeigt Grundoktave sowie höhere und gegebenenfalls tiefere Oktavlagen durch keine, oberhalb oder unterhalb der Ziffer gesetzte Punkte; auf den physischen Zungen erscheinen dafür keine Apostroph- oder Prime-Zeichen.
 - Aktuelle und nächste Zunge sind als starke beziehungsweise schwächere Markierung unterscheidbar. Die aktive Markierung endet zuverlässig, und zwei aufeinanderfolgende Ereignisse derselben Zunge bleiben als getrennte Einsätze sichtbar, einschließlich des Übergangs von Akkord zu Melodie.
 - Der vollständige Liedtext ist über den gesamten musikalischen Verlauf in der richtigen Reihenfolge und zeitlichen Zuordnung vorhanden; fehlender Inhalt wird nicht durch wiederholte Anfangszeilen ersetzt. Innerhalb eines mehrsilbigen Worts ist immer nur die zur aktuellen Note gehörende Silbe aktiv; Silbenwechsel, Pausen, Sprünge, Loops und Ansichtswechsel entfernen beziehungsweise rekonstruieren die Aktivmarkierung aus derselben Timeline zuverlässig.
-- Das vollständige Notenblatt unterhalb des Players zeigt für jede Silbe beziehungsweise Textstelle die zugeordneten Editor-Töne oder -Akkorde in derselben Reihenfolge. Ein Klick oder Tap am Liedanfang, in der Mitte und nahe dem Ende springt exakt zum zugehörigen Ereignis und synchronisiert alle Playerprojektionen; Desktop und 390-Pixel-Ansicht bleiben ohne horizontalen Seitenoverflow nutzbar.
+- Das vollständige Notenblatt unterhalb des Players zeigt für jede Silbe beziehungsweise Textstelle die zugeordneten Editor-Töne oder -Akkorde in derselben Reihenfolge. Ein Klick oder Tap am Liedanfang, in der Mitte und nahe dem Ende springt exakt zum zugehörigen Ereignis und synchronisiert alle Playerprojektionen sowie die Scrollposition. Während normaler Wiedergabe hält das automatische Nachführen die aktive Silbe sichtbar; Desktop und 390-Pixel-Ansicht bleiben ohne horizontalen Seitenoverflow nutzbar.
 - Ein Wechsel zwischen Laufnotation und Flow unterbricht die Wiedergabe nicht und bewahrt Position, Tempo, Loop, Farbhilfe und Ebenenzustand.
 - Die Playeroberfläche bleibt als zusammenhängende Einheit erkennbar; sekundäre Loop- und Mixersteuerungen verdrängen die aktive Visualisierung nicht.
 - Bei reduzierter Bewegung bleiben Reihenfolge, Annäherung, Zeitpunkt und Dauer in beiden Visualisierungen ohne kontinuierliche Animation verständlich.
-- Die spätere Ebenensteuerung kann Melodie und Begleitung unabhängig stummschalten, regeln und solo wiedergeben, ohne die gemeinsame Timeline zu verlassen.
+- Die Ebenensteuerung kann Melodie und Begleitung unabhängig ein- und ausschalten, ohne die gemeinsame Timeline zu verlassen; spurbezogene Lautstärke und Solo werden nicht angeboten.
 
 ### Noch offene Player-Entscheidungen
 
 - Unter- und Obergrenze sowie Schrittweite der relativen Übungsgeschwindigkeit
-- feste oder wählbare Flow-Horizonte über den bestätigten Zwei-Takt-Ausgangspunkt hinaus
 - genaue Rasterung und ein möglicher Feinmodus für Loop-Grenzen
 - genaue Länge und Konfigurierbarkeit des späteren Einzählers
 - spätere Erkennungsmodi, etwa kontinuierliches Live-Feedback oder ein Modus **Warte auf mich**, sowie Form und Umfang der Rückmeldung
