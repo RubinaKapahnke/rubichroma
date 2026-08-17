@@ -3,16 +3,21 @@ import { cloneDocument, SongDocument } from '../../domain/song-document';
 import { parseLegacyV0 } from '../legacy/legacy-v0.adapter';
 import { CURRENT_SONG_META_KEY, KalimbaDatabase, StoredSong } from './kalimba.database';
 import type { LocalBackupSnapshot } from './local-backup';
+import { canonicalSeedSongs, CANONICAL_CANON_SONG_ID } from './canonical-seed-songs';
 
 const MIGRATION_MARKER = 'legacy-v0-imported';
+export { CANONICAL_TWINKLE_SONG_ID } from './canonical-seed-songs';
 
 export type TransactionGuard = () => void | Promise<void>;
 
 export interface SongSummary {
   id: string;
+  familyId: string;
+  variantName: string;
   title: string;
   createdAt: string;
   updatedAt: string;
+  exampleHint?: string;
 }
 
 export class SongRepository {
@@ -33,7 +38,10 @@ export class SongRepository {
     if (existingMarker && !existingSong) {
       throw new Error('Persistenz ist inkonsistent: Migrationsmarker ohne Song.');
     }
-    if (existingMarker && existingSong) return cloneDocument(existingSong.document);
+    if (existingMarker && existingSong) {
+      await this.ensureCanonicalTestSongs();
+      return cloneDocument(existingSong.document);
+    }
     if (!currentSongId && (await this.database.songs.count()) > 0) {
       throw new Error('Persistenz ist inkonsistent: Liedablage ohne aktuelle Auswahl.');
     }
@@ -51,8 +59,18 @@ export class SongRepository {
       if (marker && !current)
         throw new Error('Persistenz ist inkonsistent: Migrationsmarker ohne Song.');
       if (current) {
-        if (!marker)
+        let changed = false;
+        if (!marker) {
           await this.database.meta.put({ key: MIGRATION_MARKER, value: new Date().toISOString() });
+          changed = true;
+        }
+        for (const seed of createCanonicalSeeds()) {
+          if (!(await this.database.songs.get(seed.id))) {
+            await this.database.songs.add(seed);
+            changed = true;
+          }
+        }
+        if (changed) await this.transactionGuard?.();
         return cloneDocument(current.document);
       }
 
@@ -61,12 +79,29 @@ export class SongRepository {
       }
       const stored = createStored(candidate, createSongId(), 1);
       await this.database.songs.put(stored);
+      for (const seed of createCanonicalSeeds()) {
+        if (stored.id !== seed.id) await this.database.songs.add(seed);
+      }
       await this.transactionGuard?.();
       await this.database.meta.bulkPut([
         { key: MIGRATION_MARKER, value: new Date().toISOString() },
         { key: CURRENT_SONG_META_KEY, value: stored.id },
       ]);
       return cloneDocument(stored.document);
+    });
+  }
+
+  async ensureCanonicalTestSongs(): Promise<void> {
+    const seeds = createCanonicalSeeds();
+    await this.database.transaction('rw', this.database.songs, async () => {
+      let changed = false;
+      for (const seed of seeds) {
+        if (!(await this.database.songs.get(seed.id))) {
+          await this.database.songs.add(seed);
+          changed = true;
+        }
+      }
+      if (changed) await this.transactionGuard?.();
     });
   }
 
@@ -86,16 +121,24 @@ export class SongRepository {
     return records
       .map((song) => ({
         id: song.id,
+        familyId: song.familyId,
+        variantName: song.variantName,
         title: song.document.song.title,
         createdAt: song.createdAt,
         updatedAt: song.updatedAt,
+        ...(song.id === CANONICAL_CANON_SONG_ID
+          ? {
+              exampleHint:
+                'Beispielsong ohne Liedtext · vorläufig 1 Schlag je Einzelton oder Akkord',
+            }
+          : {}),
       }))
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   }
 
   async createSong(document: SongDocument): Promise<StoredSong> {
     return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
-      const stored = createStored(document, createSongId(), 1);
+      const stored = createStored(document, createSongId(), 1, undefined, createFamilyId());
       await this.database.songs.add(stored);
       await this.database.meta.put({ key: CURRENT_SONG_META_KEY, value: stored.id });
       await this.transactionGuard?.();
@@ -109,7 +152,14 @@ export class SongRepository {
       if (!current) throw new Error('Das Lied wurde in der lokalen Ablage nicht gefunden.');
       const document = cloneDocument(current.document);
       document.song.title = title;
-      const stored = createStored(document, songId, current.revision + 1, current.createdAt);
+      const stored = createStored(
+        document,
+        songId,
+        current.revision + 1,
+        current.createdAt,
+        current.familyId,
+        current.variantName,
+      );
       await this.database.songs.put(stored);
       await this.transactionGuard?.();
       return cloneStoredSong(stored);
@@ -122,10 +172,48 @@ export class SongRepository {
       if (!source) throw new Error('Das Lied wurde in der lokalen Ablage nicht gefunden.');
       const document = cloneDocument(source.document);
       document.song.title = `${source.document.song.title || 'Lied ohne Titel'} – Kopie`;
-      const duplicate = createStored(document, createSongId(), 1);
+      const duplicate = createStored(document, createSongId(), 1, undefined, createFamilyId());
       await this.database.songs.add(duplicate);
       await this.transactionGuard?.();
       return cloneStoredSong(duplicate);
+    });
+  }
+
+  async duplicateSongAsVariant(songId: string, variantName: string): Promise<StoredSong> {
+    const normalizedName = variantName.trim();
+    if (!normalizedName) throw new Error('Bitte einen Variantennamen eingeben.');
+    return this.database.transaction('rw', this.database.songs, async () => {
+      const source = await this.database.songs.get(songId);
+      if (!source) throw new Error('Das Lied wurde in der lokalen Ablage nicht gefunden.');
+      const duplicate = createStored(
+        source.document,
+        createSongId(),
+        1,
+        undefined,
+        source.familyId,
+        normalizedName,
+      );
+      await this.database.songs.add(duplicate);
+      await this.transactionGuard?.();
+      return cloneStoredSong(duplicate);
+    });
+  }
+
+  async renameVariant(songId: string, variantName: string): Promise<StoredSong> {
+    const normalizedName = variantName.trim();
+    if (!normalizedName) throw new Error('Bitte einen Variantennamen eingeben.');
+    return this.database.transaction('rw', this.database.songs, async () => {
+      const current = await this.database.songs.get(songId);
+      if (!current) throw new Error('Das Lied wurde in der lokalen Ablage nicht gefunden.');
+      const stored = {
+        ...current,
+        variantName: normalizedName,
+        revision: current.revision + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      await this.database.songs.put(stored);
+      await this.transactionGuard?.();
+      return cloneStoredSong(stored);
     });
   }
 
@@ -140,6 +228,8 @@ export class SongRepository {
         resolvedSongId,
         current.revision + 1,
         current.createdAt,
+        current.familyId,
+        current.variantName,
       );
       await this.database.songs.put(stored);
       await this.transactionGuard?.();
@@ -187,6 +277,9 @@ export class SongRepository {
       ...song,
       document: cloneDocument(song.document),
     }));
+    for (const seed of createCanonicalSeeds()) {
+      if (!songs.some((song) => song.id === seed.id)) songs.push(seed);
+    }
     const metadata = snapshot.metadata.map((entry) => ({ ...entry }));
 
     await this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
@@ -212,7 +305,13 @@ export class SongRepository {
     }
 
     return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
-      const imported = createStored(source.document, createSongId(), 1);
+      const imported = createStored(
+        source.document,
+        createSongId(),
+        1,
+        undefined,
+        createFamilyId(),
+      );
       await this.database.songs.add(imported);
       await this.database.meta.put({ key: CURRENT_SONG_META_KEY, value: imported.id });
       await this.transactionGuard?.();
@@ -233,10 +332,14 @@ function createStored(
   id: string,
   revision: number,
   createdAt?: string,
+  familyId = createFamilyId(),
+  variantName = 'Original',
 ): StoredSong {
   const updatedAt = new Date().toISOString();
   return {
     id,
+    familyId,
+    variantName,
     document: cloneDocument(document),
     revision,
     createdAt: createdAt ?? updatedAt,
@@ -246,6 +349,16 @@ function createStored(
 
 function createSongId(): string {
   return `song-${crypto.randomUUID()}`;
+}
+
+function createFamilyId(): string {
+  return `family-${crypto.randomUUID()}`;
+}
+
+function createCanonicalSeeds(): StoredSong[] {
+  return canonicalSeedSongs().map((seed) =>
+    createStored(seed.document, seed.id, 1, undefined, seed.familyId, seed.variantName),
+  );
 }
 
 function cloneStoredSong(song: StoredSong): StoredSong {

@@ -35,6 +35,7 @@ import {
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
 import { ThemeService } from '../../infrastructure/theme.service';
 import type { LocalBackupPreview } from '../../infrastructure/persistence/local-backup';
+import type { SongSummary } from '../../infrastructure/persistence/song.repository';
 import { AudioPreviewService } from '../player/audio-preview.service';
 import { PlayerLaunchService } from '../player/player-launch.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
@@ -44,6 +45,13 @@ import { KalimbaKeyView, WordEditorComponent } from './word-editor.component';
 
 export type EditorInteractionMode = 'idle' | 'editing' | 'multi-select';
 export type EditorDocumentMode = 'view' | 'edit';
+
+interface SongFamilyView {
+  familyId: string;
+  title: string;
+  updatedAt: string;
+  songs: SongSummary[];
+}
 
 @Component({
   selector: 'app-song-editor',
@@ -100,12 +108,56 @@ export class SongEditorComponent {
   readonly renamingSongId = signal<string | null>(null);
   readonly renameTitle = signal('');
   readonly libraryNotice = signal<string | null>(null);
-  readonly filteredLibrarySongs = computed(() => {
+  readonly pendingDuplicateSongId = signal<string | null>(null);
+  readonly duplicateVariantName = signal('Variante');
+  readonly renamingVariantId = signal<string | null>(null);
+  readonly variantName = signal('');
+  readonly filteredLibraryFamilies = computed(() => {
     const query = this.libraryQuery().trim().toLocaleLowerCase('de-DE');
-    return query
-      ? this.store.songs().filter((song) => song.title.toLocaleLowerCase('de-DE').includes(query))
-      : this.store.songs();
+    const families = new Map<string, SongSummary[]>();
+    for (const song of this.store.songs()) {
+      const family = families.get(song.familyId) ?? [];
+      family.push(song);
+      families.set(song.familyId, family);
+    }
+    return [...families.entries()]
+      .map(([familyId, songs]): SongFamilyView => {
+        const ordered = [...songs].sort(
+          (left, right) =>
+            left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
+        );
+        return {
+          familyId,
+          title: ordered[0].title || 'Lied ohne Titel',
+          updatedAt: ordered.reduce(
+            (latest, song) => (song.updatedAt > latest ? song.updatedAt : latest),
+            ordered[0].updatedAt,
+          ),
+          songs: ordered,
+        };
+      })
+      .filter(
+        (family) =>
+          !query ||
+          family.songs.some(
+            (song) =>
+              song.title.toLocaleLowerCase('de-DE').includes(query) ||
+              song.variantName.toLocaleLowerCase('de-DE').includes(query),
+          ),
+      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   });
+  readonly filteredLibrarySongs = computed(() =>
+    this.filteredLibraryFamilies().flatMap((family) => family.songs),
+  );
+
+  isFamilyStart(song: SongSummary): boolean {
+    return this.filteredLibraryFamilies().some((family) => family.songs[0]?.id === song.id);
+  }
+
+  familyFor(song: SongSummary): SongFamilyView | undefined {
+    return this.filteredLibraryFamilies().find((family) => family.familyId === song.familyId);
+  }
   readonly kalimbaKeys = computed(() => {
     const keys = this.store.document()?.keys ?? [];
     return keys.flatMap((key, index): KalimbaKeyView[] => {
@@ -332,6 +384,8 @@ export class SongEditorComponent {
     this.libraryOpen.set(false);
     this.libraryQuery.set('');
     this.cancelRename();
+    this.cancelDuplicate();
+    this.cancelVariantRename();
     setTimeout(() =>
       document.querySelector<HTMLButtonElement>('[data-testid="open-library"]')?.focus(),
     );
@@ -400,12 +454,86 @@ export class SongEditorComponent {
     }
   }
 
+  startDuplicate(songId: string): void {
+    this.pendingDuplicateSongId.set(songId);
+    this.duplicateVariantName.set('Variante');
+    this.libraryNotice.set(null);
+  }
+
+  updateDuplicateVariantName(event: Event): void {
+    this.duplicateVariantName.set((event.target as HTMLInputElement).value);
+  }
+
+  cancelDuplicate(): void {
+    this.pendingDuplicateSongId.set(null);
+    this.duplicateVariantName.set('Variante');
+  }
+
+  async duplicateAsIndependentSong(): Promise<void> {
+    const songId = this.pendingDuplicateSongId();
+    if (!songId) return;
+    try {
+      await this.store.duplicateSong(songId);
+      this.cancelDuplicate();
+      this.libraryNotice.set('Unabhängige Kopie angelegt.');
+    } catch {
+      // The store exposes the persistence error and leaves the original untouched.
+    }
+  }
+
   async duplicateSong(songId: string): Promise<void> {
     try {
       await this.store.duplicateSong(songId);
       this.libraryNotice.set('Unabhängige Kopie angelegt.');
     } catch {
-      // The store exposes the persistence error and leaves the original untouched.
+      // Compatibility entry point for the existing independent duplicate action.
+    }
+  }
+
+  async duplicateAsVariant(): Promise<void> {
+    const songId = this.pendingDuplicateSongId();
+    const variantName = this.duplicateVariantName().trim();
+    if (!songId) return;
+    if (!variantName) {
+      this.libraryNotice.set('Bitte einen Variantennamen eingeben.');
+      return;
+    }
+    try {
+      await this.store.duplicateSongAsVariant(songId, variantName);
+      this.cancelDuplicate();
+      this.libraryNotice.set(`Variante „${variantName}“ angelegt.`);
+    } catch {
+      // The store exposes the persistence error and leaves the song family untouched.
+    }
+  }
+
+  startVariantRename(songId: string, currentName: string): void {
+    this.renamingVariantId.set(songId);
+    this.variantName.set(currentName);
+    this.libraryNotice.set(null);
+  }
+
+  updateVariantName(event: Event): void {
+    this.variantName.set((event.target as HTMLInputElement).value);
+  }
+
+  cancelVariantRename(): void {
+    this.renamingVariantId.set(null);
+    this.variantName.set('');
+  }
+
+  async confirmVariantRename(songId: string): Promise<void> {
+    const variantName = this.variantName().trim();
+    if (!variantName) {
+      this.libraryNotice.set('Bitte einen Variantennamen eingeben.');
+      return;
+    }
+    try {
+      await this.store.renameVariant(songId, variantName);
+      this.cancelVariantRename();
+      this.libraryNotice.set('Variantenname geändert.');
+    } catch {
+      // The store exposes the persistence error and keeps the previous variant name.
     }
   }
 

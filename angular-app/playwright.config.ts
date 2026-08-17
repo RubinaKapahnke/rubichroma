@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const testServerUrl = 'http://127.0.0.1:43029';
+const testServerUrl = 'http://127.0.0.1:43030';
 
 export default defineConfig({
   testDir: './e2e',
@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'list',
   use: { baseURL: testServerUrl, trace: 'retain-on-failure' },
   webServer: {
-    command: `"${process.execPath}" node_modules/@angular/cli/bin/ng.js serve --host 127.0.0.1 --port 43029`,
+    command: `"${process.execPath}" node_modules/@angular/cli/bin/ng.js serve --host 127.0.0.1 --port 43030`,
     url: testServerUrl,
     reuseExistingServer: true,
   },
