@@ -5,7 +5,9 @@ import { resolve } from 'node:path';
 import { THEME_STORAGE_KEY } from '../src/app/infrastructure/theme-preference';
 
 const SYNTHETIC_IMPORT_FIXTURE = resolve('e2e/fixtures/synthetic-structure-song.json');
-const TWINKLE_IMPORT_FIXTURE = resolve('e2e/fixtures/twinkle-twinkle-little-star.json');
+const TWINKLE_IMPORT_FIXTURE = resolve(
+  'src/app/infrastructure/persistence/twinkle-twinkle-little-star.json',
+);
 
 test('starts in a calm full-width view and opens editing context only on request', async ({
   page,

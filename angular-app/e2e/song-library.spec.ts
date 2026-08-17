@@ -15,18 +15,20 @@ test('creates, switches and reloads independent local songs without timestamp or
   await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   const imported = await readLibraryState(page);
-  expect(imported.songs).toHaveLength(1);
-  expect(imported.songs[0].unknownRoot).toEqual({ mustSurvive: true });
+  expect(imported.songs).toHaveLength(3);
+  expect(imported.songs.find((song) => song.id === imported.currentSongId)?.unknownRoot).toEqual({
+    mustSurvive: true,
+  });
 
   await page.getByTestId('open-library').click();
   await expect(page.getByTestId('song-library')).toContainText('Zuletzt bearbeitet');
-  await expect(page.locator('.song-library-entry')).toHaveCount(1);
+  await expect(page.locator('.song-library-entry')).toHaveCount(3);
   await page.getByTestId('create-song').click();
 
   await expect(page.getByTestId('song-title')).toHaveValue('Neues Lied');
   const created = await readLibraryState(page);
   expect(created.currentSongId).not.toBe(imported.currentSongId);
-  expect(created.songs).toHaveLength(2);
+  expect(created.songs).toHaveLength(4);
   expect(created.songs.find((song) => song.id === imported.currentSongId)?.updatedAt).toBe(
     imported.songs[0].updatedAt,
   );
@@ -76,7 +78,7 @@ test('creates, switches and reloads independent local songs without timestamp or
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId('open-library').click();
   await expect(page.getByTestId('song-library')).toBeVisible();
-  await expect(page.locator('.song-library-entry')).toHaveCount(2);
+  await expect(page.locator('.song-library-entry')).toHaveCount(4);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -114,9 +116,10 @@ test('renames, duplicates, searches and orders complete local songs', async ({ p
     .filter({ hasText: 'Umbenanntes Prüflied' })
     .getByRole('button', { name: /duplizieren/i })
     .click();
-  await expect(page.locator('.song-library-entry')).toHaveCount(2);
+  await page.getByTestId('duplicate-independent').click();
+  await expect(page.locator('.song-library-entry')).toHaveCount(4);
   const duplicated = await readLibraryState(page);
-  const copy = duplicated.songs.find((song) => song.id !== originalId)!;
+  const copy = duplicated.songs.find((song) => song.title === 'Umbenanntes Prüflied – Kopie')!;
   expect(copy.title).toBe('Umbenanntes Prüflied – Kopie');
   expect(copy.createdAt).not.toBe(renamedRecord.createdAt);
   expect(copy.fidelity).toBe(renamedRecord.fidelity);
@@ -129,7 +132,7 @@ test('renames, duplicates, searches and orders complete local songs', async ({ p
   await expect(page.locator('.song-library-entry')).toHaveCount(1);
   await expect(page.locator('.song-library-entry')).toContainText('Umbenanntes Prüflied – Kopie');
   await page.getByTestId('library-search').fill('');
-  await expect(page.locator('.song-library-entry')).toHaveCount(2);
+  await expect(page.locator('.song-library-entry')).toHaveCount(4);
 
   const copyTimestampBeforeOpen = copy.updatedAt;
   await page
@@ -163,10 +166,92 @@ test('renames, duplicates, searches and orders complete local songs', async ({ p
   );
 });
 
+test('creates, names, opens and independently edits connected song variants', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('edit-mode-toggle')).toBeVisible();
+  await page.getByTestId('open-library').click();
+  const initial = await readLibraryState(page);
+  const originalId = initial.currentSongId;
+  const original = initial.songs.find((song) => song.id === originalId)!;
+  const twinkleSeeds = initial.songs.filter((song) => song.id === 'song-system-twinkle-v1');
+  const canonSeeds = initial.songs.filter((song) => song.id === 'song-system-canon-c-major-v1');
+  expect(twinkleSeeds).toHaveLength(1);
+  expect(canonSeeds).toHaveLength(1);
+  const canonEntry = page.getByTestId('library-song-song-system-canon-c-major-v1');
+  await expect(canonEntry).toContainText('Beispielsong ohne Liedtext');
+  await expect(canonEntry).toContainText('1 Schlag je Einzelton oder Akkord');
+  await canonEntry.getByRole('button', { name: /öffnen/i }).click();
+  await expect(page.getByTestId('song-title')).toHaveValue('Canon in C-Dur');
+  expect(
+    (await readLibraryState(page)).songs.find((song) => song.id === 'song-system-canon-c-major-v1')
+      ?.updatedAt,
+  ).toBe(canonSeeds[0].updatedAt);
+  await page.getByTestId('open-library').click();
+  await page
+    .getByTestId(`library-song-${originalId}`)
+    .getByRole('button', { name: /öffnen/i })
+    .click();
+  await expect(page.getByTestId('song-title')).toHaveValue(original.title);
+  await page.getByTestId('open-library').click();
+
+  await page
+    .getByTestId(`library-song-${originalId}`)
+    .getByRole('button', { name: /duplizieren/i })
+    .click();
+  await expect(page.getByTestId('duplicate-song-dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Abbrechen' }).click();
+  expect((await readLibraryState(page)).songs).toHaveLength(initial.songs.length);
+
+  await page
+    .getByTestId(`library-song-${originalId}`)
+    .getByRole('button', { name: /duplizieren/i })
+    .click();
+  await page.getByTestId('duplicate-variant-name').fill('Einfach');
+  await page.getByTestId('duplicate-variant').click();
+  const withVariant = await readLibraryState(page);
+  const variant = withVariant.songs.find(
+    (song) => song.id !== originalId && song.familyId === original.familyId,
+  )!;
+  expect(variant.id).not.toBe(originalId);
+  expect(variant.familyId).toBe(original.familyId);
+  expect(variant.variantName).toBe('Einfach');
+  await expect(page.locator('[data-testid^="library-family-"]')).toHaveCount(3);
+  await expect(page.locator('.song-library-entry')).toHaveCount(4);
+  await expect(page.getByTestId(`library-song-${originalId}`)).toContainText('Geöffnet');
+
+  await page
+    .getByTestId(`library-song-${variant.id}`)
+    .getByRole('button', { name: /öffnen/i })
+    .click();
+  await expect(page.getByTestId('song-title')).toHaveValue(original.title);
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('song-title').fill('Nur die einfache Variante');
+  await expect
+    .poll(
+      async () =>
+        (await readLibraryState(page)).songs.find((song) => song.id === variant.id)?.title,
+    )
+    .toBe('Nur die einfache Variante');
+  expect((await readLibraryState(page)).songs.find((song) => song.id === originalId)?.title).toBe(
+    original.title,
+  );
+
+  await page.reload();
+  await expect(page.getByTestId('song-title')).toHaveValue('Nur die einfache Variante');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId('open-library').click();
+  await expect(page.getByTestId(`library-song-${variant.id}`)).toContainText('Geöffnet');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
 interface LibraryState {
   currentSongId: string;
   songs: {
     id: string;
+    familyId: string;
+    variantName: string;
     title: string;
     createdAt: string;
     updatedAt: string;
@@ -192,6 +277,8 @@ async function readLibraryState(page: Page): Promise<LibraryState> {
             currentSongId: metaRequest.result.value,
             songs: songsRequest.result.map((record) => ({
               id: record.id,
+              familyId: record.familyId,
+              variantName: record.variantName,
               title: record.document.song.title,
               createdAt: record.createdAt,
               updatedAt: record.updatedAt,

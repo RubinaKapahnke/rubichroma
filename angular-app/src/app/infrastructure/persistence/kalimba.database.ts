@@ -7,6 +7,8 @@ import {
 
 export interface StoredSong {
   id: string;
+  familyId: string;
+  variantName: string;
   document: SongDocument;
   revision: number;
   createdAt: string;
@@ -77,6 +79,8 @@ export class KalimbaDatabase extends Dexie {
         const migrated = records.map((record): StoredSong => ({
           ...record,
           id: record.id === 'current' ? migratedCurrentId! : record.id,
+          familyId: `family-${record.id === 'current' ? migratedCurrentId! : record.id}`,
+          variantName: 'Original',
           document: migrateStoredDocument(record.document),
           createdAt: record.createdAt ?? record.updatedAt,
         }));
@@ -95,6 +99,24 @@ export class KalimbaDatabase extends Dexie {
         if (migrated.length > 0) await songs.bulkPut(migrated);
         if (currentSongId) {
           await meta.put({ key: CURRENT_SONG_META_KEY, value: currentSongId });
+        }
+      });
+    this.version(5)
+      .stores({
+        songs: 'id',
+        meta: 'key',
+      })
+      .upgrade(async (transaction) => {
+        const songs = transaction.table<StoredSong, string>('songs');
+        const records = await songs.toArray();
+        for (const record of records) {
+          if (!record.familyId || !record.variantName) {
+            await songs.put({
+              ...record,
+              familyId: `family-${record.id}`,
+              variantName: 'Original',
+            });
+          }
         }
       });
   }

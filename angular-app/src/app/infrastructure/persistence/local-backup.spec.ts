@@ -53,8 +53,8 @@ describe('local backup format', () => {
     [
       'future format version',
       serializeLocalBackup(representativeSnapshot(), EXPORTED_AT).replace(
-        '"formatVersion": 2',
         '"formatVersion": 3',
+        '"formatVersion": 4',
       ),
     ],
     [
@@ -106,6 +106,7 @@ describe('local backup format', () => {
       {
         ...source,
         id: 'song-imported-current',
+        familyId: 'family-song-imported-current',
         createdAt: source.updatedAt,
       },
     ]);
@@ -145,6 +146,8 @@ function representativeSnapshot(): LocalBackupSnapshot {
     songs: [
       {
         id: 'song-primary',
+        familyId: 'family-primary',
+        variantName: 'Original',
         revision: 7,
         createdAt: '2026-08-16T08:00:00.000Z',
         updatedAt: UPDATED_AT,
@@ -152,6 +155,8 @@ function representativeSnapshot(): LocalBackupSnapshot {
       },
       {
         id: 'song-secondary',
+        familyId: 'family-secondary',
+        variantName: 'Original',
         revision: 2,
         createdAt: '2026-08-17T09:00:00.000Z',
         updatedAt: '2026-08-17T10:00:00.000Z',

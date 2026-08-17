@@ -360,6 +360,60 @@ app-song-editor .restore-preview-actions {
   }
 }
 
+app-song-editor .duplicate-song-dialog {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-panel);
+  background: var(--rc-color-primary-container);
+
+  > div:first-child,
+  label {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0.5rem;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  input {
+    min-height: var(--rc-control-min-size);
+    padding: 0.5rem 0.65rem;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+    font: inherit;
+  }
+}
+
+app-song-editor .duplicate-song-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+
+  button {
+    min-height: var(--rc-control-min-size);
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--rc-radius-control);
+    cursor: pointer;
+  }
+
+  .restore-action {
+    color: var(--rc-color-on-primary);
+    border: 1px solid var(--rc-color-primary);
+    background: var(--rc-color-primary);
+    font-weight: 700;
+  }
+}
+
 app-song-editor .editor-card.has-open-library {
   .edit-mode-bar,
   .editor-layout {
@@ -378,6 +432,29 @@ app-song-editor .song-library-entry {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+app-song-editor .song-family-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+  gap: 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--rc-color-border);
+}
+
+app-song-editor .song-library-entry:not(:has(.song-family-header)) {
+  margin-inline-start: 1.25rem;
+}
+
+app-song-editor .variant-name {
+  font-weight: 700;
+}
+
+app-song-editor .variant-name-editor {
+  display: grid;
+  gap: 0.2rem;
 }
 
 app-song-editor .song-library-header {
@@ -454,6 +531,8 @@ app-song-editor .song-library-list {
 }
 
 app-song-editor .song-library-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
   padding: 0.75rem;
   border: 1px solid var(--rc-color-border);
@@ -517,6 +596,20 @@ app-song-editor .current-song-badge {
   app-song-editor .song-library-entry {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  app-song-editor .duplicate-song-dialog,
+  app-song-editor .duplicate-song-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  app-song-editor .song-library-entry {
+    display: flex;
+  }
+
+  app-song-editor .song-library-entry:not(:has(.song-family-header)) {
+    margin-inline-start: 0.75rem;
   }
 
   app-song-editor .song-library-header .secondary-action,

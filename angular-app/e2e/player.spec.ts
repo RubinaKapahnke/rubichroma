@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
 
-const TWINKLE_FIXTURE = resolve('e2e/fixtures/twinkle-twinkle-little-star.json');
+const TWINKLE_FIXTURE = resolve(
+  'src/app/infrastructure/persistence/twinkle-twinkle-little-star.json',
+);
 
 test('opens the imported editor song in one drift-free Flow and running-tab player', async ({
   page,

@@ -14,12 +14,16 @@ describe('SongEditorComponent hydration', () => {
     const songsState = signal([
       {
         id: 'song-one',
+        familyId: 'family-one',
+        variantName: 'Original',
         title: 'Erstes Lied',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-02T00:00:00.000Z',
       },
       {
         id: 'song-two',
+        familyId: 'family-two',
+        variantName: 'Original',
         title: 'Zweites Lied',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
@@ -27,6 +31,8 @@ describe('SongEditorComponent hydration', () => {
     ]);
     const renameSong = vi.fn(() => Promise.resolve());
     const duplicateSong = vi.fn(() => Promise.resolve());
+    const duplicateSongAsVariant = vi.fn(() => Promise.resolve());
+    const renameVariant = vi.fn(() => Promise.resolve());
     const store = {
       document: documentState.asReadonly(),
       activeSongId: signal('song-one'),
@@ -42,6 +48,8 @@ describe('SongEditorComponent hydration', () => {
       saveEditorValue: () => Promise.resolve(),
       renameSong,
       duplicateSong,
+      duplicateSongAsVariant,
+      renameVariant,
     };
     const theme = {
       preference: signal('system'),
@@ -134,8 +142,16 @@ describe('SongEditorComponent hydration', () => {
     fixture.componentInstance.renameTitle.set('Neu benannt');
     await fixture.componentInstance.confirmRename('song-two');
     await fixture.componentInstance.duplicateSong('song-one');
+    fixture.componentInstance.startDuplicate('song-one');
+    fixture.componentInstance.duplicateVariantName.set('Einfach');
+    await fixture.componentInstance.duplicateAsVariant();
+    fixture.componentInstance.startVariantRename('song-one', 'Original');
+    fixture.componentInstance.variantName.set('C-Stimmung');
+    await fixture.componentInstance.confirmVariantRename('song-one');
     expect(renameSong).toHaveBeenCalledWith('song-two', 'Neu benannt');
     expect(duplicateSong).toHaveBeenCalledWith('song-one');
+    expect(duplicateSongAsVariant).toHaveBeenCalledWith('song-one', 'Einfach');
+    expect(renameVariant).toHaveBeenCalledWith('song-one', 'C-Stimmung');
   });
 
   it('latches multi-selection until it is explicitly ended', async () => {

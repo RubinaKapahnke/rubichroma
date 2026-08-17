@@ -212,6 +212,55 @@
               <p class="library-notice" role="status" aria-live="polite">{{ notice }}</p>
             }
 
+            @if (pendingDuplicateSongId()) {
+              <section
+                class="duplicate-song-dialog"
+                role="dialog"
+                aria-labelledby="duplicate-song-title"
+                data-testid="duplicate-song-dialog"
+              >
+                <div>
+                  <strong id="duplicate-song-title">Song duplizieren</strong>
+                  <p>
+                    Eine Variante bleibt mit dieser Songfamilie verbunden, kann musikalisch aber
+                    unabhängig bearbeitet werden.
+                  </p>
+                  <label>
+                    <span>Variantenname</span>
+                    <input
+                      type="text"
+                      data-testid="duplicate-variant-name"
+                      [value]="duplicateVariantName()"
+                      (input)="updateDuplicateVariantName($event)"
+                      (keydown.enter)="duplicateAsVariant()"
+                      (keydown.escape)="cancelDuplicate()"
+                    />
+                  </label>
+                </div>
+                <div class="duplicate-song-actions">
+                  <button type="button" class="secondary-action" (click)="cancelDuplicate()">
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    data-testid="duplicate-independent"
+                    (click)="duplicateAsIndependentSong()"
+                  >
+                    Als eigenständigen Song duplizieren
+                  </button>
+                  <button
+                    type="button"
+                    class="restore-action"
+                    data-testid="duplicate-variant"
+                    (click)="duplicateAsVariant()"
+                  >
+                    Als Variante duplizieren
+                  </button>
+                </div>
+              </section>
+            }
+
             <div class="song-library-list" aria-label="Gespeicherte Lieder">
               @for (song of filteredLibrarySongs(); track song.id) {
                 <article
@@ -219,6 +268,20 @@
                   [class.is-current]="song.id === store.activeSongId()"
                   [attr.data-testid]="'library-song-' + song.id"
                 >
+                  @if (isFamilyStart(song)) {
+                    @if (familyFor(song); as family) {
+                      <header
+                        class="song-family-header"
+                        [attr.data-testid]="'library-family-' + family.familyId"
+                      >
+                        <strong>{{ family.title }}</strong>
+                        <span>
+                          {{ family.songs.length }}
+                          {{ family.songs.length === 1 ? 'Variante' : 'Varianten' }}
+                        </span>
+                      </header>
+                    }
+                  }
                   <div class="song-library-identity">
                     @if (renamingSongId() === song.id) {
                       <label>
@@ -234,6 +297,24 @@
                       </label>
                     } @else {
                       <strong>{{ song.title || 'Lied ohne Titel' }}</strong>
+                    }
+                    @if (renamingVariantId() === song.id) {
+                      <label class="variant-name-editor">
+                        <span>Variantenname</span>
+                        <input
+                          type="text"
+                          [attr.data-testid]="'variant-name-' + song.id"
+                          [value]="variantName()"
+                          (input)="updateVariantName($event)"
+                          (keydown.enter)="confirmVariantRename(song.id)"
+                          (keydown.escape)="cancelVariantRename()"
+                        />
+                      </label>
+                    } @else {
+                      <span class="variant-name">Variante: {{ song.variantName }}</span>
+                    }
+                    @if (song.exampleHint) {
+                      <span class="example-song-hint">{{ song.exampleHint }}</span>
                     }
                     <span>Zuletzt bearbeitet {{ formatLibraryDate(song.updatedAt) }}</span>
                   </div>
@@ -261,6 +342,21 @@
                       <button type="button" class="secondary-action" (click)="cancelRename()">
                         Abbrechen
                       </button>
+                    } @else if (renamingVariantId() === song.id) {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        (click)="confirmVariantRename(song.id)"
+                      >
+                        Speichern
+                      </button>
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        (click)="cancelVariantRename()"
+                      >
+                        Abbrechen
+                      </button>
                     } @else {
                       <button
                         type="button"
@@ -273,8 +369,16 @@
                       <button
                         type="button"
                         class="secondary-action"
+                        [attr.aria-label]="song.variantName + ' Variantenname ändern'"
+                        (click)="startVariantRename(song.id, song.variantName)"
+                      >
+                        Variantenname ändern
+                      </button>
+                      <button
+                        type="button"
+                        class="secondary-action"
                         [attr.aria-label]="song.title + ' duplizieren'"
-                        (click)="duplicateSong(song.id)"
+                        (click)="startDuplicate(song.id)"
                       >
                         Duplizieren
                       </button>

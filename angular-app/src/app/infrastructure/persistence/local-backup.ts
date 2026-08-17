@@ -5,8 +5,9 @@ import { CURRENT_SONG_META_KEY } from './kalimba.database';
 import type { StoredMeta, StoredSong } from './kalimba.database';
 
 export const LOCAL_BACKUP_KIND = 'rubichroma-local-backup';
-export const LOCAL_BACKUP_FORMAT_VERSION = 2;
+export const LOCAL_BACKUP_FORMAT_VERSION = 3;
 const LEGACY_LOCAL_BACKUP_FORMAT_VERSION = 1;
+const MULTI_SONG_BACKUP_FORMAT_VERSION = 2;
 const LEGACY_BACKUP_SONG_ID = 'song-imported-current';
 
 export interface LocalBackupSnapshot {
@@ -41,6 +42,8 @@ export function serializeLocalBackup(
       storage: {
         songs: snapshot.songs.map((song) => ({
           id: song.id,
+          familyId: song.familyId,
+          variantName: song.variantName,
           revision: song.revision,
           createdAt: song.createdAt,
           updatedAt: song.updatedAt,
@@ -64,6 +67,7 @@ export function parseLocalBackup(input: string | unknown): LocalBackupPreview {
   const formatVersion = root['formatVersion'];
   if (
     formatVersion !== LEGACY_LOCAL_BACKUP_FORMAT_VERSION &&
+    formatVersion !== MULTI_SONG_BACKUP_FORMAT_VERSION &&
     formatVersion !== LOCAL_BACKUP_FORMAT_VERSION
   ) {
     throw new LocalBackupValidationError(
@@ -87,7 +91,7 @@ export function parseLocalBackup(input: string | unknown): LocalBackupPreview {
         'Die ältere Sicherung enthält eine unbekannte Liedablage.',
       );
     }
-    if (formatVersion === LOCAL_BACKUP_FORMAT_VERSION && sourceId === 'current') {
+    if (formatVersion !== LEGACY_LOCAL_BACKUP_FORMAT_VERSION && sourceId === 'current') {
       throw new LocalBackupValidationError('Die Sicherung verwendet noch keine stabile Lied-ID.');
     }
     const revision = record['revision'];
@@ -97,6 +101,14 @@ export function parseLocalBackup(input: string | unknown): LocalBackupPreview {
     const updatedAt = requireDate(record['updatedAt'], 'Der letzte Speicherzeitpunkt');
     return {
       id: formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION ? LEGACY_BACKUP_SONG_ID : sourceId,
+      familyId:
+        formatVersion === LOCAL_BACKUP_FORMAT_VERSION
+          ? requireNonEmptyString(record['familyId'], 'Die Songfamilien-ID')
+          : `family-${formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION ? LEGACY_BACKUP_SONG_ID : sourceId}`,
+      variantName:
+        formatVersion === LOCAL_BACKUP_FORMAT_VERSION
+          ? requireNonEmptyString(record['variantName'], 'Der Variantenname')
+          : 'Original',
       revision,
       createdAt:
         formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION
@@ -186,6 +198,13 @@ function requireArray(value: unknown, label: string): unknown[] {
 
 function requireDate(value: unknown, label: string): string {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
+    throw new LocalBackupValidationError(`${label} ist ungültig.`);
+  }
+  return value;
+}
+
+function requireNonEmptyString(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
     throw new LocalBackupValidationError(`${label} ist ungültig.`);
   }
   return value;

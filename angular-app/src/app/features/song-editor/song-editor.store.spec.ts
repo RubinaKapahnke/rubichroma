@@ -73,7 +73,7 @@ describe('SongEditorStore structure persistence', () => {
     expect(store.document()?.song.title).toBe('Neues Lied');
     expect(store.document()?.song.lines[0].words[0].text).toBe('');
     expect(store.document()?.keys).toHaveLength(17);
-    expect(store.songs()).toHaveLength(2);
+    expect(store.songs()).toHaveLength(4);
     expect(await repository.load(firstId)).toEqual(first);
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
 
@@ -119,9 +119,21 @@ describe('SongEditorStore structure persistence', () => {
     await store.duplicateSong(originalId);
     const duplicate = store.songs().find((song) => song.id !== originalId)!;
     expect(duplicate.title).toBe('Aktiv umbenannt – Kopie');
+    expect(duplicate.familyId).not.toBe(
+      store.songs().find((song) => song.id === originalId)?.familyId,
+    );
     expect(store.activeSongId()).toBe(originalId);
     expect((await repository.load(duplicate.id))?.song.lines).toEqual(original.song.lines);
     expect((await repository.load(duplicate.id))?.extra).toEqual(original.extra);
+
+    await store.duplicateSongAsVariant(originalId, 'Einfach');
+    const variant = store
+      .songs()
+      .find((song) => song.id !== originalId && song.id !== duplicate.id)!;
+    expect(variant.variantName).toBe('Einfach');
+    expect(variant.familyId).toBe(store.songs().find((song) => song.id === originalId)?.familyId);
+    await store.renameVariant(variant.id, 'C-Stimmung');
+    expect(store.songs().find((song) => song.id === variant.id)?.variantName).toBe('C-Stimmung');
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
   });
 
@@ -171,7 +183,7 @@ describe('SongEditorStore structure persistence', () => {
     const importedId = store.activeSongId()!;
     expect(importedId).not.toBe(originalId);
     expect(store.document()).toEqual(expectedImport);
-    expect(store.songs()).toHaveLength(2);
+    expect(store.songs()).toHaveLength(4);
     expect(store.hydrationVersion()).toBe(hydrationBeforeImport + 1);
     expect(store.canUndo()).toBe(false);
     expect(store.status()).toBe('saved');

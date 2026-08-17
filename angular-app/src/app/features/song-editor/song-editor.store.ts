@@ -512,6 +512,35 @@ export class SongEditorStore {
     }
   }
 
+  async duplicateSongAsVariant(songId: string, variantName: string): Promise<void> {
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      const stored = await this.repository.duplicateSongAsVariant(songId, variantName);
+      this.persistedDocuments.set(stored.id, stored.document);
+      await this.refreshSongs();
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Variante konnte nicht angelegt werden: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
+  async renameVariant(songId: string, variantName: string): Promise<void> {
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      await this.repository.renameVariant(songId, variantName);
+      await this.refreshSongs();
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Variantenname konnte nicht geändert werden: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
   private async refreshSongs(): Promise<void> {
     this.songsState.set(await this.repository.listSongs());
   }

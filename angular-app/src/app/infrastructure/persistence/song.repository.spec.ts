@@ -184,7 +184,7 @@ describe('SongRepository', () => {
       'simulated create failure',
     );
     expect(await repo.currentSongId()).toBe(firstId);
-    expect(await repo.database.songs.count()).toBe(1);
+    expect(await repo.database.songs.count()).toBe(3);
   });
 
   it('renames and duplicates songs without changing their musical or unknown data', async () => {
@@ -213,11 +213,31 @@ describe('SongRepository', () => {
     const expectedDuplicate = structuredClone(expectedRenamed);
     expectedDuplicate.song.title = 'Umbenanntes Lied – Kopie';
     expect(duplicate.id).not.toBe(originalId);
+    expect(duplicate.familyId).not.toBe(renamed.familyId);
+    expect(duplicate.variantName).toBe('Original');
     expect(duplicate.document).toEqual(expectedDuplicate);
     expect(duplicate.createdAt).not.toBe(renamed.createdAt);
     expect(await repo.currentSongId()).toBe(originalId);
     expect((await repo.load(originalId))?.song.title).toBe('Umbenanntes Lied');
     expect((await repo.listSongs()).map((song) => song.id)).toContain(duplicate.id);
+
+    const variant = await repo.duplicateSongAsVariant(originalId, 'C-Stimmung');
+    expect(variant.id).not.toBe(originalId);
+    expect(variant.familyId).toBe(renamed.familyId);
+    expect(variant.variantName).toBe('C-Stimmung');
+    expect(variant.document).toEqual(renamed.document);
+
+    const changedVariant = structuredClone(variant.document);
+    changedVariant.song.lines[0].words[0].text = 'Nur in der Variante';
+    await repo.save(changedVariant, variant.id);
+    expect((await repo.load(variant.id))?.song.lines[0].words[0].text).toBe('Nur in der Variante');
+    expect((await repo.load(originalId))?.song.lines[0].words[0].text).not.toBe(
+      'Nur in der Variante',
+    );
+
+    const renamedVariant = await repo.renameVariant(variant.id, 'Einfach');
+    expect(renamedVariant.variantName).toBe('Einfach');
+    expect(renamedVariant.familyId).toBe(renamed.familyId);
   });
 
   it('rolls back a failed rename without changing the original or active song', async () => {
@@ -347,7 +367,7 @@ describe('SongRepository', () => {
     expect(second.createdAt).toBe(second.updatedAt);
     expect(await repo.currentSongId()).toBe(second.id);
     expect(await repo.database.songs.get(originalId)).toEqual(originalRecord);
-    expect(await repo.database.songs.count()).toBe(3);
+    expect(await repo.database.songs.count()).toBe(5);
   });
 
   it('leaves songs and metadata unchanged when new-song backup import fails', async () => {
@@ -402,6 +422,8 @@ describe('SongRepository', () => {
     expect(stored?.id).not.toBe('current');
     expect(stored?.createdAt).toBe('2025-01-01T00:00:00.000Z');
     expect(stored?.updatedAt).toBe('2025-01-01T00:00:00.000Z');
+    expect(stored?.familyId).toBe(`family-${stored?.id}`);
+    expect(stored?.variantName).toBe('Original');
     expect(marker?.value).toBe('marker');
     expect('notation' in (stored?.document.song.lines[0].words[0] ?? {})).toBe(false);
     expect(stringifyVanillaCompatible(stored!.document)).toContain(
