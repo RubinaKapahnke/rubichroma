@@ -1,0 +1,1287 @@
+<title>Kalimba-Tastensteuerung</title>
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --surface: #ffffff;
+    --surface-alt: #efe9dc;
+    --ink: #241f18;
+    --ink-muted: #6d6555;
+    --border: #ddd3bf;
+    --accent: #2b6e63;
+    --accent-ink: #ffffff;
+    --focus-ring: #c2542b;
+    --empty-cell: #eee8da;
+    --empty-cell-border: #d8cfb8;
+    --measure-line: #b7ab8e;
+    --unmapped: #8a5230;
+
+    --c1: #4a5fc1; /* C */
+    --c2: #21908c; /* D */
+    --c3: #3f9142; /* E */
+    --c4: #d6486f; /* F */
+    --c5: #d9691f; /* G */
+    --c6: #b8860b; /* A */
+    --c7: #7452c4; /* B */
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16140f;
+      --surface: #201c15;
+      --surface-alt: #29241b;
+      --ink: #f1ece0;
+      --ink-muted: #a89d85;
+      --border: #3c3526;
+      --accent: #5fbba8;
+      --accent-ink: #10201c;
+      --focus-ring: #e8a97e;
+      --empty-cell: #211d16;
+      --empty-cell-border: #3c3526;
+      --measure-line: #4c4432;
+      --unmapped: #e8a97e;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #16140f;
+    --surface: #201c15;
+    --surface-alt: #29241b;
+    --ink: #f1ece0;
+    --ink-muted: #a89d85;
+    --border: #3c3526;
+    --accent: #5fbba8;
+    --accent-ink: #10201c;
+    --focus-ring: #e8a97e;
+    --empty-cell: #211d16;
+    --empty-cell-border: #3c3526;
+    --measure-line: #4c4432;
+    --unmapped: #e8a97e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 28px clamp(16px, 4vw, 48px) 64px;
+  }
+
+  .mono {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 18px;
+    margin-bottom: 22px;
+  }
+
+  h1 {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    font-size: 22px;
+    letter-spacing: 0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    color: var(--ink-muted);
+    font-size: 13.5px;
+    max-width: 60ch;
+    margin: 4px 0 0;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 22px;
+  }
+
+  .status-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  #statusText {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    font-size: 14px;
+    flex: 1;
+  }
+
+  #statusText.unmapped { color: var(--unmapped); }
+  #statusText.mapped { color: var(--accent); }
+
+  button.reset {
+    font: inherit;
+    font-size: 12.5px;
+    background: var(--surface-alt);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 12px;
+    cursor: pointer;
+  }
+  button.reset:hover { border-color: var(--accent); }
+  button.reset:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .audio-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .audio-toggle input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .audio-toggle input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+  .grid-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+
+  .grid-wrap {
+    outline: none;
+    padding: 18px 18px 20px;
+    min-width: 1700px;
+  }
+
+  .grid-wrap:focus-visible .cursor-cell {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus-ring);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 108px repeat(64, 1fr);
+    align-items: center;
+    column-gap: 2px;
+  }
+  .row + .row { margin-top: 6px; }
+
+  .row-label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-muted);
+    padding-right: 8px;
+  }
+
+  .cell {
+    position: relative;
+    height: 52px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+
+  .cell.measure-start { margin-left: 6px; }
+  .cell.measure-start::before {
+    content: "";
+    position: absolute;
+    left: -5px; top: -4px; bottom: -4px;
+    width: 2px;
+    background: var(--measure-line);
+  }
+
+  .cell.empty {
+    background: var(--empty-cell);
+    border: 1px dashed var(--empty-cell-border);
+  }
+
+  .cell.text-cell {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .text-token {
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .cell.text-cell.has-text .text-token { color: var(--ink); }
+
+  .text-input {
+    width: 100%;
+    height: 32px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface-alt);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 0 6px;
+    text-align: center;
+    outline: none;
+  }
+
+  .chip {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    line-height: 1.1;
+    overflow: hidden;
+    transition: transform 120ms ease;
+  }
+  .chip-draft {
+    outline: 2px dashed #fff;
+    outline-offset: -3px;
+  }
+  .duration-badge {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 1px 3px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.32);
+    color: #fff;
+  }
+  .chip .note { font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .chip .degree { font-size: 10px; opacity: 0.85; white-space: nowrap; }
+  .chip.chip-chord .note { font-size: 12px; }
+  .chip.chip-chord .degree { font-size: 9px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .chip.just-played { animation: pluck 380ms ease-out; }
+  }
+  @keyframes pluck {
+    0% { transform: scale(1.14); }
+    100% { transform: scale(1); }
+  }
+
+  .cursor-cell {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus-ring);
+    z-index: 1;
+  }
+
+  .cell.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .cell.selected.empty { background: color-mix(in srgb, var(--accent) 14%, var(--empty-cell)); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 22px;
+    margin-top: 22px;
+    align-items: start;
+  }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+
+  .panel h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin: 0 0 12px;
+  }
+
+  .keycap-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .keycap-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .keycap-row.offset { margin-left: 14px; }
+
+  .keycap {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+  }
+  .keycap.active { color: #fff; border-color: transparent; }
+  .keycap.center { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .keycap.duration { color: #fff; border-color: transparent; background: var(--accent); font-size: 9px; }
+
+  .keycap-note {
+    margin-top: 8px;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+  }
+
+  .shortcut-group { margin-top: 16px; }
+  .shortcut-group:first-child { margin-top: 0; }
+  .shortcut-group-title {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 5px;
+  }
+
+  dl.shortcuts { margin: 0; }
+  dl.shortcuts div { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid var(--border); }
+  dl.shortcuts div:first-of-type { border-top: none; }
+  dl.shortcuts dt {
+    flex: 0 0 auto;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    font-size: 11.5px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 6px;
+    white-space: nowrap;
+    height: fit-content;
+  }
+  dl.shortcuts dd {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+  }
+
+  .note-box {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+  }
+  .note-box strong { color: var(--ink); }
+</style>
+
+<header>
+  <div>
+    <h1>Kalimba-<span>Tastensteuerung</span></h1>
+    <p class="subtitle">Testprototyp für Rasternavigation, Ton-Direkteingabe und Mehrfachauswahl im geplanten dreizeiligen Editor &mdash; Tab betritt/verlässt das Raster, Pfeiltasten navigieren darin.</p>
+  </div>
+  <div class="header-controls">
+    <label class="audio-toggle" for="audioToggle">
+      <input type="checkbox" id="audioToggle" checked>
+      Ton beim Tippen abspielen
+    </label>
+    <button class="reset" id="resetBtn">Zurücksetzen</button>
+  </div>
+</header>
+
+<div class="status-bar">
+  <span class="status-label">Erkannter Befehl</span>
+  <span id="statusText" class="mono">Klicke ins Raster, um zu starten.</span>
+  <span class="status-label" style="margin-left:auto;">Dauer-Modus (R/T/U/C/V)</span>
+  <span id="durationIndicator" class="mono"></span>
+</div>
+
+<div class="layout">
+  <div class="grid-scroll">
+    <div class="grid-wrap" id="gridWrap" tabindex="0"></div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <h2>Kalimba-Tastenbild (vorläufig)</h2>
+      <div class="keycap-diagram" id="keycapDiagram"></div>
+      <p class="keycap-note">17 Zungen, diatonisch in C, H = mittleres C. Erkennung über die physische Tastenposition (KeyboardEvent.code) &mdash; bleibt auf QWERTZ und QWERTY stabil, gezeigte Buchstaben sind nur die deutsche Referenzbeschriftung. Zahlenreihe 1&ndash;7 setzt C&ndash;B in der Grundoktave, 8&ndash;9 setzen C′&ndash;D′, 0 löscht. R/T/U/C/V = Dauer. Endgültige Zungenreihenfolge folgt in einer eigenen Runde &mdash; das hier ist nur Testbelegung.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Weitere Kürzel</h2>
+      <div id="shortcutList"></div>
+    </div>
+
+    <div class="panel note-box">
+      <strong>Bewusst nicht enthalten:</strong> Speichern der Belegung, Einstellungsoberfläche, mobile Bedienung, echtes Datenmodell, Silbentrennung/Wortzuordnung, Akkord-Umkehrungen und Duplikat-Warnung für doppelte Zungen. Arpeggio-Darstellung (gleichzeitig vs. nacheinander) ist laut PRD ausdrücklich noch offen und wird hier bewusst nicht vorweggenommen &mdash; der Akkordmodus erzeugt nur einen gleichzeitig klingenden Akkord. Nur zum Testen des Bedienrhythmus.
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var BEATS_PER_MEASURE = 4;
+  var SIXTEENTHS_PER_BEAT = 4;
+  var MEASURES = 4;
+  var MEASURE_COLS = BEATS_PER_MEASURE * SIXTEENTHS_PER_BEAT;
+  var COLS = MEASURE_COLS * MEASURES;
+  var ROWS = ["text", "melody", "accomp"];
+  var ROW_LABELS = { text: "Text", melody: "Melodie", accomp: "Begleitung" };
+
+  var DEGREE_NAMES = ["C", "D", "E", "F", "G", "A", "B"];
+  var DEGREE_SEMIS = [0, 2, 4, 5, 7, 9, 11];
+  var DEGREE_COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6", "--c7"];
+
+  // Erkennung ueber KeyboardEvent.code (physische Tastenposition), damit die
+  // Belegung auf QWERTZ und QWERTY stabil bleibt (Codex-Review). CODE_LABELS
+  // haelt nur die deutsche Referenzbeschriftung fuer Anzeige/Diagramm.
+  var TONE_KEYS = {
+    KeyH: 0,
+    KeyG: 1, KeyJ: 2, KeyF: 3, KeyK: 4, KeyD: 5, KeyL: 6, KeyS: 7, Semicolon: 8,
+    KeyA: 9, KeyI: 10, KeyE: 11, KeyO: 12, KeyW: 13, KeyP: 14, KeyQ: 15, BracketLeft: 16
+  };
+  var CODE_LABELS = {
+    KeyQ: "Q", KeyW: "W", KeyE: "E", KeyA: "A", KeyS: "S", KeyD: "D", KeyF: "F", KeyG: "G",
+    KeyH: "H", KeyJ: "J", KeyK: "K", KeyL: "L", Semicolon: "Ö", KeyI: "I", KeyO: "O", KeyP: "P", BracketLeft: "Ü"
+  };
+  // Nur fuers Tastenbild-Diagramm, entkoppelt von der Code-basierten Erkennung oben.
+  var DIAGRAM_TONE_STEPS = {
+    H: 0, G: 1, J: 2, F: 3, K: 4, D: 5, L: 6, S: 7, "Ö": 8,
+    A: 9, I: 10, E: 11, O: 12, W: 13, P: 14, Q: 15, "Ü": 16
+  };
+
+  // Zahlenreihe (und Nummernblock mit NumLock an): 1-7 = Grundoktave C-B, 8-9 = C'-D'. 0 = Loeschen.
+  var DIGIT_TONE_KEYS = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8 };
+
+  // Dauer direkt in Rasterspalten (1 Spalte = 1 Sechzehntel): echtes Unterraster
+  // statt gemeinsamer Spaltenbreite (Codex-Review). R/T/U/C/V statt F1-F5, weil
+  // F-Tasten browserseitig reserviert sind (F1 Hilfe, F5 Neuladen).
+  var DURATION_KEY_CODES = { KeyR: 16, KeyT: 8, KeyU: 4, KeyC: 2, KeyV: 1 };
+  var DURATION_LABELS = { 16: "1/1", 8: "1/2", 4: "1/4", 2: "1/8", 1: "1/16" };
+  var DURATION_NAMES = { 16: "Ganze", 8: "Halbe", 4: "Viertel", 2: "Achtel", 1: "Sechzehntel" };
+  var currentDuration = 4;
+
+  function stepInfo(step) {
+    var oct = Math.floor(step / 7);
+    var idx = ((step % 7) + 7) % 7;
+    var semis = oct * 12 + DEGREE_SEMIS[idx];
+    var freq = 261.6256 * Math.pow(2, semis / 12);
+    var octMark = oct > 0 ? "′".repeat(oct) : (oct < 0 ? ",".repeat(-oct) : "");
+    return { name: DEGREE_NAMES[idx], degree: idx + 1, octMark: octMark, freq: freq, colorVar: DEGREE_COLORS[idx] };
+  }
+
+  function describeStep(step) {
+    var info = stepInfo(step);
+    return info.name + info.octMark + " (Stufe " + info.degree + ")";
+  }
+
+  // --- Beispielsong: "Alle meine Entchen", erste Zeile (Positionen auf das
+  // Sechzehntel-Raster skaliert: 1 Viertel = 4 Spalten) ---
+  var state = {
+    grid: { text: {}, melody: {}, accomp: {} },
+    cursor: { row: "melody", col: 0 },
+    selection: null // {anchorRow, anchorCol, focusRow, focusCol}
+  };
+
+  function initialContent() {
+    var melodySteps = [0, 1, 2, 3, 4, 4, 5, 4];
+    var syllables = ["Al-", "le", "mei-", "ne", "Ent-", "chen", "schwimm-", "en"];
+    var cols = [0, 8, 16, 24, 32, 40, 48, 56];
+    var g = { text: {}, melody: {}, accomp: {} };
+    cols.forEach(function (c, i) {
+      g.melody[c] = { step: melodySteps[i], duration: 4 };
+      g.text[c] = { syllable: syllables[i] };
+    });
+    var accompSteps = [0, 3, 4, 0];
+    [0, 16, 32, 48].forEach(function (c, i) {
+      g.accomp[c] = { step: accompSteps[i], duration: 4 };
+    });
+    return g;
+  }
+
+  state.grid = initialContent();
+
+  // --- Audio ---
+  var audioCtx = null;
+  var audioEnabled = true;
+  function playTone(step) {
+    if (!audioEnabled) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var freq = stepInfo(step).freq;
+      var t0 = audioCtx.currentTime;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.52);
+    } catch (err) { /* Audio optional im Prototyp */ }
+  }
+
+  function playChord(steps) {
+    if (!audioEnabled) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var t0 = audioCtx.currentTime;
+      steps.forEach(function (step) {
+        var freq = stepInfo(step).freq;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.14, t0 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.52);
+      });
+    } catch (err) { /* Audio optional im Prototyp */ }
+  }
+
+  function describeEntry(entry) {
+    if (!entry) return "";
+    if (entry.steps) return entry.steps.map(describeStep).join(" · ");
+    return describeStep(entry.step);
+  }
+  function transposeEntry(entry, delta) {
+    if (entry.steps) entry.steps = entry.steps.map(function (s) { return s + delta; });
+    else entry.step += delta;
+  }
+  function playEntry(entry) {
+    if (entry.steps) playChord(entry.steps); else playTone(entry.step);
+  }
+
+  // Dauer bestimmt jetzt die tatsaechliche Rasterbreite: Ganze=16, Halbe=8,
+  // Viertel=4, Achtel=2, Sechzehntel=1 Spalte (1 Spalte = 1 Sechzehntel).
+  function noteWidth(entry) {
+    return Math.max(1, Math.round(entry.duration || 4));
+  }
+
+  // Liest die tatsaechlich belegten Spalten aus dem Grid aus (statt aus der
+  // nominalen Dauer), damit am Rasterende abgeschnittene Noten korrekt bleiben.
+  function actualNoteWidth(rowName, col) {
+    var map = state.grid[rowName];
+    var w = 1;
+    while (col + w < COLS && map[col + w] && map[col + w].covered && map[col + w].ownerCol === col) w++;
+    return w;
+  }
+
+  function clearSpanAt(rowName, col) {
+    var map = state.grid[rowName];
+    var entry = map[col];
+    if (!entry) return;
+    var startCol = entry.covered ? entry.ownerCol : col;
+    if (!map[startCol]) return;
+    var width = actualNoteWidth(rowName, startCol);
+    for (var c = startCol; c < startCol + width; c++) delete map[c];
+  }
+
+  function placeNoteSpan(rowName, col, entryData) {
+    var width = noteWidth(entryData);
+    var endCol = Math.min(COLS, col + width);
+    for (var c = col; c < endCol; c++) clearSpanAt(rowName, c);
+    var map = state.grid[rowName];
+    map[col] = entryData;
+    for (var c = col + 1; c < endCol; c++) map[c] = { covered: true, ownerCol: col };
+    return endCol - col;
+  }
+
+  function resolveCol(rowName, col) {
+    var entry = state.grid[rowName][col];
+    return (entry && entry.covered) ? entry.ownerCol : col;
+  }
+
+  function stepColRight(rowName, col) {
+    var entry = state.grid[rowName][col];
+    var width = (entry && !entry.covered) ? actualNoteWidth(rowName, col) : 1;
+    return Math.min(COLS - 1, col + width);
+  }
+
+  function stepColLeft(rowName, col) {
+    var target = Math.max(0, col - 1);
+    return resolveCol(rowName, target);
+  }
+
+  function deleteAtCursorOrSelection(keyLabel) {
+    var rect = selectionRect();
+    if (rect) {
+      for (var r = rect.r0; r <= rect.r1; r++) {
+        var rn = ROWS[r];
+        if (rn === "text") continue;
+        for (var c = rect.c0; c <= rect.c1; c++) clearSpanAt(rn, c);
+      }
+      clearSelection();
+      return keyLabel + " → Auswahl gelöscht.";
+    }
+    if (state.cursor.row !== "text") {
+      clearSpanAt(state.cursor.row, state.cursor.col);
+      return keyLabel + " → Ton an Cursorposition gelöscht.";
+    }
+    return keyLabel + " — Textzeile ist hier nicht editierbar.";
+  }
+
+  function placeToneAndAdvance(step, keyLabel) {
+    var placedWidth = placeNoteSpan(state.cursor.row, state.cursor.col, { step: step, duration: currentDuration });
+    clearSelection();
+    playTone(step);
+    lastPlayedCell = state.cursor.row + ":" + state.cursor.col;
+    state.cursor.col = Math.min(COLS - 1, state.cursor.col + placedWidth);
+    return keyLabel + " → Ton gesetzt: " + describeStep(step) + " (" + DURATION_LABELS[currentDuration] + "); weiter zur nächsten Position.";
+  }
+
+  // Akkordmodus: Alt startet mit einem Ton, weitere Ton-Tasten fuellen frei auf,
+  // Enter bestaetigt, Escape bricht ohne jede Aenderung am Song ab (Codex-Review:
+  // ersetzt die vorige automatische Grundton+Terz+Quinte-Harmonisierung).
+  var chordDraft = null; // { row, col, steps: [] }
+
+  // --- Auswahl-Helfer ---
+  function rowIndex(rowName) { return ROWS.indexOf(rowName); }
+
+  function measureRightBoundary(col) {
+    return Math.min(COLS - 1, (Math.floor(col / MEASURE_COLS) + 1) * MEASURE_COLS);
+  }
+  function measureLeftBoundary(col) {
+    if (col % MEASURE_COLS !== 0) return Math.floor(col / MEASURE_COLS) * MEASURE_COLS;
+    return Math.max(0, col - MEASURE_COLS);
+  }
+
+  function ensureSelectionAnchor() {
+    if (!state.selection) {
+      state.selection = {
+        anchorRow: rowIndex(state.cursor.row), anchorCol: state.cursor.col,
+        focusRow: rowIndex(state.cursor.row), focusCol: state.cursor.col
+      };
+    }
+  }
+
+  function selectionRect() {
+    if (!state.selection) return null;
+    var s = state.selection;
+    return {
+      r0: Math.min(s.anchorRow, s.focusRow), r1: Math.max(s.anchorRow, s.focusRow),
+      c0: Math.min(s.anchorCol, s.focusCol), c1: Math.max(s.anchorCol, s.focusCol)
+    };
+  }
+
+  function clearSelection() { state.selection = null; }
+
+  function findNextChip(rowName, fromCol, dir) {
+    var map = state.grid[rowName];
+    var c = fromCol + dir;
+    while (c >= 0 && c < COLS) {
+      if (map[c] && !map[c].covered) return c;
+      c += dir;
+    }
+    return null;
+  }
+
+  // --- Tastatur ---
+  var statusEl = document.getElementById("statusText");
+  var durationIndicatorEl = document.getElementById("durationIndicator");
+  var wrapEl = document.getElementById("gridWrap");
+
+  function setStatus(text, mapped) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle("mapped", !!mapped);
+    statusEl.classList.toggle("unmapped", mapped === false);
+  }
+
+  function updateDurationIndicator() {
+    durationIndicatorEl.textContent = DURATION_NAMES[currentDuration] + " (" + DURATION_LABELS[currentDuration] + ")";
+  }
+
+  function arrowGlyph(key) {
+    return { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" }[key] || key;
+  }
+
+  function describeKeyEvent(e) {
+    var parts = [];
+    if (e.ctrlKey) parts.push("Strg");
+    if (e.altKey) parts.push("Alt");
+    if (e.shiftKey) parts.push("Shift");
+    var k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+    parts.push(k);
+    return parts.join("+");
+  }
+
+  var lastPlayedCell = null;
+
+  function onKeyDown(e) {
+    var active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) return;
+
+    var key = e.key;
+    var lower = key.length === 1 ? key.toLowerCase() : key;
+    var handled = true;
+    var label = "";
+    var mapped = true;
+    var rIdx = rowIndex(state.cursor.row);
+
+    var isTopRowDigit = e.code && e.code.indexOf("Digit") === 0;
+    var isNumpadKey = e.code && e.code.indexOf("Numpad") === 0;
+    var isDigitKey = isTopRowDigit || isNumpadKey;
+    var isDigitTone = isDigitKey && DIGIT_TONE_KEYS.hasOwnProperty(lower);
+    var isLetterTone = TONE_KEYS.hasOwnProperty(e.code);
+    var toneRoot = isLetterTone ? TONE_KEYS[e.code] : (isDigitTone ? DIGIT_TONE_KEYS[lower] : null);
+    var toneKeyDisplay = isLetterTone ? CODE_LABELS[e.code] : (isDigitTone ? lower : null);
+
+    // --- Akkordmodus ist modal: solange aktiv, greifen nur diese Tasten ---
+    if (chordDraft) {
+      if (!e.ctrlKey && !e.altKey && !e.shiftKey && toneRoot !== null) {
+        chordDraft.steps.push(toneRoot);
+        playTone(toneRoot);
+        lastPlayedCell = chordDraft.row + ":" + chordDraft.col;
+        label = "Taste „" + toneKeyDisplay + "“ → zum Akkord hinzugefügt: " + chordDraft.steps.map(describeStep).join(" · ");
+      } else if (key === "Backspace" || key === "Delete") {
+        chordDraft.steps.pop();
+        if (chordDraft.steps.length === 0) {
+          label = key + " → letzter Ton entfernt, Akkordmodus leer und abgebrochen.";
+          chordDraft = null;
+        } else {
+          label = key + " → letzten Ton entfernt: " + chordDraft.steps.map(describeStep).join(" · ");
+        }
+      } else if (key === "Enter") {
+        var finalSteps = chordDraft.steps.slice();
+        var finalEntry = finalSteps.length === 1
+          ? { step: finalSteps[0], duration: currentDuration }
+          : { steps: finalSteps, duration: currentDuration };
+        var placedW = placeNoteSpan(chordDraft.row, chordDraft.col, finalEntry);
+        if (finalSteps.length > 1) playChord(finalSteps); else playTone(finalSteps[0]);
+        lastPlayedCell = chordDraft.row + ":" + chordDraft.col;
+        state.cursor.col = Math.min(COLS - 1, chordDraft.col + placedW);
+        clearSelection();
+        label = "Enter → Akkord bestätigt: " + describeEntry(finalEntry) + "; weiter zur nächsten Position.";
+        chordDraft = null;
+      } else if (key === "Escape") {
+        label = "Escape → Akkordmodus abgebrochen, keine Änderung am Song.";
+        chordDraft = null;
+      } else {
+        label = "Im Akkordmodus: erst Enter bestätigen oder Escape abbrechen.";
+        mapped = false;
+      }
+      e.preventDefault();
+      setStatus(label, mapped);
+      render();
+      return;
+    }
+
+    var plainArrow = !e.ctrlKey && !e.altKey && !e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
+    var shiftArrow = !e.ctrlKey && !e.altKey && e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
+    var altArrow = e.altKey && !e.ctrlKey && !e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight");
+    var ctrlArrowLR = e.ctrlKey && !e.shiftKey && !e.altKey && (key === "ArrowLeft" || key === "ArrowRight");
+    var ctrlArrowUD = e.ctrlKey && !e.shiftKey && !e.altKey && (key === "ArrowUp" || key === "ArrowDown");
+    var ctrlShiftArrow = e.ctrlKey && e.shiftKey && !e.altKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown");
+
+    if (DURATION_KEY_CODES.hasOwnProperty(e.code) && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      currentDuration = DURATION_KEY_CODES[e.code];
+      updateDurationIndicator();
+      var existingEntry = state.grid[state.cursor.row][state.cursor.col];
+      var changedExisting = !!existingEntry && !existingEntry.covered && state.cursor.row !== "text";
+      if (changedExisting) {
+        var resizedData = existingEntry.steps ? { steps: existingEntry.steps, duration: currentDuration } : { step: existingEntry.step, duration: currentDuration };
+        placeNoteSpan(state.cursor.row, state.cursor.col, resizedData);
+      }
+      label = key.toUpperCase() + " → Dauer-Modus: " + DURATION_NAMES[currentDuration] + " (" + DURATION_LABELS[currentDuration] + ")" +
+        (changedExisting ? "; Ton unter Cursor angepasst." : "; gilt für neu gesetzte Töne.");
+    } else if (!e.ctrlKey && !e.altKey && !e.shiftKey && isLetterTone && state.cursor.row !== "text") {
+      label = placeToneAndAdvance(TONE_KEYS[e.code], "Taste „" + toneKeyDisplay + "“");
+    } else if (!e.ctrlKey && !e.altKey && !e.shiftKey && isDigitTone && state.cursor.row !== "text") {
+      var digitKeyLabel = isNumpadKey ? ("Numpad " + lower + " (NumLock an)") : ("Zifferntaste „" + lower + "“");
+      label = placeToneAndAdvance(DIGIT_TONE_KEYS[lower], digitKeyLabel);
+    } else if (e.altKey && !e.ctrlKey && !e.shiftKey && toneRoot !== null) {
+      if (state.cursor.row === "accomp") {
+        chordDraft = { row: "accomp", col: state.cursor.col, steps: [toneRoot] };
+        playTone(toneRoot);
+        lastPlayedCell = "accomp:" + state.cursor.col;
+        label = "Alt+" + toneKeyDisplay + " → Akkordmodus gestartet mit " + describeStep(toneRoot) + ". Weitere Töne tippen, Enter bestätigt, Escape bricht ohne Änderung ab.";
+      } else {
+        label = "Alt+Taste — Akkordmodus ist aktuell nur in der Begleitung vorgesehen.";
+        mapped = false;
+      }
+    } else if (altArrow) {
+      var dirAlt = key === "ArrowRight" ? 1 : -1;
+      var nextChip = findNextChip(state.cursor.row, state.cursor.col, dirAlt);
+      if (nextChip !== null) {
+        state.cursor.col = nextChip;
+        clearSelection();
+        label = "Alt+" + arrowGlyph(key) + " → " + (dirAlt === 1 ? "nächster" : "vorheriger") + " vorhandener Chip in „" + ROW_LABELS[state.cursor.row] + "“.";
+      } else {
+        label = "Alt+" + arrowGlyph(key) + " — kein weiterer Chip in dieser Zeile.";
+        mapped = false;
+      }
+    } else if (ctrlArrowUD) {
+      var chip = state.grid[state.cursor.row][state.cursor.col];
+      if (chip && !chip.covered && state.cursor.row !== "text") {
+        transposeEntry(chip, key === "ArrowUp" ? 1 : -1);
+        playEntry(chip);
+        lastPlayedCell = state.cursor.row + ":" + state.cursor.col;
+        label = "Strg+" + (key === "ArrowUp" ? "↑" : "↓") + " → " + (key === "ArrowUp" ? "nächster höherer" : "nächster tieferer") + " Kalimbaton: " + describeEntry(chip);
+      } else {
+        label = "Strg+Pfeil hoch/runter — kein Ton an der Cursorposition, den man verschieben könnte.";
+        mapped = false;
+      }
+    } else if (key === "PageUp" || key === "PageDown") {
+      var c2 = state.grid[state.cursor.row][state.cursor.col];
+      if (c2 && !c2.covered && state.cursor.row !== "text") {
+        transposeEntry(c2, key === "PageUp" ? 7 : -7);
+        playEntry(c2);
+        lastPlayedCell = state.cursor.row + ":" + state.cursor.col;
+        label = key + " → Oktavwechsel: " + describeEntry(c2);
+      } else {
+        label = key + " — kein Ton an der Cursorposition.";
+        mapped = false;
+      }
+    } else if (e.code === "NumpadAdd" || e.code === "NumpadEnter") {
+      var c3 = state.grid[state.cursor.row][state.cursor.col];
+      var isUp = e.code === "NumpadAdd";
+      if (c3 && !c3.covered && state.cursor.row !== "text") {
+        transposeEntry(c3, isUp ? 1 : -1);
+        playEntry(c3);
+        lastPlayedCell = state.cursor.row + ":" + state.cursor.col;
+        label = "Numpad " + (isUp ? "+" : "Enter") + " → " + (isUp ? "nächster höherer" : "nächster tieferer") + " Kalimbaton (wie Strg+" + (isUp ? "↑" : "↓") + "): " + describeEntry(c3);
+      } else {
+        label = "Numpad " + (isUp ? "+" : "Enter") + " — kein Ton an der Cursorposition.";
+        mapped = false;
+      }
+    } else if (ctrlShiftArrow) {
+      ensureSelectionAnchor();
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        var boundaryCol = key === "ArrowRight" ? measureRightBoundary(state.selection.focusCol) : measureLeftBoundary(state.selection.focusCol);
+        state.selection.focusCol = resolveCol(state.cursor.row, boundaryCol);
+        state.cursor.col = state.selection.focusCol;
+      } else {
+        state.selection.focusRow = Math.min(ROWS.length - 1, Math.max(0, state.selection.focusRow + (key === "ArrowDown" ? 1 : -1)));
+        state.cursor.row = ROWS[state.selection.focusRow];
+      }
+      label = "Strg+Shift+" + arrowGlyph(key) + " → Auswahl bis " + (key.indexOf("Left") > -1 || key.indexOf("Right") > -1 ? "zur Taktgrenze" : "zur weiteren Zeile") + " erweitert.";
+    } else if (ctrlArrowLR) {
+      var boundaryColLR = key === "ArrowRight" ? measureRightBoundary(state.cursor.col) : measureLeftBoundary(state.cursor.col);
+      state.cursor.col = resolveCol(state.cursor.row, boundaryColLR);
+      clearSelection();
+      label = "Strg+" + arrowGlyph(key) + " → zur " + (key === "ArrowRight" ? "nächsten" : "vorherigen") + " Taktgrenze gesprungen (Takt " + (Math.floor(state.cursor.col / MEASURE_COLS) + 1) + ").";
+    } else if (shiftArrow) {
+      ensureSelectionAnchor();
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        state.selection.focusCol = key === "ArrowRight" ? stepColRight(state.cursor.row, state.selection.focusCol) : stepColLeft(state.cursor.row, state.selection.focusCol);
+        state.cursor.col = state.selection.focusCol;
+      } else {
+        state.selection.focusRow = Math.min(ROWS.length - 1, Math.max(0, state.selection.focusRow + (key === "ArrowDown" ? 1 : -1)));
+        state.cursor.row = ROWS[state.selection.focusRow];
+      }
+      label = "Shift+" + arrowGlyph(key) + " → Auswahl um eine Rasterposition erweitert.";
+    } else if (plainArrow) {
+      clearSelection();
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        state.cursor.col = key === "ArrowRight" ? stepColRight(state.cursor.row, state.cursor.col) : stepColLeft(state.cursor.row, state.cursor.col);
+        label = arrowGlyph(key) + " → Rasterposition " + (state.cursor.col + 1) + " (Takt " + (Math.floor(state.cursor.col / MEASURE_COLS) + 1) + ").";
+      } else {
+        var newIdx = Math.min(ROWS.length - 1, Math.max(0, rIdx + (key === "ArrowDown" ? 1 : -1)));
+        state.cursor.row = ROWS[newIdx];
+        label = arrowGlyph(key) + " → Zeile „" + ROW_LABELS[state.cursor.row] + "“, gleiche Zeitposition.";
+      }
+    } else if (key === " " && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      clearSelection();
+      var beforeCol = state.cursor.col;
+      state.cursor.col = stepColRight(state.cursor.row, state.cursor.col);
+      label = "Leertaste → Position " + (beforeCol + 1) + " bleibt leer, weiter zu Rasterposition " + (state.cursor.col + 1) + ".";
+    } else if (key === "Tab") {
+      handled = false;
+      label = "Tab → verlässt das Raster (natives Tastaturverhalten, kein Eingriff hier).";
+      mapped = null;
+    } else if (key === "Enter") {
+      state.cursor.col = stepColRight(state.cursor.row, state.cursor.col);
+      clearSelection();
+      label = "Enter → eine Rasterposition weiter (vorläufige Belegung, noch offen laut Anforderung).";
+    } else if (key === "Delete" || key === "Backspace") {
+      label = deleteAtCursorOrSelection(key);
+    } else if (!e.ctrlKey && !e.altKey && !e.shiftKey && (isTopRowDigit || isNumpadKey) && lower === "0") {
+      label = deleteAtCursorOrSelection(isNumpadKey ? "Numpad 0" : "Taste „0“");
+    } else if (key === "Escape") {
+      if (state.selection) {
+        clearSelection();
+        label = "Escape → Auswahl aufgehoben.";
+      } else {
+        wrapEl.blur();
+        label = "Escape → Rasterfokus freigegeben.";
+      }
+    } else {
+      handled = false;
+      mapped = false;
+      label = "„" + describeKeyEvent(e) + "“ — in diesem Prototyp nicht zugeordnet.";
+    }
+
+    if (handled) e.preventDefault();
+    setStatus(label, mapped);
+    render();
+  }
+
+  // --- Rendering ---
+  function isInSelection(rIdx, col) {
+    var rect = selectionRect();
+    if (!rect) return false;
+    return rIdx >= rect.r0 && rIdx <= rect.r1 && col >= rect.c0 && col <= rect.c1;
+  }
+
+  function render() {
+    wrapEl.innerHTML = "";
+    ROWS.forEach(function (rowName, rIdx) {
+      var rowEl = document.createElement("div");
+      rowEl.className = "row";
+
+      var labelEl = document.createElement("div");
+      labelEl.className = "row-label";
+      labelEl.textContent = ROW_LABELS[rowName];
+      rowEl.appendChild(labelEl);
+
+      for (var col = 0; col < COLS; col++) {
+        var cellEl = document.createElement("div");
+        cellEl.className = "cell" + (col % MEASURE_COLS === 0 ? " measure-start" : "");
+        var isCursor = state.cursor.row === rowName && state.cursor.col === col;
+        if (isCursor) cellEl.classList.add("cursor-cell");
+        if (isInSelection(rIdx, col)) cellEl.classList.add("selected");
+
+        var entry = state.grid[rowName][col];
+        var isDraftCell = !!(chordDraft && chordDraft.row === rowName && chordDraft.col === col);
+        if (isDraftCell) {
+          entry = chordDraft.steps.length === 1
+            ? { step: chordDraft.steps[0], duration: currentDuration, draft: true }
+            : { steps: chordDraft.steps.slice(), duration: currentDuration, draft: true };
+        }
+        if (!isDraftCell && entry && entry.covered) continue;
+        if (entry && rowName !== "text") {
+          var spanWidth = isDraftCell ? Math.min(noteWidth(entry), COLS - col) : actualNoteWidth(rowName, col);
+          if (spanWidth > 1) cellEl.style.gridColumn = "span " + spanWidth;
+        }
+
+        if (rowName === "text") {
+          cellEl.classList.add("text-cell");
+          if (isCursor) {
+            var inputEl = document.createElement("input");
+            inputEl.type = "text";
+            inputEl.className = "text-input";
+            inputEl.value = entry ? entry.syllable : "";
+            inputEl.setAttribute("aria-label", "Text an Rasterposition " + (col + 1));
+            (function (col) {
+              inputEl.addEventListener("input", function () {
+                var v = inputEl.value;
+                if (v) state.grid.text[col] = { syllable: v };
+                else delete state.grid.text[col];
+              });
+              inputEl.addEventListener("keydown", function (ev) {
+                if (ev.key === "Enter") {
+                  ev.preventDefault();
+                  state.cursor.col = Math.min(COLS - 1, col + 1);
+                  clearSelection();
+                  setStatus("Enter → Text bestätigt, weiter zur nächsten Position.", true);
+                  render();
+                } else if (ev.key === "Escape") {
+                  ev.preventDefault();
+                  state.cursor.row = "melody";
+                  clearSelection();
+                  setStatus("Escape → Textbearbeitung verlassen, zurück zur Melodie.", true);
+                  render();
+                }
+                // Tab bewusst nicht abgefangen: verlaesst das Feld nativ (ARIA-Grid-Vertrag).
+              });
+            })(col);
+            cellEl.appendChild(inputEl);
+          } else if (entry) {
+            cellEl.classList.add("has-text");
+            var tok = document.createElement("span");
+            tok.className = "text-token";
+            tok.textContent = entry.syllable;
+            cellEl.appendChild(tok);
+          }
+        } else if (entry) {
+          var chip = document.createElement("div");
+          chip.className = "chip";
+          if (entry.draft) chip.classList.add("chip-draft");
+          var cellKey = rowName + ":" + col;
+          var wasJustPlayed = Array.isArray(lastPlayedCell) ? lastPlayedCell.indexOf(cellKey) > -1 : lastPlayedCell === cellKey;
+          if (wasJustPlayed) {
+            chip.classList.add("just-played");
+          }
+          if (entry.steps) {
+            var infos = entry.steps.map(stepInfo);
+            chip.classList.add("chip-chord");
+            chip.style.background = "linear-gradient(135deg, " + infos.map(function (i) { return "var(" + i.colorVar + ")"; }).join(", ") + ")";
+            var noteElC = document.createElement("div");
+            noteElC.className = "note";
+            noteElC.textContent = infos[0].name + infos[0].octMark + (entry.draft ? " …" : "-Akkord");
+            var degElC = document.createElement("div");
+            degElC.className = "degree";
+            degElC.textContent = "Stufen " + infos.map(function (i) { return i.degree; }).join("/");
+            chip.appendChild(noteElC);
+            chip.appendChild(degElC);
+          } else {
+            var info = stepInfo(entry.step);
+            chip.style.background = "var(" + info.colorVar + ")";
+            var noteEl = document.createElement("div");
+            noteEl.className = "note";
+            noteEl.textContent = info.name + info.octMark + (entry.draft ? " …" : "");
+            var degEl = document.createElement("div");
+            degEl.className = "degree";
+            degEl.textContent = "Stufe " + info.degree;
+            chip.appendChild(noteEl);
+            chip.appendChild(degEl);
+          }
+          var durBadge = document.createElement("div");
+          durBadge.className = "duration-badge";
+          durBadge.textContent = DURATION_LABELS[entry.duration || 4];
+          chip.appendChild(durBadge);
+          cellEl.appendChild(chip);
+        } else {
+          cellEl.classList.add("empty");
+        }
+
+        (function (rowName, col) {
+          cellEl.addEventListener("click", function () {
+            if (chordDraft) return;
+            state.cursor = { row: rowName, col: col };
+            clearSelection();
+            setStatus("Klick → Fokus auf „" + ROW_LABELS[rowName] + "“, Rasterposition " + (col + 1) + ".", true);
+            render();
+          });
+        })(rowName, col);
+
+        rowEl.appendChild(cellEl);
+      }
+      wrapEl.appendChild(rowEl);
+    });
+    lastPlayedCell = null;
+    focusActiveTarget();
+  }
+
+  function focusActiveTarget() {
+    if (state.cursor.row === "text") {
+      var activeInput = wrapEl.querySelector(".cursor-cell .text-input");
+      if (activeInput) { activeInput.focus(); activeInput.select(); }
+    } else {
+      wrapEl.focus();
+    }
+  }
+
+  wrapEl.addEventListener("keydown", onKeyDown);
+  document.getElementById("audioToggle").addEventListener("change", function (e) {
+    audioEnabled = e.target.checked;
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    state.grid = initialContent();
+    state.cursor = { row: "melody", col: 0 };
+    clearSelection();
+    currentDuration = 4;
+    updateDurationIndicator();
+    setStatus("Zurückgesetzt. Klicke ins Raster, um zu starten.", null);
+    render();
+    wrapEl.focus();
+  });
+
+  updateDurationIndicator();
+  render();
+
+  // --- Referenzpanels ---
+  var keycapDiagram = document.getElementById("keycapDiagram");
+  var topRow = ["Q", "W", "E", "R", "T", "Z", "U", "I", "O", "P", "Ü"];
+  var homeRow = ["A", "S", "D", "F", "G", "H", "J", "K", "L", "Ö"];
+
+  function buildKeycapRow(letters, offsetClass, mapObj) {
+    mapObj = mapObj || DIAGRAM_TONE_STEPS;
+    var rowEl = document.createElement("div");
+    rowEl.className = "keycap-row" + (offsetClass ? " offset" : "");
+    letters.forEach(function (letter) {
+      var lower = letter.toLowerCase();
+      var cap = document.createElement("div");
+      cap.className = "keycap";
+      if (mapObj.hasOwnProperty(lower)) {
+        var info = stepInfo(mapObj[lower]);
+        cap.classList.add("active");
+        cap.style.background = "var(" + info.colorVar + ")";
+        cap.textContent = letter;
+        cap.title = describeStep(mapObj[lower]);
+        if (lower === "h") cap.classList.add("center");
+      } else {
+        cap.textContent = letter;
+      }
+      rowEl.appendChild(cap);
+    });
+    return rowEl;
+  }
+
+  keycapDiagram.appendChild(buildKeycapRow(topRow, true));
+  keycapDiagram.appendChild(buildKeycapRow(homeRow, false));
+
+  var digitRowLabel = document.createElement("p");
+  digitRowLabel.className = "keycap-note";
+  digitRowLabel.style.margin = "10px 0 2px";
+  digitRowLabel.textContent = "Alternative: Zahlenreihe (auch Nummernblock mit NumLock an)";
+  keycapDiagram.appendChild(digitRowLabel);
+  keycapDiagram.appendChild(buildKeycapRow(["1", "2", "3", "4", "5", "6", "7", "8", "9"], false, DIGIT_TONE_KEYS));
+  var deleteCap = document.createElement("div");
+  deleteCap.className = "keycap-row";
+  var zeroCap = document.createElement("div");
+  zeroCap.className = "keycap active";
+  zeroCap.style.background = "var(--unmapped)";
+  zeroCap.textContent = "0";
+  zeroCap.title = "Löschen";
+  deleteCap.appendChild(zeroCap);
+  var zeroLabel = document.createElement("span");
+  zeroLabel.className = "keycap-note";
+  zeroLabel.style.alignSelf = "center";
+  zeroLabel.textContent = "= löschen";
+  deleteCap.appendChild(zeroLabel);
+  keycapDiagram.appendChild(deleteCap);
+
+  var durationRowLabel = document.createElement("p");
+  durationRowLabel.className = "keycap-note";
+  durationRowLabel.style.margin = "10px 0 2px";
+  durationRowLabel.textContent = "Dauer (statt F1–F5, die Browser reservieren)";
+  keycapDiagram.appendChild(durationRowLabel);
+  var durRow = document.createElement("div");
+  durRow.className = "keycap-row";
+  [["R", "1/1"], ["T", "1/2"], ["U", "1/4"], ["C", "1/8"], ["V", "1/16"]].forEach(function (pair) {
+    var cap = document.createElement("div");
+    cap.className = "keycap duration";
+    cap.textContent = pair[1];
+    cap.title = pair[0] + " = " + pair[1];
+    durRow.appendChild(cap);
+  });
+  keycapDiagram.appendChild(durRow);
+
+  var shortcutList = document.getElementById("shortcutList");
+  var shortcutGroups = [
+    {
+      title: "Navigation",
+      items: [
+        ["← / →", "eine Rasterposition zurück/weiter"],
+        ["↑ / ↓", "gleiche Zeitposition, andere Zeile"],
+        ["Alt+←/→", "nächster/vorheriger vorhandener Chip"],
+        ["Tab / Shift+Tab", "verlässt das Raster nativ (ARIA-Grid-Vertrag) — kein Eingriff hier"],
+        ["Strg+←/→", "vorherige/nächste Taktgrenze"]
+      ]
+    },
+    {
+      title: "Auswahl",
+      items: [
+        ["Shift+Pfeil", "Auswahl um eine Position erweitern"],
+        ["Strg+Shift+←/→", "Auswahl bis zur Taktgrenze"],
+        ["Strg+Shift+↑/↓", "Auswahl auf weitere Zeile"],
+        ["Escape", "Auswahl aufheben, sonst Fokus verlassen"]
+      ]
+    },
+    {
+      title: "Ton setzen",
+      items: [
+        ["Ton-Taste", "Ton setzen (überschreibt), eine Position weiter — siehe Tastenbild oben"],
+        ["1–9", "wie Ton-Taste: 1–7 = C–B, 8–9 = C′–D′"],
+        ["Leertaste", "Position leer lassen, ein Slot weiter"],
+        ["0 / Entf / Rücktaste", "Ton an Cursorposition bzw. Auswahl löschen"]
+      ]
+    },
+    {
+      title: "Bestehenden Ton ändern",
+      items: [
+        ["Strg+↑/↓", "nächster spielbarer Kalimbaton"],
+        ["Bild ↑/↓", "eine Oktave höher/tiefer"],
+        ["R/T/U/C/V", "Dauer: Ganze/Halbe/Viertel/Achtel/Sechzehntel — setzt Breite + Ton unter Cursor"]
+      ]
+    },
+    {
+      title: "Akkordmodus (nur Begleitung)",
+      items: [
+        ["Alt + Ton-Taste/Ziffer", "startet Akkordmodus mit diesem Ton"],
+        ["weitere Ton-Taste/Ziffer", "fügt Ton zum Akkord hinzu (frei befüllbar)"],
+        ["Backspace/Entf", "entfernt letzten hinzugefügten Ton"],
+        ["Enter", "bestätigt den Akkord"],
+        ["Escape", "bricht ab, keine Änderung am Song"]
+      ]
+    },
+    {
+      title: "Textzeile",
+      items: [
+        ["tippen", "Text direkt eintippen (normales Textfeld)"],
+        ["Enter", "bestätigt, weiter zur nächsten Position"],
+        ["Tab / Shift+Tab", "verlässt das Feld nativ"],
+        ["Escape", "Textbearbeitung verlassen, zurück zur Melodie"]
+      ]
+    },
+    {
+      title: "Nummernblock",
+      items: [
+        ["NumLock aus", "navigiert wie ←/→/↑/↓ (Standard-Tastaturverhalten)"],
+        ["NumLock an, 1–7", "setzt Ton wie Zahlenreihe (Grundoktave)"],
+        ["+ / Enter", "Ton höher/tiefer (wie Strg+↑/↓)"]
+      ]
+    }
+  ];
+  shortcutGroups.forEach(function (group) {
+    var groupEl = document.createElement("div");
+    groupEl.className = "shortcut-group";
+    var titleEl = document.createElement("p");
+    titleEl.className = "shortcut-group-title";
+    titleEl.textContent = group.title;
+    groupEl.appendChild(titleEl);
+    var dlEl = document.createElement("dl");
+    dlEl.className = "shortcuts";
+    group.items.forEach(function (pair) {
+      var div = document.createElement("div");
+      var dt = document.createElement("dt");
+      dt.className = "mono";
+      dt.textContent = pair[0];
+      var dd = document.createElement("dd");
+      dd.textContent = pair[1];
+      div.appendChild(dt);
+      div.appendChild(dd);
+      dlEl.appendChild(div);
+    });
+    groupEl.appendChild(dlEl);
+    shortcutList.appendChild(groupEl);
+  });
+})();
+</script>

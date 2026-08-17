@@ -36,6 +36,15 @@ Produkt-, Architektur-, Marken- oder Deploymententscheidungen werden in der jewe
 - Nur freigegebene Änderungen werden über einen Promotion-Branch und Pull Request nach `main` gebracht.
 - Hosting erfolgt über Cloudflare Pages mit GitHub-Integration. Kein Worker-Projekt mit `wrangler deploy` anlegen.
 
+## Codex-Tasks und Sichtbarkeit
+
+- Neue RubiChroma-Tasks immer im gespeicherten Codex-Projekt `RubiChroma` mit dem Repository-Pfad dieses Projekts anlegen, auch wenn der Task nur Review, Anforderungsarbeit oder Nutzerfeedback enthält. Keine projektlosen Tasks für RubiChroma erzeugen.
+- Vor der Erstellung das Ziel über die aktuelle Projektliste anhand von Projektname und Repository-Pfad auflösen; keine gespeicherte Projekt-ID aus älteren Chats übernehmen.
+- Für ein Git-Repository standardmäßig einen isolierten Worktree verwenden. Nur auf ausdrücklichen Wunsch des Nutzers oder bei einem bewusst gemeinsam genutzten lokalen Koordinationstask direkt im Projektordner arbeiten.
+- Nach der Erstellung bis zur tatsächlichen Task-ID beziehungsweise zum abgeschlossenen Worktree-Setup warten und anschließend über die Task-Liste prüfen, dass Arbeitsverzeichnis oder Worktree zum RubiChroma-Repository gehören und der Task in der RubiChroma-Gruppe sichtbar ist. Erst danach den Task als bereit melden oder den Nutzer dorthin navigieren.
+- Tasktitel kurz halten: mit Issue `#<Nummer> – <kurze Bezeichnung>`, ohne Issue nur `<kurze Tätigkeit>`. `RubiChroma` nicht als wiederholendes Präfix verwenden.
+- Bei einer Fehlanlage außerhalb des Projekts sofort einen korrekt zugeordneten Ersatz anlegen, ausschließlich diesen als gültigen Task benennen und die Fehlanlage entpinnen sowie archivieren, sobald sie keinen aktiven Schreibvorgang mehr hat. Keine zwei gleichberechtigten Tasks für denselben Auftrag bestehen lassen.
+
 ## Abhängigkeiten, Delegation und Status
 
 - Ein Child-Issue erst umsetzen lassen, wenn seine technische Basis im vorgesehenen PR-Zielbranch enthalten ist. Ist ein Parent-PR noch offen, entweder dessen Integration abwarten oder einen ausdrücklich freigegebenen Stacked-PR-Vertrag festlegen; ohne einen dieser Wege keinen Child-Task als vollständig beauftragen.
