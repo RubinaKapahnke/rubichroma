@@ -64,8 +64,15 @@ app-word-editor .track-row {
   background: var(--rc-color-surface-subtle);
 }
 
-app-word-editor .track-row.is-target { outline: 2px solid var(--rc-color-primary); }
-app-word-editor .track-row > header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+app-word-editor .track-row.is-target {
+  outline: 2px solid var(--rc-color-primary);
+}
+app-word-editor .track-row > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
 app-word-editor .track-row > header button {
   min-height: 2.25rem;
   padding: 0.35rem 0.65rem;
@@ -436,8 +443,13 @@ app-word-editor .inspector-header-actions {
   gap: 0.4rem;
 }
 
-app-word-editor .word-editor-content { gap: 0.75rem; padding: 0.85rem; }
-app-word-editor .word-editor > header { padding: 0.75rem 0.85rem; }
+app-word-editor .word-editor-content {
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+app-word-editor .word-editor > header {
+  padding: 0.75rem 0.85rem;
+}
 app-word-editor .word-editor .history-action {
   width: 2.5rem;
   min-width: 2.5rem;
@@ -451,17 +463,104 @@ app-word-editor .block-management > summary {
   color: var(--rc-color-text-muted);
   background: var(--rc-color-surface-subtle);
 }
-app-word-editor .block-management[open] > summary { margin-bottom: 0.55rem; }
-app-word-editor .block-management .more-block-actions { margin-top: 0.55rem; }
+app-word-editor .block-management[open] > summary {
+  margin-bottom: 0.55rem;
+}
+app-word-editor .block-management .more-block-actions {
+  margin-top: 0.55rem;
+}
 app-word-editor .destructive-action {
   color: var(--rc-color-error) !important;
   border-color: var(--rc-color-error) !important;
 }
 
+app-word-editor .syllable-split {
+  padding: 0.7rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+}
+app-word-editor .syllable-split > summary {
+  margin: 0;
+}
+app-word-editor .syllable-split[open] > summary {
+  margin-bottom: 0.7rem;
+}
+app-word-editor .split-controls,
+app-word-editor .split-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+app-word-editor .split-controls label,
+app-word-editor .split-preview span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+app-word-editor .split-controls span,
+app-word-editor .split-preview small,
+app-word-editor .split-note {
+  color: var(--rc-color-text-muted);
+  font-size: 0.72rem;
+}
+app-word-editor .split-controls select {
+  width: 100%;
+  min-height: var(--rc-control-min-size);
+  padding-inline: 0.55rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+}
+app-word-editor .split-preview {
+  margin-top: 0.65rem;
+}
+app-word-editor .split-preview span {
+  padding: 0.55rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+}
+app-word-editor .split-note {
+  margin-top: 0.55rem;
+  line-height: 1.4;
+}
+app-word-editor .split-confirm {
+  min-height: var(--rc-control-min-size);
+  margin-top: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--rc-color-on-primary);
+  border: 0;
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 @media (max-width: 760px) {
-  app-word-editor .word-editor-content { gap: 0.6rem; padding-top: 0.6rem; }
-  app-word-editor .key-hands { gap: 0.45rem; margin-top: 0.4rem; }
-  app-word-editor .key-hand-group { padding: 0.45rem; }
-  app-word-editor .key-button { min-height: 3.8rem; }
-  app-word-editor .key-help { display: none; }
+  app-word-editor .word-editor-content {
+    gap: 0.6rem;
+    padding-top: 0.6rem;
+  }
+  app-word-editor .key-hands {
+    gap: 0.45rem;
+    margin-top: 0.4rem;
+  }
+  app-word-editor .key-hand-group {
+    padding: 0.45rem;
+  }
+  app-word-editor .key-button {
+    min-height: 3.8rem;
+  }
+  app-word-editor .key-help {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  app-word-editor .split-controls,
+  app-word-editor .split-preview {
+    grid-template-columns: 1fr;
+  }
 }

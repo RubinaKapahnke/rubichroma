@@ -1,9 +1,10 @@
 import {
   decodeLegacyNotation,
   encodeLegacyNotation,
+  fidelityForEvents,
   replaceWithLegacyNotation,
 } from './legacy-notation-codec';
-import { cloneMusicEvents } from './music-event';
+import { cloneMusicEvents, MusicEvent } from './music-event';
 import { cloneDocument, SongDocument, SongLine, SongWord } from './song-document';
 
 export interface SongPosition {
@@ -18,6 +19,7 @@ export interface SongStructureState {
 
 export type SongStructureAction =
   | { kind: 'insert-block'; blockKind: 'word' | 'melody' }
+  | { kind: 'split-block'; splitIndex: number; firstEventCount: number }
   | { kind: 'delete-block' }
   | { kind: 'duplicate-block' }
   | { kind: 'insert-line'; lineIndex: number }
@@ -35,6 +37,10 @@ export type SongStructureEditResult =
         | 'last-line'
         | 'missing-next-line'
         | 'missing-target-block'
+        | 'invalid-syllable-split'
+        | 'insufficient-split-events'
+        | 'unsupported-melody-split'
+        | 'source-has-unknown-legacy-fragments'
         | 'target-has-unknown-legacy-fragments';
     };
 
@@ -107,6 +113,41 @@ export function editSongStructure(
         action.blockKind === 'word' ? 'Wort hinzugefügt' : 'Melodieblock hinzugefügt',
       );
     }
+    case 'split-block': {
+      if (selectedWord.toneCount !== undefined) {
+        return { ok: false, reason: 'unsupported-melody-split' };
+      }
+      const preview = previewSyllableSplit(selectedWord.text, action.splitIndex);
+      if (!preview) return { ok: false, reason: 'invalid-syllable-split' };
+      if (decodeLegacyNotation(selectedWord.legacyNotation.raw).hasUnknownFragments) {
+        return { ok: false, reason: 'source-has-unknown-legacy-fragments' };
+      }
+      const firstEvents = selectedWord.events.slice(0, action.firstEventCount);
+      const secondEvents = selectedWord.events.slice(action.firstEventCount);
+      if (!hasPlayableEvent(firstEvents) || !hasPlayableEvent(secondEvents)) {
+        return { ok: false, reason: 'insufficient-split-events' };
+      }
+
+      const words = document.song.lines[selection.lineIndex].words;
+      const first = words[selection.wordIndex];
+      const firstClones = cloneMusicEvents(firstEvents);
+      const secondClones = cloneMusicEvents(secondEvents);
+      first.text = preview.firstText;
+      first.events = firstClones;
+      first.legacyNotation = fidelityForEvents(encodeLegacyNotation(firstClones), firstClones);
+      words.splice(selection.wordIndex + 1, 0, {
+        text: preview.secondText,
+        events: secondClones,
+        legacyNotation: fidelityForEvents(encodeLegacyNotation(secondClones), secondClones),
+        extra: {},
+      });
+      selection.wordIndex += 1;
+      return success(
+        document,
+        selection,
+        `Silbe geteilt · ${firstEvents.length} / ${secondEvents.length} Ereignisse zugeordnet`,
+      );
+    }
     case 'delete-block': {
       const words = document.song.lines[selection.lineIndex].words;
       if (words.length === 1) return { ok: false, reason: 'last-block' };
@@ -161,6 +202,45 @@ export function editSongStructure(
       return success(document, selection, 'Musikereignisse in die nächste Zeile übertragen');
     }
   }
+}
+
+export interface SyllableSplitPreview {
+  firstText: string;
+  secondText: string;
+}
+
+export function previewSyllableSplit(
+  text: string,
+  splitIndex: number,
+): SyllableSplitPreview | null {
+  const normalized = text.trim();
+  if (
+    !Number.isInteger(splitIndex) ||
+    splitIndex <= 0 ||
+    splitIndex >= normalized.length ||
+    normalized.endsWith('-') ||
+    normalized[splitIndex - 1] === '-' ||
+    normalized[splitIndex] === '-' ||
+    !/[\p{L}\p{M}]/u.test(normalized[splitIndex - 1]) ||
+    !/[\p{L}\p{M}]/u.test(normalized[splitIndex])
+  ) {
+    return null;
+  }
+  return {
+    firstText: `${normalized.slice(0, splitIndex)}-`,
+    secondText: normalized.slice(splitIndex),
+  };
+}
+
+export function syllableSplitPoints(text: string): number[] {
+  const normalized = text.trim();
+  return Array.from({ length: Math.max(0, normalized.length - 1) }, (_, index) => index + 1).filter(
+    (splitIndex) => previewSyllableSplit(normalized, splitIndex) !== null,
+  );
+}
+
+function hasPlayableEvent(events: readonly MusicEvent[]): boolean {
+  return events.some((event) => event.kind !== 'separator');
 }
 
 function success(

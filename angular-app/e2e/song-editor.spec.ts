@@ -229,6 +229,85 @@ test('imports, reloads and exports the canonical Twinkle fixture with durations 
   ).toHaveLength(6);
 });
 
+test('splits a word into explicitly assigned syllables through undo, reload and player projection', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'syllable-sentinel'));
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('syllable-split').locator('summary').click();
+
+  await page.getByTestId('syllable-split-point').selectOption('4');
+  await page.getByTestId('syllable-split-events').selectOption('1');
+  await expect(page.getByTestId('syllable-split-preview')).toContainText('Twin-');
+  await expect(page.getByTestId('syllable-split-preview')).toContainText('kle,');
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(4);
+  expect((await readStoredWord(page, 0, 0))['text']).toBe('Twinkle,');
+
+  await page.getByTestId('syllable-split-confirm').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(5);
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Twin-');
+  await expect(page.getByTestId('word-card-0-1')).toContainText('kle,');
+  const splitFirst = await readStoredWord(page, 0, 0);
+  const splitSecond = await readStoredWord(page, 0, 1);
+  expect(splitFirst['events']).toHaveLength(1);
+  expect(splitSecond['events']).toHaveLength(2);
+  expect(splitFirst['events'][0]).toMatchObject({ kind: 'note', duration: 1, track: 'melody' });
+  expect(splitSecond['events']).toMatchObject([
+    { kind: 'note', duration: 1, track: 'melody' },
+    { kind: 'chord', duration: 2, track: 'accompaniment' },
+  ]);
+
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(4);
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Twinkle,');
+  await page.getByTestId('redo-structure-editor').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(5);
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByTestId('export-button').click();
+  const exported = JSON.parse(
+    await readFile((await (await downloadPromise).path())!, 'utf8'),
+  ) as Record<string, any>;
+  expect(exported['song']['lines'][0]['words'][0]).toMatchObject({
+    text: 'Twin-',
+    notation: '1',
+    eventTracks: ['melody'],
+  });
+  expect(exported['song']['lines'][0]['words'][1]).toMatchObject({
+    text: 'kle,',
+    notation: '1 (35)',
+    eventDurations: [1, 2],
+    eventTracks: ['melody', 'accompaniment'],
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(5);
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('syllable-split').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('syllable-split')).toBeVisible();
+  await expectNoPageOverflow(page);
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'syllable-sentinel',
+  );
+
+  await page.getByRole('button', { name: 'Editor schließen' }).click();
+  await page.getByTestId('open-player').click();
+  await expect(page.locator('.score-entry')).toHaveCount(25);
+  await expect(page.getByTestId('lyric-0-0')).toHaveText('Twin-');
+  await expect(page.getByTestId('lyric-0-1')).toHaveText('kle,');
+  await page.getByTestId('score-word-0-1').click();
+  await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('.lyric-syllable[aria-current="true"]')).toHaveCount(1);
+  await expect(page.locator('.score-entry', { hasText: /^-$/ })).toHaveCount(0);
+  await expectNoPageOverflow(page);
+});
+
 test('edits parallel melody and accompaniment tracks through undo, reload and player handoff', async ({
   page,
 }) => {

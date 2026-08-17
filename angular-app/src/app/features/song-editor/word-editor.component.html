@@ -6,10 +6,38 @@
     </div>
     <div class="inspector-header-actions">
       <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
-        <button class="history-action" type="button" data-testid="undo-structure-editor" aria-label="Rückgängig" title="Rückgängig (Strg+Z)" [disabled]="!canUndo()" (click)="undoRequested.emit()"><span aria-hidden="true">↶</span></button>
-        <button class="history-action" type="button" data-testid="redo-structure-editor" aria-label="Wiederholen" title="Wiederholen (Strg+Y)" [disabled]="!canRedo()" (click)="redoRequested.emit()"><span aria-hidden="true">↷</span></button>
+        <button
+          class="history-action"
+          type="button"
+          data-testid="undo-structure-editor"
+          aria-label="Rückgängig"
+          title="Rückgängig (Strg+Z)"
+          [disabled]="!canUndo()"
+          (click)="undoRequested.emit()"
+        >
+          <span aria-hidden="true">↶</span>
+        </button>
+        <button
+          class="history-action"
+          type="button"
+          data-testid="redo-structure-editor"
+          aria-label="Wiederholen"
+          title="Wiederholen (Strg+Y)"
+          [disabled]="!canRedo()"
+          (click)="redoRequested.emit()"
+        >
+          <span aria-hidden="true">↷</span>
+        </button>
       </div>
-      <button class="icon-button" type="button" aria-label="Editor schließen" title="Editor schließen (Esc)" (click)="closed.emit()">×</button>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label="Editor schließen"
+        title="Editor schließen (Esc)"
+        (click)="closed.emit()"
+      >
+        ×
+      </button>
     </div>
   </header>
 
@@ -31,6 +59,73 @@
         autocomplete="off"
       />
     </mat-form-field>
+
+    <details class="syllable-split" data-testid="syllable-split">
+      <summary>Text in Silben teilen</summary>
+      @if (canSplitSyllable()) {
+        @if (splitPreview(); as preview) {
+          <div class="split-controls">
+            <label>
+              <span>Trennstelle</span>
+              <select
+                data-testid="syllable-split-point"
+                [value]="selectedSplitIndex()"
+                (change)="setSplitIndex($any($event.target).value)"
+              >
+                @for (point of splitPoints(); track point) {
+                  @if (previewSyllableSplitFor(point); as option) {
+                    <option [value]="point">
+                      {{ option.firstText }} | {{ option.secondText }}
+                    </option>
+                  }
+                }
+              </select>
+            </label>
+            <label>
+              <span>Musik zuordnen</span>
+              <select
+                data-testid="syllable-split-events"
+                [value]="selectedFirstEventCount()"
+                (change)="setFirstSplitEventCount($any($event.target).value)"
+              >
+                @for (count of splitEventCounts(); track count) {
+                  <option [value]="count">
+                    {{ count }} zu erster · {{ events().length - count }} zu zweiter Silbe
+                  </option>
+                }
+              </select>
+            </label>
+          </div>
+          <div class="split-preview" data-testid="syllable-split-preview" aria-live="polite">
+            <span
+              ><strong>{{ preview.firstText }}</strong
+              ><small>{{ selectedFirstEventCount() }} Ereignis(se)</small></span
+            >
+            <span
+              ><strong>{{ preview.secondText }}</strong
+              ><small>{{ events().length - selectedFirstEventCount() }} Ereignis(se)</small></span
+            >
+          </div>
+          <p class="split-note">
+            Die Ereignisse bleiben in ihrer Reihenfolge, Spur und Dauer erhalten.
+          </p>
+          <button
+            class="split-confirm"
+            type="button"
+            data-testid="syllable-split-confirm"
+            (click)="splitSyllable()"
+          >
+            Teilung übernehmen
+          </button>
+        }
+      } @else {
+        <p class="split-note" data-testid="syllable-split-unavailable">
+          Zum sicheren Teilen braucht dieser Text mindestens zwei Musikereignisse und eine
+          eindeutige Trennstelle. Melodieblöcke und Notation mit unbekannten Legacy-Fragmenten
+          bleiben unverändert.
+        </p>
+      }
+    </details>
 
     <section aria-labelledby="events-title">
       <div class="section-heading">
@@ -69,7 +164,9 @@
                       class="event-remove-action"
                       type="button"
                       [attr.data-testid]="'event-remove-' + entry.index"
-                      [attr.aria-label]="eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' entfernen'"
+                      [attr.aria-label]="
+                        eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' entfernen'
+                      "
                       (click)="removeEvent(entry.index)"
                     >
                       <small>{{ eventKindLabel(entry.event) }}</small>
@@ -95,7 +192,9 @@
                         </select>
                       </label>
                     } @else {
-                      <span class="event-duration-label">{{ eventDurationLabel(entry.event) }}</span>
+                      <span class="event-duration-label">{{
+                        eventDurationLabel(entry.event)
+                      }}</span>
                     }
                   </div>
                 }
@@ -228,16 +327,60 @@
           <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
         </div>
         <div class="add-next-block-actions">
-          <button class="primary-block-action" type="button" data-testid="block-add-word" (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })">+ Textblock</button>
-          <button type="button" data-testid="block-add-melody" (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })">+ Melodieblock</button>
+          <button
+            class="primary-block-action"
+            type="button"
+            data-testid="block-add-word"
+            (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
+          >
+            + Textblock
+          </button>
+          <button
+            type="button"
+            data-testid="block-add-melody"
+            (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
+          >
+            + Melodieblock
+          </button>
         </div>
       </section>
-      <details class="more-block-actions" data-testid="more-block-actions" [open]="moreActionsOpen()">
-        <summary aria-controls="more-block-actions-menu" [attr.aria-expanded]="moreActionsOpen()" (click)="toggleMoreActions($event)">Seltene und destruktive Aktionen</summary>
+      <details
+        class="more-block-actions"
+        data-testid="more-block-actions"
+        [open]="moreActionsOpen()"
+      >
+        <summary
+          aria-controls="more-block-actions-menu"
+          [attr.aria-expanded]="moreActionsOpen()"
+          (click)="toggleMoreActions($event)"
+        >
+          Seltene und destruktive Aktionen
+        </summary>
         <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
-          <button type="button" data-testid="block-duplicate" (click)="runStructureAction({ kind: 'duplicate-block' })">Block duplizieren</button>
-          <button type="button" data-testid="block-copy-next-line" [disabled]="!canCopyToNextLine()" (click)="runStructureAction({ kind: 'copy-events-to-next-line' })">Töne in nächste Zeile</button>
-          <button class="destructive-action" type="button" data-testid="block-delete" [disabled]="!canDeleteBlock()" (click)="runStructureAction({ kind: 'delete-block' })">Block löschen</button>
+          <button
+            type="button"
+            data-testid="block-duplicate"
+            (click)="runStructureAction({ kind: 'duplicate-block' })"
+          >
+            Block duplizieren
+          </button>
+          <button
+            type="button"
+            data-testid="block-copy-next-line"
+            [disabled]="!canCopyToNextLine()"
+            (click)="runStructureAction({ kind: 'copy-events-to-next-line' })"
+          >
+            Töne in nächste Zeile
+          </button>
+          <button
+            class="destructive-action"
+            type="button"
+            data-testid="block-delete"
+            [disabled]="!canDeleteBlock()"
+            (click)="runStructureAction({ kind: 'delete-block' })"
+          >
+            Block löschen
+          </button>
         </div>
       </details>
     </details>
