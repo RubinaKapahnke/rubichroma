@@ -130,14 +130,26 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('redo-structure')).toBeDisabled();
 });
 
-test('offers compact direct line actions and keeps advanced block actions secondary', async ({
-  page,
-}) => {
+test('keeps frequent previews direct and destructive line actions secondary', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
 
-  await expect(page.getByText('Lied aus Blöcken aufbauen')).toBeVisible();
+  await expect(page.getByTestId('sheet-intro')).toContainText('Einen Block auswählen');
   await expect(page.getByTestId('add-song-block')).toHaveText(/Block am Liedende hinzufügen/);
+  await expect(page.getByTestId('line-preview-0')).toBeVisible();
+  await expect(page.getByTestId('line-preview-0')).toHaveAttribute(
+    'data-tooltip',
+    'Zeile vorhören',
+  );
+  await page.getByTestId('line-preview-0').focus();
+  await expect
+    .poll(() =>
+      page
+        .getByTestId('line-preview-0')
+        .evaluate((element) => getComputedStyle(element, '::after').opacity),
+    )
+    .toBe('1');
+  await openLineActions(page, 0);
   await expect(page.getByTestId('line-duplicate-0')).toBeVisible();
   await expect(page.getByTestId('line-delete-0')).toBeDisabled();
   await page.getByTestId('add-song-block').click();
@@ -146,6 +158,21 @@ test('offers compact direct line actions and keeps advanced block actions second
   await expect(page.getByTestId('word-0-2')).toHaveValue('Neues Wort');
   await expect(page.getByText('Nächsten Liedblock anlegen')).toBeHidden();
   await expect(page.getByTestId('block-duplicate')).toBeHidden();
+
+  await openLineActions(page, 0);
+  await page.getByTestId('line-add-0').click();
+  const gutterPositions = await page
+    .locator('.line-number')
+    .evaluateAll((elements) =>
+      elements.map((element) => Math.round(element.getBoundingClientRect().x)),
+    );
+  expect(new Set(gutterPositions).size).toBe(1);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const linePreviewBox = await page.getByTestId('line-preview-0').boundingBox();
+  expect(linePreviewBox!.width).toBeGreaterThanOrEqual(44);
+  expect(linePreviewBox!.height).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test('switches the inspector directly and dismisses it outside or with Escape', async ({
@@ -190,6 +217,7 @@ test('keeps help preference, product labels and song storage separate', async ({
   await expect(
     page.getByText(/Dein Song wird nur in diesem Browser gespeichert.*nicht in eine Cloud/),
   ).toBeVisible();
+  await openLineActions(page, 0);
   await expect(page.getByTestId('line-add-0')).toHaveAccessibleName(/Zeile nach Zeile 1/);
   await expect(page.getByTestId('line-add-0')).toHaveAttribute('title', 'Zeile danach einfügen');
   await expect(page.getByTestId('undo-structure')).toHaveAttribute('title', /Strg\+Z/);
@@ -842,6 +870,7 @@ test('undoes and redoes structure actions with buttons and keyboard shortcuts', 
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
   await expect(page.getByTestId('redo-structure')).toBeEnabled();
 
+  await openLineActions(page, 0);
   await page.getByTestId('line-add-0').click();
   await expect(page.locator('.song-line')).toHaveCount(2);
   await expect(page.getByTestId('redo-structure')).toBeDisabled();
@@ -981,6 +1010,10 @@ async function dragWithMouse(
 }
 
 async function openLineActions(page: Page, lineIndex: number): Promise<void> {
+  const actions = page.getByTestId(`line-actions-${lineIndex}`);
+  if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await actions.locator(':scope > summary').click();
+  }
   await expect(page.getByTestId(`line-duplicate-${lineIndex}`)).toBeVisible();
 }
 

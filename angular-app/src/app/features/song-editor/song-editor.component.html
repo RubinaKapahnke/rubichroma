@@ -169,6 +169,8 @@
         >
           <app-song-sheet
             [lines]="lines()"
+            [document]="store.document()!"
+            [keys]="kalimbaKeys()"
             [editMode]="editingEnabled()"
             [selection]="selection()"
             [selectedPositions]="selectedPositions()"

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
+import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { cloneDocument } from '../../domain/song-document';
 import { createSongLinesForm } from './song-editor-form';
 import {
@@ -8,12 +9,14 @@ import {
   SongSheetComponent,
   WordSelectionGesture,
 } from './song-sheet.component';
+import { KalimbaKeyView } from './word-editor.component';
 
 describe('SongSheetComponent desktop selection gestures', () => {
   it('renders a calm full-content view without editing controls', async () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -30,11 +33,58 @@ describe('SongSheetComponent desktop selection gestures', () => {
     expect(selections).toEqual([]);
   });
 
+  it('projects both canonical tracks as compact chips with all 17 exact profile colors', async () => {
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    const keys = kalimbaKeys(document);
+    document.song.lines[0].words[0].melodyEvents = keys.map((key) => ({
+      kind: 'note' as const,
+      pitch: { ...key.pitch },
+      duration: key.value === '1′' ? 2 : 1,
+    }));
+    document.song.lines[0].words[0].accompanimentEvents = [
+      { kind: 'note', pitch: { ...keys.find((key) => key.value === '1')!.pitch }, duration: 1 },
+      { kind: 'note', pitch: { ...keys.find((key) => key.value === '1′')!.pitch }, duration: 2 },
+    ];
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    fixture.componentRef.setInput('lines', createSongLinesForm(document));
+    fixture.componentRef.setInput('document', document);
+    fixture.componentRef.setInput('keys', keys);
+    fixture.componentRef.setInput('editMode', true);
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    fixture.detectChanges();
+
+    const melodyChips = Array.from(
+      fixture.nativeElement.querySelectorAll('[data-testid^="sheet-event-0-0-melody-"]'),
+    ) as HTMLElement[];
+    expect(melodyChips.map((chip) => chip.dataset['profileColor'])).toEqual(
+      DEFAULT_DOCUMENT.keys.map((key) => key['color']),
+    );
+    expect(melodyChips.map((chip) => chip.style.getPropertyValue('--event-color'))).toEqual(
+      DEFAULT_DOCUMENT.keys.map((key) => key['color']),
+    );
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="sheet-event-0-0-accompaniment-0"]')
+        .textContent,
+    ).toContain('C · 1');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="sheet-event-0-0-accompaniment-1"]')
+        .textContent,
+    ).toContain('C · 1′');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="sheet-event-0-0-accompaniment-1"]')
+        .textContent,
+    ).toContain('2 Schläge');
+  });
+
   it('maps Shift and Ctrl/Command clicks without losing the clicked position', async () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture: ComponentFixture<SongSheetComponent> =
       TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -69,6 +119,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     const fixture: ComponentFixture<SongSheetComponent> =
       TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -115,6 +166,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -134,6 +186,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -155,6 +208,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -183,6 +237,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines.push(structuredClone(document.song.lines[0]));
     fixture.componentRef.setInput('lines', createSongLinesForm(document));
+    fixture.componentRef.setInput('document', document);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -232,6 +287,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('document', DEFAULT_DOCUMENT);
     fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
@@ -250,6 +306,25 @@ describe('SongSheetComponent desktop selection gestures', () => {
     ).not.toBeNull();
   });
 });
+
+function kalimbaKeys(document = DEFAULT_DOCUMENT): KalimbaKeyView[] {
+  return document.keys.flatMap((key, index) => {
+    const value = key['value'];
+    if (typeof value !== 'string') return [];
+    const event = decodeLegacyNotation(value).events[0];
+    if (!event || event.kind !== 'note') return [];
+    return [
+      {
+        id: String(index),
+        value,
+        letter: typeof key['letter'] === 'string' ? key['letter'] : value,
+        hand: key['hand'] === 'R' ? ('R' as const) : ('L' as const),
+        color: typeof key['color'] === 'string' ? key['color'] : '#ece8f0',
+        pitch: event.pitch,
+      },
+    ];
+  });
+}
 
 afterEach(() => {
   vi.useRealTimers();

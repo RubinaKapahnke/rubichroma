@@ -8,10 +8,11 @@ import {
   signal,
 } from '@angular/core';
 import { FormArray } from '@angular/forms';
-import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
-import { MusicEvent } from '../../domain/music-event';
+import { durationLabel, MusicEvent, MusicTrackId, Pitch } from '../../domain/music-event';
+import { SongDocument, songWordEventsForTrack } from '../../domain/song-document';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 import { LineForm, WordForm, WordSelection } from './song-editor-form';
+import { KalimbaKeyView, profileInkColor } from './word-editor.component';
 
 export interface WordSelectionGesture {
   position: WordSelection;
@@ -32,6 +33,8 @@ export const SONG_STRUCTURE_HELP_HIDDEN_KEY = 'rubichroma-song-structure-help-hi
 })
 export class SongSheetComponent {
   readonly lines = input.required<FormArray<LineForm>>();
+  readonly document = input.required<SongDocument>();
+  readonly keys = input<readonly KalimbaKeyView[]>([]);
   readonly editMode = input(false);
   readonly selection = input.required<WordSelection | null>();
   readonly selectedPositions = input.required<readonly WordSelection[]>();
@@ -157,8 +160,10 @@ export class SongSheetComponent {
     this.linePreviewRequested.emit(lineIndex);
   }
 
-  hasPlayableEvents(word: WordForm): boolean {
-    return this.wordEvents(word).some((event) => event.kind !== 'separator');
+  hasPlayableEvents(lineIndex: number, wordIndex: number): boolean {
+    return this.trackOptions.some((track) =>
+      this.eventsForTrack(lineIndex, wordIndex, track).some((event) => event.kind !== 'separator'),
+    );
   }
 
   startBlockDrag(event: DragEvent, lineIndex: number, wordIndex: number): void {
@@ -310,19 +315,68 @@ export class SongSheetComponent {
     }
   }
 
+  readonly trackOptions: readonly MusicTrackId[] = ['melody', 'accompaniment'];
+
+  trackLabel(track: MusicTrackId): string {
+    return track === 'melody' ? 'Melodie' : 'Begleitung';
+  }
+
+  eventsForTrack(lineIndex: number, wordIndex: number, track: MusicTrackId): readonly MusicEvent[] {
+    const word = this.document().song.lines[lineIndex]?.words[wordIndex];
+    return word ? songWordEventsForTrack(word, track) : [];
+  }
+
   eventLabel(event: MusicEvent): string {
     switch (event.kind) {
       case 'note':
-        return formatPitch(event.pitch.degree, event.pitch.octave);
+        return this.pitchLabel(event.pitch);
       case 'chord':
-        return `(${event.pitches.map((pitch) => formatPitch(pitch.degree, pitch.octave)).join('')})`;
+        return event.pitches.map((pitch) => this.pitchLabel(pitch)).join(' + ');
       case 'separator':
         return '–';
     }
   }
 
-  wordEvents(word: WordForm): MusicEvent[] {
-    return decodeLegacyNotation(word.controls.notation.value).events;
+  eventDurationLabel(event: MusicEvent): string {
+    return event.kind === 'separator' ? 'Pause' : durationLabel(event.duration);
+  }
+
+  eventColors(event: MusicEvent): string[] {
+    if (event.kind === 'separator') return [];
+    return (event.kind === 'note' ? [event.pitch] : event.pitches).map(
+      (pitch) => this.keyForPitch(pitch)?.color ?? '#ece8f0',
+    );
+  }
+
+  eventPrimaryColor(event: MusicEvent): string {
+    return this.eventColors(event)[0] ?? 'transparent';
+  }
+
+  eventInkColor(event: MusicEvent): string {
+    return profileInkColor(this.eventPrimaryColor(event));
+  }
+
+  pitchLabel(pitch: Pitch): string {
+    const key = this.keyForPitch(pitch);
+    return key ? `${key.letter} · ${key.value}` : formatPitch(pitch.degree, pitch.octave);
+  }
+
+  wordAccessibleLabel(word: WordForm, lineIndex: number, wordIndex: number): string {
+    const tracks = this.trackOptions
+      .map((track) => {
+        const events = this.eventsForTrack(lineIndex, wordIndex, track);
+        return `${this.trackLabel(track)}: ${
+          events.length ? events.map((event) => this.eventLabel(event)).join(', ') : 'leer'
+        }`;
+      })
+      .join('; ');
+    return `${this.wordLabel(word, lineIndex, wordIndex)}, ${tracks}`;
+  }
+
+  private keyForPitch(pitch: Pitch): KalimbaKeyView | undefined {
+    return this.keys().find(
+      (key) => key.pitch.degree === pitch.degree && key.pitch.octave === pitch.octave,
+    );
   }
 
   handleWordKeydown(event: KeyboardEvent, lineIndex: number, wordIndex: number): void {
