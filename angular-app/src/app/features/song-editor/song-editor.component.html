@@ -55,7 +55,11 @@
   }
 
   @if (store.hasDocument()) {
-    <mat-card class="editor-card" [class.is-editing]="editingEnabled()">
+    <mat-card
+      class="editor-card"
+      [class.is-editing]="editingEnabled()"
+      [class.has-open-library]="libraryOpen()"
+    >
       <mat-card-header class="document-toolbar">
         <div class="document-identity">
           <label class="visually-hidden" for="song-title">Liedtitel</label>
@@ -80,6 +84,17 @@
             (click)="openPlayer()"
           >
             Im Player öffnen
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            class="library-action"
+            data-testid="open-library"
+            [attr.aria-expanded]="libraryOpen()"
+            aria-controls="song-library"
+            (click)="openLibrary()"
+          >
+            Liedbibliothek
           </button>
           @if (editingEnabled()) {
             <button
@@ -148,6 +163,68 @@
       </mat-card-header>
 
       <mat-card-content>
+        @if (libraryOpen()) {
+          <section
+            id="song-library"
+            class="song-library"
+            aria-labelledby="song-library-title"
+            data-testid="song-library"
+          >
+            <header class="song-library-header">
+              <div>
+                <h2 id="song-library-title">Lokale Liedbibliothek</h2>
+                <p>Diese Lieder bleiben privat in diesem Browser.</p>
+              </div>
+              <button
+                type="button"
+                class="secondary-action"
+                aria-label="Liedbibliothek schließen"
+                data-testid="close-library"
+                (click)="closeLibrary()"
+              >
+                Schließen
+              </button>
+            </header>
+
+            <button
+              mat-flat-button
+              type="button"
+              class="create-song-action"
+              data-testid="create-song"
+              (click)="createNewSong()"
+            >
+              Neues Lied
+            </button>
+
+            <div class="song-library-list" aria-label="Gespeicherte Lieder">
+              @for (song of store.songs(); track song.id) {
+                <article
+                  class="song-library-entry"
+                  [class.is-current]="song.id === store.activeSongId()"
+                  [attr.data-testid]="'library-song-' + song.id"
+                >
+                  <div>
+                    <strong>{{ song.title || 'Lied ohne Titel' }}</strong>
+                    <span>Zuletzt bearbeitet {{ formatLibraryDate(song.updatedAt) }}</span>
+                  </div>
+                  @if (song.id === store.activeSongId()) {
+                    <span class="current-song-badge">Geöffnet</span>
+                  } @else {
+                    <button
+                      type="button"
+                      class="secondary-action"
+                      [attr.aria-label]="song.title + ' öffnen'"
+                      (click)="openLibrarySong(song.id)"
+                    >
+                      Öffnen
+                    </button>
+                  }
+                </article>
+              }
+            </div>
+          </section>
+        }
+
         @if (pendingRestore(); as backup) {
           <section
             class="restore-preview"

@@ -360,6 +360,96 @@ app-song-editor .restore-preview-actions {
   }
 }
 
+app-song-editor .editor-card.has-open-library {
+  .edit-mode-bar,
+  .editor-layout {
+    display: none;
+  }
+}
+
+app-song-editor .song-library {
+  display: grid;
+  gap: 1rem;
+}
+
+app-song-editor .song-library-header,
+app-song-editor .song-library-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+app-song-editor .song-library-header {
+  h2,
+  p {
+    margin: 0;
+  }
+
+  p {
+    margin-top: 0.2rem;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+}
+
+app-song-editor .song-library .secondary-action {
+  min-height: var(--rc-control-min-size);
+  padding: 0.5rem 0.8rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+  cursor: pointer;
+}
+
+app-song-editor .create-song-action {
+  justify-self: start;
+}
+
+app-song-editor .song-library-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+app-song-editor .song-library-entry {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+
+  > div {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+  }
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  span:not(.current-song-badge) {
+    color: var(--rc-color-text-muted);
+    font-size: 0.78rem;
+  }
+}
+
+app-song-editor .song-library-entry.is-current {
+  border-color: var(--rc-color-primary-text);
+}
+
+app-song-editor .current-song-badge {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.55rem;
+  color: var(--rc-color-primary-text);
+  border-radius: 999px;
+  background: var(--rc-color-primary-container);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 @media (max-width: 600px) {
   app-song-editor .topbar {
     display: grid;
@@ -371,6 +461,17 @@ app-song-editor .restore-preview-actions {
     padding-block: max(0.35rem, env(safe-area-inset-top)) 0.35rem;
     padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right));
     white-space: normal;
+  }
+
+  app-song-editor .song-library-header,
+  app-song-editor .song-library-entry {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  app-song-editor .song-library-header .secondary-action,
+  app-song-editor .song-library-entry .secondary-action {
+    width: 100%;
   }
 
   app-song-editor .topbar .brand-lockup {

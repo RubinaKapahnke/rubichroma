@@ -338,7 +338,7 @@ app-song-sheet {
 
   .document-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     width: 100%;
 
     > button {
@@ -349,6 +349,11 @@ app-song-sheet {
 
   .document-more-panel {
     right: 0;
+  }
+
+  .document-more-actions summary {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   mat-card-content {
@@ -384,7 +389,7 @@ app-song-sheet {
   }
 
   .document-actions {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     font-size: 0.78rem;
   }
 }

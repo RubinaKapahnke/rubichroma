@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { DEFAULT_DOCUMENT } from '../../domain/default-document';
+import { createEmptySongDocument, DEFAULT_DOCUMENT } from '../../domain/default-document';
 import {
   decodeLegacyNotation,
   encodeLegacyNotation,
@@ -44,7 +44,10 @@ import {
   serializeLocalBackup,
 } from '../../infrastructure/persistence/local-backup';
 import type { LocalBackupPreview } from '../../infrastructure/persistence/local-backup';
-import { BrowserSongRepository } from '../../infrastructure/persistence/song.repository';
+import {
+  BrowserSongRepository,
+  SongSummary,
+} from '../../infrastructure/persistence/song.repository';
 
 export interface EditorValue {
   title: string;
@@ -65,6 +68,7 @@ export class SongEditorStore {
   private readonly repository = inject(BrowserSongRepository);
   private readonly documentState = signal<SongDocument | null>(null);
   private readonly activeSongIdState = signal<string | null>(null);
+  private readonly songsState = signal<SongSummary[]>([]);
   private readonly statusState = signal<SaveStatus>('loading');
   private readonly errorState = signal<string | null>(null);
   private readonly hydrationVersionState = signal(0);
@@ -73,9 +77,11 @@ export class SongEditorStore {
   private readonly structureHistory = new SongStructureHistory();
   private initialization?: Promise<void>;
   private lastStructureSelection: SongPosition | null = null;
+  private readonly persistedDocuments = new Map<string, SongDocument>();
 
   readonly document = this.documentState.asReadonly();
   readonly activeSongId = this.activeSongIdState.asReadonly();
+  readonly songs = this.songsState.asReadonly();
   readonly status = this.statusState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly hydrationVersion = this.hydrationVersionState.asReadonly();
@@ -98,6 +104,8 @@ export class SongEditorStore {
       if (!songId) throw new Error('Kein aktuelles Lied in der lokalen Ablage gefunden.');
       this.activeSongIdState.set(songId);
       this.documentState.set(document);
+      this.persistedDocuments.set(songId, document);
+      await this.refreshSongs();
       this.clearStructureHistory();
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
@@ -285,9 +293,15 @@ export class SongEditorStore {
       this.errorState.set('Speichern fehlgeschlagen: Kein aktuelles Lied ausgewählt.');
       return;
     }
+    if (this.persistedDocuments.get(songId) === candidate) {
+      this.statusState.set('saved');
+      return;
+    }
 
     try {
       const saved = await this.repository.save(candidate, songId);
+      this.persistedDocuments.set(songId, saved);
+      await this.refreshSongs();
       // Do not overwrite a newer in-memory edit when an earlier IndexedDB write finishes later.
       if (this.activeSongIdState() === songId && this.documentState() === candidate) {
         this.documentState.set(saved);
@@ -353,6 +367,8 @@ export class SongEditorStore {
       const saved = await this.repository.replace(candidate, songId);
       if (this.activeSongIdState() !== songId) return;
       this.documentState.set(saved);
+      this.persistedDocuments.set(songId, saved);
+      await this.refreshSongs();
       this.clearStructureHistory();
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
@@ -386,6 +402,9 @@ export class SongEditorStore {
       if (!songId) throw new Error('Die Sicherung enthält kein aktuell geöffnetes Lied.');
       this.activeSongIdState.set(songId);
       this.documentState.set(restored);
+      this.persistedDocuments.clear();
+      this.persistedDocuments.set(songId, restored);
+      await this.refreshSongs();
       this.clearStructureHistory();
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
@@ -409,6 +428,7 @@ export class SongEditorStore {
       const document = await this.repository.openSong(songId);
       this.activeSongIdState.set(songId);
       this.documentState.set(document);
+      this.persistedDocuments.set(songId, document);
       this.clearStructureHistory();
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
@@ -417,6 +437,29 @@ export class SongEditorStore {
       this.errorState.set(`Liedwechsel fehlgeschlagen: ${messageOf(error)}`);
       throw error;
     }
+  }
+
+  async createNewSong(): Promise<void> {
+    this.statusState.set('loading');
+    this.errorState.set(null);
+    try {
+      const stored = await this.repository.createSong(createEmptySongDocument());
+      this.activeSongIdState.set(stored.id);
+      this.documentState.set(stored.document);
+      this.persistedDocuments.set(stored.id, stored.document);
+      await this.refreshSongs();
+      this.clearStructureHistory();
+      this.hydrationVersionState.update((version) => version + 1);
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Neues Lied konnte nicht angelegt werden: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
+  private async refreshSongs(): Promise<void> {
+    this.songsState.set(await this.repository.listSongs());
   }
 
   private applyStructureSnapshot(document: SongDocument): void {
@@ -442,6 +485,8 @@ export class SongEditorStore {
     if (!songId) return;
     try {
       const saved = await this.repository.save(snapshot, songId);
+      this.persistedDocuments.set(songId, saved);
+      await this.refreshSongs();
       // A late save must never replace a newer edit or undo snapshot in memory.
       if (this.activeSongIdState() === songId && this.documentState() === snapshot) {
         this.documentState.set(saved);
