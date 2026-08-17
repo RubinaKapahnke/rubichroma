@@ -61,7 +61,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect
     .poll(() => position.evaluate((input: HTMLInputElement) => +input.value))
     .toBeGreaterThanOrEqual(beforeViewSwitch);
-  await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('.lyric-syllable[aria-current="true"]')).toHaveCount(1);
 
   await page.getByTestId('play-toggle').click();
   const pausedAt = await position.evaluate((input: HTMLInputElement) => +input.value);
