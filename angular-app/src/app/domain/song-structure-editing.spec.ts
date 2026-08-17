@@ -172,6 +172,74 @@ describe('song structure editing', () => {
     expect(deleted.state.document.song.lines).toHaveLength(3);
   });
 
+  it('moves complete blocks within and between lines and reorders whole lines losslessly', () => {
+    const original = documentFixture();
+    const movedBetween = expectSuccess(
+      editSongStructure(state(original), {
+        kind: 'move-block',
+        lineIndex: 0,
+        wordIndex: 0,
+        targetLineIndex: 1,
+        targetWordIndex: 1,
+      }),
+    );
+    expect(movedBetween.state.document.song.lines[0].words.map((word) => word.text)).toEqual([
+      'Danach',
+    ]);
+    expect(movedBetween.state.document.song.lines[1].words.map((word) => word.text)).toEqual([
+      'Zieltext',
+      'Quelle',
+    ]);
+    expect(movedBetween.state.document.song.lines[1].words[1]).toEqual(
+      original.song.lines[0].words[0],
+    );
+    expect(movedBetween.state.selection).toEqual({ lineIndex: 1, wordIndex: 1 });
+    expect(original.song.lines[0].words.map((word) => word.text)).toEqual(['Quelle', 'Danach']);
+
+    const movedWithin = expectSuccess(
+      editSongStructure(movedBetween.state, {
+        kind: 'move-block',
+        lineIndex: 1,
+        wordIndex: 1,
+        targetLineIndex: 1,
+        targetWordIndex: 0,
+      }),
+    );
+    expect(movedWithin.state.document.song.lines[1].words.map((word) => word.text)).toEqual([
+      'Quelle',
+      'Zieltext',
+    ]);
+
+    const movedLine = expectSuccess(
+      editSongStructure(movedWithin.state, {
+        kind: 'move-line',
+        lineIndex: 1,
+        targetLineIndex: 0,
+      }),
+    );
+    expect(movedLine.state.document.song.lines[0].words.map((word) => word.text)).toEqual([
+      'Quelle',
+      'Zieltext',
+    ]);
+    expect(movedLine.state.selection).toEqual({ lineIndex: 0, wordIndex: 0 });
+  });
+
+  it('never moves the only block out of a line', () => {
+    const document = documentFixture();
+    document.song.lines[0].words = [document.song.lines[0].words[0]];
+    const before = structuredClone(document);
+    expect(
+      editSongStructure(state(document), {
+        kind: 'move-block',
+        lineIndex: 0,
+        wordIndex: 0,
+        targetLineIndex: 1,
+        targetWordIndex: 1,
+      }),
+    ).toEqual({ ok: false, reason: 'last-block' });
+    expect(document).toEqual(before);
+  });
+
   it('copies only structured events into the next line and preserves target text and unknown fields', () => {
     const initial = state(documentFixture());
     const result = expectSuccess(editSongStructure(initial, { kind: 'copy-events-to-next-line' }));

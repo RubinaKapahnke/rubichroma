@@ -180,6 +180,58 @@
   min-width: 0;
 }
 
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.word-drag-handle {
+  position: absolute;
+  z-index: 1;
+  top: 0.25rem;
+  left: 0.25rem;
+  display: grid;
+  width: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  place-items: center;
+  color: var(--rc-color-text-muted);
+  border: 1px solid var(--rc-color-border);
+  border-radius: 999px;
+  background: var(--rc-color-surface);
+}
+
+.word-card-shell.is-block-drop-target::after {
+  position: absolute;
+  z-index: 3;
+  inset-block: 0;
+  left: -0.4rem;
+  width: 0.22rem;
+  border-radius: 999px;
+  background: var(--rc-color-primary-text);
+  content: '';
+}
+
+.word-card-shell.is-block-drop-target.drop-after::after {
+  right: -0.4rem;
+  left: auto;
+}
+
+.song-line.is-line-drop-target {
+  border-top: 3px solid var(--rc-color-primary-text);
+  background: var(--rc-color-primary-container);
+}
+
+.song-line.is-line-drop-target.drop-after {
+  border-top-color: var(--rc-color-border);
+  border-bottom: 3px solid var(--rc-color-primary-text);
+}
+
 .word-preview-action {
   position: absolute;
   z-index: 1;
@@ -258,6 +310,9 @@
 }
 
 @media (max-width: 600px) {
+  .drag-handle {
+    display: none;
+  }
   .touch-selection-help {
     display: flex;
   }

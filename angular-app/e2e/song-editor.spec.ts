@@ -700,12 +700,123 @@ test('undoes and redoes structure actions with buttons and keyboard shortcuts', 
   expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
 });
 
+test('moves blocks and whole lines with drag-drop and keyboard without fidelity loss', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  await page.setViewportSize({ width: 1440, height: 1400 });
+  await expect(page.getByTestId('song-title')).toBeVisible();
+  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+
+  await dragWithMouse(
+    page,
+    page.getByTestId('word-drag-handle-0-0'),
+    page.getByTestId('word-card-0-1'),
+  );
+  await expect(page.getByTestId('word-card-0-0')).toContainText('vom');
+  await expect(page.getByTestId('word-card-0-1')).toContainText('Grüße –');
+  await page.getByTestId('undo-structure').click();
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
+
+  await page.getByTestId('word-drag-handle-0-0').press('Alt+ArrowRight');
+  await expect(page.getByTestId('word-card-0-0')).toContainText('vom');
+  await expect(page.getByTestId('word-card-0-1')).toContainText('Grüße –');
+  await page.getByTestId('undo-structure').click();
+
+  await dragWithMouse(
+    page,
+    page.getByTestId('word-drag-handle-0-0'),
+    page.getByTestId('word-card-1-1'),
+  );
+  await expect(page.getByTestId('structure-status')).toHaveText('Block verschoben');
+  await expect(page.locator('.word-card')).toHaveCount(6);
+  await expect(page.getByTestId('song-line-0').locator('.word-card')).toHaveCount(2);
+  await expect(page.getByTestId('song-line-1').locator('.word-card')).toHaveCount(3);
+  await expect(page.getByTestId('song-line-1').locator('.word-card').last()).toContainText('Grüße –');
+  await page.getByTestId('undo-structure').click();
+  await expect(page.getByTestId('song-line-0').locator('.word-card')).toHaveCount(3);
+
+  await dragWithMouse(
+    page,
+    page.getByTestId('line-drag-handle-0'),
+    page.getByTestId('song-line-1'),
+  );
+  await expect(page.getByTestId('song-line-0')).toContainText('zweite');
+  await expect(page.getByTestId('song-line-1')).toContainText('Grüße –');
+  await page.getByTestId('undo-structure').click();
+  await expect(page.getByTestId('song-line-0')).toContainText('Grüße –');
+
+  await page.getByTestId('line-drag-handle-0').press('ArrowDown');
+  await expect(page.getByTestId('song-line-0')).toContainText('zweite');
+  await expect(page.getByTestId('song-line-1')).toContainText('Grüße –');
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByTestId('export-button').click();
+  const exported = JSON.parse(
+    await readFile((await (await downloadPromise).path())!, 'utf8'),
+  ) as Record<string, any>;
+  expect(exported['unknownRoot']).toEqual({ mustSurvive: true });
+  expect(exported['song']['lines'][1]['unknownLineField']).toBe('Strophe A');
+  expect(exported['song']['lines'][1]['words'][0]['unknownWordField']).toEqual(['bleibt', 1]);
+
+  await page.reload();
+  await expect(page.getByTestId('song-line-0')).toContainText('zweite');
+  await expect(page.getByTestId('song-line-1')).toContainText('Grüße –');
+  await expect(page.getByTestId('undo-structure')).toBeDisabled();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('word-drag-handle-0-0')).toBeHidden();
+  await expect(page.getByTestId('line-drag-handle-0')).toBeHidden();
+  await expect(page.getByTestId('word-card-0-0')).toBeVisible();
+  await expectNoPageOverflow(page);
+});
+
 async function openBlockActions(page: Page): Promise<void> {
   await openBlockManagement(page);
   const actions = page.getByTestId('more-block-actions');
   if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
     await actions.locator(':scope > summary').click();
   }
+}
+
+async function dragWithMouse(
+  page: Page,
+  source: import('@playwright/test').Locator,
+  target: import('@playwright/test').Locator,
+): Promise<void> {
+  await page.waitForTimeout(150);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  const hit = await page.evaluate(
+    ({ x, y }) => {
+      const element = document.elementFromPoint(x, y) as HTMLElement | null;
+      return {
+        tag: element?.tagName,
+        className: element?.className,
+        testId: element?.closest<HTMLElement>('[data-testid]')?.dataset['testid'],
+      };
+    },
+    { x: sourceBox!.x + sourceBox!.width / 2, y: sourceBox!.y + sourceBox!.height / 2 },
+  );
+  if (hit.testId !== (await source.getAttribute('data-testid'))) {
+    throw new Error(`Unexpected drag hit target: ${JSON.stringify(hit)}`);
+  }
+  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(120);
+  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2 + 24, sourceBox!.y + sourceBox!.height / 2, {
+    steps: 3,
+  });
+  await page.mouse.move(targetBox!.x + targetBox!.width - 3, targetBox!.y + targetBox!.height - 3, {
+    steps: 12,
+  });
+  await page.mouse.up();
 }
 
 async function openLineActions(page: Page, lineIndex: number): Promise<void> {

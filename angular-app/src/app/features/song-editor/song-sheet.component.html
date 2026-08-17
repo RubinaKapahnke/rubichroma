@@ -52,14 +52,37 @@
 </button>
 <div
   class="song-lines"
+  data-testid="line-drop-list"
   aria-label="Bearbeitbare Liedblöcke"
   aria-describedby="touch-selection-help"
 >
   @for (line of lines().controls; track $index; let lineIndex = $index) {
-    <section class="song-line" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">
+    <section
+      class="song-line"
+      [class.is-line-drop-target]="isLineDropTarget(lineIndex)"
+      [class.drop-after]="isLineDropTarget(lineIndex) && lineDropAfter()"
+      [attr.data-testid]="'song-line-' + lineIndex"
+      [attr.aria-label]="'Zeile ' + (lineIndex + 1)"
+      (dragover)="markLineDrop($event, lineIndex)"
+      (drop)="dropLineNative($event)"
+    >
       <div class="line-heading">
         <span class="line-number">{{ lineIndex + 1 }}</span>
         <div class="line-primary-actions">
+          <span
+            class="line-icon-action drag-handle line-drag-handle"
+            role="button"
+            tabindex="0"
+            draggable="true"
+            [attr.data-testid]="'line-drag-handle-' + lineIndex"
+            [attr.aria-label]="
+              'Zeile ' + (lineIndex + 1) + ' verschieben; Pfeil hoch oder runter'
+            "
+            title="Zeile ziehen · Pfeil hoch/runter"
+            (dragstart)="startLineDrag($event, lineIndex)"
+            (dragend)="clearDragState()"
+            (keydown)="moveLineWithKeyboard($event, lineIndex)"
+            >↕</span>
           <button
             class="line-icon-action"
             type="button"
@@ -84,9 +107,33 @@
           <button class="line-icon-action destructive" type="button" [attr.data-testid]="'line-delete-' + lineIndex" [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' löschen'" title="Zeile löschen" [disabled]="lines().length === 1" (click)="runStructureAction({ kind: 'delete-line', lineIndex })"><span aria-hidden="true">×</span></button>
         </div>
       </div>
-      <div class="words">
+      <div
+        class="words"
+        [id]="'word-drop-list-' + lineIndex"
+      >
         @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
-          <div class="word-card-shell">
+          <div
+            class="word-card-shell"
+            [class.is-block-drop-target]="isBlockDropTarget(lineIndex, wordIndex)"
+            [class.drop-after]="isBlockDropTarget(lineIndex, wordIndex) && blockDropAfter()"
+            (dragover)="markBlockDrop($event, lineIndex, wordIndex)"
+            (drop)="dropBlockNative($event)"
+          >
+            <span
+              class="word-drag-handle drag-handle"
+              role="button"
+              tabindex="0"
+              draggable="true"
+              [attr.data-testid]="'word-drag-handle-' + lineIndex + '-' + wordIndex"
+              [attr.aria-label]="
+                wordLabel(word, lineIndex, wordIndex) +
+                ' verschieben; Alt plus Pfeiltasten'
+              "
+              title="Block ziehen · Alt+Pfeiltasten"
+              (dragstart)="startBlockDrag($event, lineIndex, wordIndex)"
+              (dragend)="clearDragState()"
+              (keydown)="moveBlockWithKeyboard($event, lineIndex, wordIndex)"
+              >⠿</span>
             <button
               class="word-card"
               type="button"

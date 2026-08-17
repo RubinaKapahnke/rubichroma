@@ -22,9 +22,17 @@ export type SongStructureAction =
   | { kind: 'split-block'; splitIndex: number; firstEventCount: number }
   | { kind: 'delete-block' }
   | { kind: 'duplicate-block' }
+  | {
+      kind: 'move-block';
+      lineIndex: number;
+      wordIndex: number;
+      targetLineIndex: number;
+      targetWordIndex: number;
+    }
   | { kind: 'insert-line'; lineIndex: number }
   | { kind: 'delete-line'; lineIndex: number }
   | { kind: 'duplicate-line'; lineIndex: number }
+  | { kind: 'move-line'; lineIndex: number; targetLineIndex: number }
   | { kind: 'copy-events-to-next-line'; targetWordIndex?: number };
 
 export type SongStructureEditResult =
@@ -161,6 +169,31 @@ export function editSongStructure(
       selection.wordIndex += 1;
       return success(document, selection, 'Block vollständig dupliziert');
     }
+    case 'move-block': {
+      const sourceLine = document.song.lines[action.lineIndex];
+      const targetLine = document.song.lines[action.targetLineIndex];
+      const sourceWord = sourceLine?.words[action.wordIndex];
+      if (
+        !sourceLine ||
+        !targetLine ||
+        !sourceWord ||
+        action.targetWordIndex < 0 ||
+        action.targetWordIndex >
+          targetLine.words.length - (action.lineIndex === action.targetLineIndex ? 1 : 0)
+      ) {
+        return { ok: false, reason: 'invalid-selection' };
+      }
+      if (action.lineIndex !== action.targetLineIndex && sourceLine.words.length === 1) {
+        return { ok: false, reason: 'last-block' };
+      }
+      sourceLine.words.splice(action.wordIndex, 1);
+      targetLine.words.splice(action.targetWordIndex, 0, sourceWord);
+      selection = {
+        lineIndex: action.targetLineIndex,
+        wordIndex: action.targetWordIndex,
+      };
+      return success(document, selection, 'Block verschoben');
+    }
     case 'insert-line': {
       if (!document.song.lines[action.lineIndex]) return { ok: false, reason: 'invalid-selection' };
       document.song.lines.splice(action.lineIndex + 1, 0, createLine());
@@ -181,6 +214,20 @@ export function editSongStructure(
       document.song.lines.splice(action.lineIndex + 1, 0, cloneLine(line));
       selection = { lineIndex: action.lineIndex + 1, wordIndex: 0 };
       return success(document, selection, 'Liedzeile vollständig dupliziert');
+    }
+    case 'move-line': {
+      const line = document.song.lines[action.lineIndex];
+      if (
+        !line ||
+        action.targetLineIndex < 0 ||
+        action.targetLineIndex >= document.song.lines.length
+      ) {
+        return { ok: false, reason: 'invalid-selection' };
+      }
+      document.song.lines.splice(action.lineIndex, 1);
+      document.song.lines.splice(action.targetLineIndex, 0, line);
+      selection = { lineIndex: action.targetLineIndex, wordIndex: 0 };
+      return success(document, selection, 'Liedzeile verschoben');
     }
     case 'copy-events-to-next-line': {
       const targetLine = document.song.lines[selection.lineIndex + 1];
