@@ -1,5 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -17,6 +18,7 @@ import {
   activeTimelineWord,
   buildPlayerTimeline,
   nextTimelineEvent,
+  PlayerBeatRange,
   PlayerKey,
   PlayerTimeline,
   PlayerTimelineEvent,
@@ -35,6 +37,54 @@ type ColorAid = 'full' | 'soft' | 'off';
 type TextState = 'past' | 'current' | 'upcoming';
 type TempoUnit = 'bpm' | 'percent';
 
+const SCORE_FOLLOW_INTERACTION_GRACE_MS = 2_000;
+
+export function scrollScoreTargetIntoView(
+  scroller: HTMLElement,
+  target: HTMLElement,
+  padding = 8,
+): void {
+  const containerRect = scroller.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const line = target.closest<HTMLElement>('.score-line') ?? target;
+  const lineRect = line.getBoundingClientRect();
+
+  if (
+    lineRect.top < containerRect.top + padding ||
+    lineRect.bottom > containerRect.bottom - padding
+  ) {
+    scroller.scrollTop = Math.max(
+      0,
+      scroller.scrollTop + lineRect.top - containerRect.top - padding,
+    );
+  }
+
+  if (targetRect.left < containerRect.left + padding) {
+    scroller.scrollLeft = Math.max(
+      0,
+      scroller.scrollLeft + targetRect.left - containerRect.left - padding,
+    );
+  } else if (targetRect.right > containerRect.right - padding) {
+    scroller.scrollLeft = Math.max(
+      0,
+      scroller.scrollLeft + targetRect.right - containerRect.right + padding,
+    );
+  }
+}
+export function playerRangeForLoopState(
+  timeline: Pick<PlayerTimeline, 'beatsPerBar' | 'totalBeats'>,
+  enabled: boolean,
+  startBar: number,
+  endBar: number,
+): PlayerBeatRange {
+  return enabled
+    ? {
+        startBeat: (startBar - 1) * timeline.beatsPerBar,
+        endBeat: Math.min(timeline.totalBeats, endBar * timeline.beatsPerBar),
+      }
+    : { startBeat: 0, endBeat: timeline.totalBeats };
+}
+
 @Component({
   selector: 'app-player',
   imports: [DecimalPipe, RouterLink],
@@ -50,6 +100,7 @@ export class PlayerComponent implements OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private configuredHydration = -1;
   private followedScoreId = '';
+  private scoreFollowPausedUntil = 0;
 
   readonly timeline = signal<PlayerTimeline | null>(null);
   readonly viewMode = signal<ViewMode>('flow');
@@ -99,6 +150,12 @@ export class PlayerComponent implements OnDestroy {
   });
   readonly textLines = computed(() => this.visibleTextLines());
   readonly scoreWords = computed(() => this.timeline()?.words ?? []);
+  readonly selectedLoopRange = computed<PlayerBeatRange>(() => {
+    const timeline = this.timeline();
+    return timeline
+      ? playerRangeForLoopState(timeline, true, this.loopStartBar(), this.loopEndBar())
+      : { startBeat: 0, endBeat: 0 };
+  });
   readonly positionPercent = computed(() => {
     const start = this.transport.rangeStartBeat();
     const duration = this.transport.rangeEndBeat() - start;
@@ -115,6 +172,8 @@ export class PlayerComponent implements OnDestroy {
   );
 
   constructor() {
+    afterNextRender(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+
     effect(() => {
       const document = this.store.document();
       const hydration = this.store.hydrationVersion();
@@ -123,23 +182,26 @@ export class PlayerComponent implements OnDestroy {
       const timeline = buildPlayerTimeline(document);
       this.timeline.set(timeline);
       const preparedRange = this.launch.consumeRange();
-      this.transport.configure(timeline, preparedRange);
+      this.transport.configure(timeline, null);
       const range = preparedRange ?? { startBeat: 0, endBeat: timeline.totalBeats };
       this.loopStartBar.set(Math.floor(range.startBeat / timeline.beatsPerBar) + 1);
       this.loopEndBar.set(
         Math.max(this.loopStartBar(), Math.ceil(range.endBeat / timeline.beatsPerBar)),
       );
-      if (preparedRange) this.transport.setLoop(true);
     });
 
     effect(() => {
       const activeId = this.activeWord()?.id ?? '';
       if (!activeId || activeId === this.followedScoreId || !this.transport.playing()) return;
-      this.followedScoreId = activeId;
       queueMicrotask(() => {
-        this.host.nativeElement
-          .querySelector<HTMLElement>(`[data-score-word="${activeId}"]`)
-          ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        if (Date.now() < this.scoreFollowPausedUntil) return;
+        const scroller = this.host.nativeElement.querySelector<HTMLElement>(
+          '[data-testid="score-scroll"]',
+        );
+        const target = scroller?.querySelector<HTMLElement>(`[data-score-word="${activeId}"]`);
+        if (!scroller || !target) return;
+        scrollScoreTargetIntoView(scroller, target);
+        this.followedScoreId = activeId;
       });
     });
     void this.store.initialize();
@@ -215,7 +277,7 @@ export class PlayerComponent implements OnDestroy {
     const bar = Number(value);
     if (!timeline || !Number.isInteger(bar) || bar < 1 || bar > this.loopEndBar()) return;
     this.loopStartBar.set(bar);
-    this.applyLoopRange();
+    if (this.transport.loopEnabled()) this.applyLoopRange();
   }
 
   setLoopEndBar(value: number | string): void {
@@ -228,12 +290,19 @@ export class PlayerComponent implements OnDestroy {
       bar > timeline.bars.length
     ) return;
     this.loopEndBar.set(bar);
-    this.applyLoopRange();
+    if (this.transport.loopEnabled()) this.applyLoopRange();
   }
 
   setLoopEnabled(enabled: boolean): void {
-    if (enabled) this.applyLoopRange();
-    this.transport.setLoop(enabled);
+    const timeline = this.timeline();
+    if (!timeline) return;
+    if (enabled) {
+      this.applyLoopRange();
+      this.transport.setLoop(true);
+    } else {
+      this.transport.setLoop(false);
+      this.transport.setRange(playerRangeForLoopState(timeline, false, 1, 1));
+    }
   }
 
   isLaneActive(lane: number): boolean {
@@ -282,6 +351,14 @@ export class PlayerComponent implements OnDestroy {
 
   selectScoreWord(word: PlayerTimelineWord): void {
     this.transport.seek(word.startBeat);
+  }
+
+  prepareEditorReturn(): void {
+    this.launch.requestEditorReturnFocus();
+  }
+
+  pauseScoreFollow(): void {
+    this.scoreFollowPausedUntil = Date.now() + SCORE_FOLLOW_INTERACTION_GRACE_MS;
   }
 
   eventsForWord(word: PlayerTimelineWord): readonly PlayerTimelineEvent[] {
@@ -351,10 +428,7 @@ export class PlayerComponent implements OnDestroy {
   private applyLoopRange(): void {
     const timeline = this.timeline();
     if (!timeline) return;
-    this.transport.setRange({
-      startBeat: (this.loopStartBar() - 1) * timeline.beatsPerBar,
-      endBeat: Math.min(timeline.totalBeats, this.loopEndBar() * timeline.beatsPerBar),
-    });
+    this.transport.setRange(this.selectedLoopRange());
   }
 
   private visibleTextLines(): readonly PlayerTimelineLine[] {

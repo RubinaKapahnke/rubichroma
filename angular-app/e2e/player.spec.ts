@@ -33,15 +33,16 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.locator('.score-event-bar').last()).toHaveText('Takt 11');
   await expect(page.getByTestId('tempo-unit-bpm')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('preview-2')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByTestId('loop-enabled')).toBeChecked();
-  await expect(page.getByTestId('loop-summary')).toContainText('Schlag 1 bis 6');
+  await expect(page.getByTestId('loop-enabled')).not.toBeChecked();
+  await expect(page.getByTestId('loop-summary')).toContainText('Schlag 1 bis 8');
   await expectLaneGeometry(page, 2);
 
   const position = page.getByTestId('position');
+  await expect(position).toHaveAttribute('max', '42');
   await position.fill('2.1');
   await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
   await expect(page.getByTestId('lyric-0-0')).toHaveClass(/past/);
-  await expect(page.locator('.flow-event[data-start="6"]')).toHaveCount(0);
+  await expect(page.locator('.falling-event-slot[data-start="6"]')).toHaveCount(1);
 
   await page.getByTestId('play-toggle').click();
   await expect(page.getByTestId('play-toggle')).toContainText('Pause');
@@ -78,7 +79,9 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.getByTestId('tempo-value')).toHaveText('48 BPM');
   await page.getByTestId('tempo-unit-percent').click();
   await expect(page.getByTestId('tempo-value')).toHaveText('50 %');
-  await position.fill('5.8');
+  await page.getByTestId('loop-drawer').locator('summary').click();
+  await page.getByTestId('loop-enabled').check();
+  await position.fill('7.8');
   await page.getByTestId('play-toggle').click();
   await blockMainThread(page, 650);
   await expect
@@ -120,8 +123,10 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
     'issue-45-sentinel',
   );
 
+  await expect(page.getByTestId('back-to-editor')).toBeVisible();
   await page.getByTestId('back-to-editor').click();
   await expect(page.getByTestId('song-title')).toHaveValue('Twinkle, Twinkle, Little Star');
+  await expect(page.getByTestId('song-title')).toBeFocused();
   await expect(page.locator('.song-line')).toHaveCount(6);
   await page.getByTestId('song-title').fill('Twinkle – gemeinsamer Teststand');
   await page.waitForTimeout(700);
@@ -152,8 +157,7 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   const flow = await page.getByTestId('flow-panel').boundingBox();
   expect(lyrics).not.toBeNull();
   expect(flow).not.toBeNull();
-  const overlapsFlow =
-    lyrics!.y < flow!.y + flow!.height && lyrics!.y + lyrics!.height > flow!.y;
+  const overlapsFlow = lyrics!.y < flow!.y + flow!.height && lyrics!.y + lyrics!.height > flow!.y;
   expect(overlapsFlow).toBe(false);
 
   await page.getByTestId('position').fill('2.1');
@@ -168,6 +172,99 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   await expect(page.getByTestId('flow-panel')).toBeVisible();
   await expectLaneGeometry(page, 2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('starts Twinkle at full duration and applies a prepared range only after loop activation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('open-player').click();
+
+  const loop = page.getByTestId('loop-enabled');
+  const position = page.getByTestId('position');
+  await expect(loop).not.toBeChecked();
+  await expect(page.getByTestId('loop-summary')).toContainText('Schlag 1 bis 4');
+  await expect(position).toHaveAttribute('min', '0');
+  await expect(position).toHaveAttribute('max', '42');
+  await expect(page.getByTestId('play-status')).toContainText('/ 0:35');
+
+  await page.getByTestId('loop-drawer').locator('summary').click();
+  await loop.check();
+  await expect(loop).toBeChecked();
+  await expect(position).toHaveAttribute('max', '4');
+  await expect(page.getByTestId('play-status')).toContainText('/ 0:03');
+
+  await loop.uncheck();
+  await expect(loop).not.toBeChecked();
+  await expect(position).toHaveAttribute('min', '0');
+  await expect(position).toHaveAttribute('max', '42');
+  await expect(page.getByTestId('play-status')).toContainText('/ 0:35');
+});
+
+test('keeps the player stable while only the bounded score follows later lines', async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+    await page.getByTestId('open-player').click();
+    await expect(page.getByTestId('player-title')).toHaveText('Twinkle, Twinkle, Little Star');
+
+    const shell = page.locator('.player-shell');
+    const score = page.getByTestId('score-scroll');
+    const backToEditor = page.getByTestId('back-to-editor');
+    await expect(backToEditor).toBeVisible();
+    const backActionBox = await backToEditor.boundingBox();
+    expect(backActionBox).not.toBeNull();
+    expect(backActionBox!.y).toBeGreaterThanOrEqual(0);
+    expect(backActionBox!.y + backActionBox!.height).toBeLessThanOrEqual(viewport.height);
+    const shellTopBefore = await shell.evaluate((element) => element.getBoundingClientRect().top);
+    const windowScrollBefore = await page.evaluate(() => scrollY);
+    const scoreScrollBefore = await score.evaluate((element) => element.scrollTop);
+    const laterEntry = page.getByTestId('score-line-4').locator('.score-entry').first();
+    const laterBeat = Number(await laterEntry.getAttribute('data-start')) + 0.1;
+
+    await page.locator('.player-heading').click({ position: { x: 6, y: 6 } });
+    await page.getByTestId('position').evaluate((input: HTMLInputElement, value) => {
+      input.value = String(value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, laterBeat);
+    await expect(laterEntry).toHaveAttribute('aria-current', 'true');
+    await expect
+      .poll(() => score.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(scoreScrollBefore);
+
+    expect(await page.evaluate(() => scrollY)).toBe(windowScrollBefore);
+    expect(await shell.evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(
+      shellTopBefore,
+      1,
+    );
+
+    await page
+      .getByTestId('score-sheet')
+      .evaluate((element) => element.scrollIntoView({ block: 'center' }));
+    const clickWindowScrollBefore = await page.evaluate(() => scrollY);
+    const clickShellTopBefore = await shell.evaluate(
+      (element) => element.getBoundingClientRect().top,
+    );
+    await laterEntry.click();
+    expect(await page.evaluate(() => scrollY)).toBe(clickWindowScrollBefore);
+    expect(await shell.evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(
+      clickShellTopBefore,
+      1,
+    );
+
+    await page.evaluate(() => scrollTo(0, 0));
+    await backToEditor.click();
+    await expect(page.getByTestId('song-title')).toHaveValue('Twinkle, Twinkle, Little Star');
+    await expect(page.getByTestId('song-title')).toBeFocused();
+  }
 });
 
 test('uses the shared transport for empty lyric passages and surface keyboard controls', async ({
@@ -213,7 +310,9 @@ async function expectLaneGeometry(page: import('@playwright/test').Page, toleran
     const lanes = centers('[data-testid^="flow-lane-"]');
     const keys = centers('[data-testid^="flow-key-"]');
     const strike = document.querySelector<HTMLElement>('.strike-line')?.getBoundingClientRect();
-    const trackArea = document.querySelector<HTMLElement>('.flow-track-area')?.getBoundingClientRect();
+    const trackArea = document
+      .querySelector<HTMLElement>('.flow-track-area')
+      ?.getBoundingClientRect();
     return {
       laneCount: lanes.length,
       keyCount: keys.length,

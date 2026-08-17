@@ -12,7 +12,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
-import { appendMusicEvent, removeMusicEvent } from '../../domain/music-event-editing';
+import { appendMusicEvent } from '../../domain/music-event-editing';
 import { MusicEvent, Pitch } from '../../domain/music-event';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 
@@ -47,6 +47,7 @@ export class WordEditorComponent {
   readonly canRedo = input.required<boolean>();
   readonly closed = output<void>();
   readonly structureAction = output<SongStructureAction>();
+  readonly musicEventRemovalRequested = output<number>();
   readonly undoRequested = output<void>();
   readonly redoRequested = output<void>();
 
@@ -154,7 +155,7 @@ export class WordEditorComponent {
   }
 
   removeEvent(index: number): void {
-    this.applyEdit(removeMusicEvent(this.notationControl().value, index));
+    this.musicEventRemovalRequested.emit(index);
   }
 
   isPitchUsed(pitch: Pitch): boolean {

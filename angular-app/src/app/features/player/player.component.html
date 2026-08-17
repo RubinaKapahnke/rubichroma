@@ -5,7 +5,6 @@
   [class.color-off]="colorAid() === 'off'"
 >
   <header class="context-header">
-    <a routerLink="/" class="back-link" data-testid="back-to-editor">← Zurück zum Editor</a>
     <div class="brand-lockup" aria-label="RubiChroma Player">
       <strong><span>Rubi</span>Chroma</strong><small>Übungsplayer</small>
     </div>
@@ -35,10 +34,13 @@
           <p>Dein aktueller Song · lokal geladen</p>
           <h1 id="player-title" data-testid="player-title">{{ store.document()?.song?.title }}</h1>
         </div>
-        <div class="play-status" aria-live="polite" data-testid="play-status">
-          <span class="status-dot" [class.running]="transport.playing()"></span>
-          <span>{{ transport.playing() ? 'Wiedergabe läuft' : transport.ended() ? 'Bereich beendet' : 'Bereit' }}</span>
-          <strong>Takt {{ currentBar() }} · {{ formatBeatTime(transport.positionBeat()) }} / {{ formatBeatTime(transport.rangeEndBeat()) }}</strong>
+        <div class="player-heading-actions">
+          <a routerLink="/" class="back-link player-back-action" data-testid="back-to-editor" (click)="prepareEditorReturn()">← Zurück zum Editor</a>
+          <div class="play-status" aria-live="polite" data-testid="play-status">
+            <span class="status-dot" [class.running]="transport.playing()"></span>
+            <span>{{ transport.playing() ? 'Wiedergabe läuft' : transport.ended() ? 'Bereich beendet' : 'Bereit' }}</span>
+            <strong>Takt {{ currentBar() }} · {{ formatBeatTime(transport.positionBeat()) }} / {{ formatBeatTime(transport.rangeEndBeat()) }}</strong>
+          </div>
         </div>
       </header>
 
@@ -170,7 +172,7 @@
             <label><input type="checkbox" data-testid="loop-enabled" [checked]="transport.loopEnabled()" (change)="setLoopEnabled($any($event.target).checked)" /> Bereich wiederholen</label>
             <label>Von Takt <select data-testid="loop-start-bar" [value]="loopStartBar()" (change)="setLoopStartBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
             <label>bis Takt <select data-testid="loop-end-bar" [value]="loopEndBar()" (change)="setLoopEndBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
-            <span data-testid="loop-summary">Takt {{ loopStartBar() }}–{{ loopEndBar() }} · Schlag {{ transport.rangeStartBeat() + 1 }} bis {{ transport.rangeEndBeat() }}</span>
+            <span data-testid="loop-summary">Takt {{ loopStartBar() }}–{{ loopEndBar() }} · Schlag {{ selectedLoopRange().startBeat + 1 }} bis {{ selectedLoopRange().endBeat }}</span>
           </div>
         </details>
         <details data-testid="mixer-drawer">
@@ -185,7 +187,7 @@
 
     <section class="score-sheet" aria-labelledby="score-title" data-testid="score-sheet">
       <div class="score-heading"><div><span>Vollständiges Notenblatt des geladenen Songs</span><h2 id="score-title">{{ store.document()?.song?.title }}</h2></div><small>Silbe wählen, um an diese Stelle zu springen</small></div>
-      <div class="score-lines">
+      <div class="score-lines" data-testid="score-scroll" (pointerdown)="pauseScoreFollow()" (touchstart)="pauseScoreFollow()" (wheel)="pauseScoreFollow()">
         @for (line of playerTimeline.lines; track line.lineIndex) {
           <div class="score-line" [attr.data-testid]="'score-line-' + line.lineIndex">
             @for (word of line.words; track word.id) {

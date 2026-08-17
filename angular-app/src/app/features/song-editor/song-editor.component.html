@@ -190,6 +190,7 @@
       [canRedo]="store.canRedo()"
       (closed)="closeWordEditor()"
       (structureAction)="applyStructureAction($event)"
+      (musicEventRemovalRequested)="removeMusicEvent($event)"
       (undoRequested)="undoStructure()"
       (redoRequested)="redoStructure()"
     />

@@ -11,6 +11,7 @@ export interface PreparedPlayerRange {
 @Injectable({ providedIn: 'root' })
 export class PlayerLaunchService {
   private readonly preparedRangeState = signal<PreparedPlayerRange | null>(null);
+  private editorReturnFocusRequested = false;
   readonly preparedRange = this.preparedRangeState.asReadonly();
 
   prepare(document: SongDocument | null, positions: readonly SongPosition[]): void {
@@ -21,5 +22,15 @@ export class PlayerLaunchService {
     const range = this.preparedRangeState();
     this.preparedRangeState.set(null);
     return range;
+  }
+
+  requestEditorReturnFocus(): void {
+    this.editorReturnFocusRequested = true;
+  }
+
+  consumeEditorReturnFocus(): boolean {
+    const requested = this.editorReturnFocusRequested;
+    this.editorReturnFocusRequested = false;
+    return requested;
   }
 }

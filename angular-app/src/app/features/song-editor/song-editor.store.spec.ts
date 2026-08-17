@@ -168,6 +168,34 @@ describe('SongEditorStore structure persistence', () => {
     expect(await repository.load()).toEqual(original);
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
   });
+
+  it('removes one music event through central history and restores exact fidelity with undo and redo', async () => {
+    const legacyJson = JSON.stringify(COMPLETE_LEGACY);
+    localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
+    await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const original = structuredClone(store.document()!);
+    const originalWord = structuredClone(original.song.lines[0].words[0]);
+
+    expect(store.removeMusicEvent(selection, 1)).toEqual({ ok: true, selection });
+    const removed = structuredClone(store.document()!);
+    expect(removed.song.lines[0].words[0].events).toHaveLength(originalWord.events.length - 1);
+    expect(removed.song.lines[0].words[0].extra).toEqual(originalWord.extra);
+    expect(store.canUndo()).toBe(true);
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(removed);
+
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(original);
+    expect(store.document()?.song.lines[0].words[0]).toEqual(originalWord);
+    expect(store.canRedo()).toBe(true);
+
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(removed);
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(removed);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
+  });
 });
 
 async function expectSaved(store: SongEditorStore): Promise<void> {

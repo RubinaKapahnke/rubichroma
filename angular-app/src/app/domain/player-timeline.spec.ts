@@ -51,7 +51,14 @@ describe('player timeline', () => {
   it('ends a physical lane at its next attack and exposes a short retrigger pulse plus next melody', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines[0].words[0].events = [
-      { kind: 'chord', pitches: [{ degree: 1, octave: 0 }, { degree: 3, octave: 0 }], duration: 'quarter' },
+      {
+        kind: 'chord',
+        pitches: [
+          { degree: 1, octave: 0 },
+          { degree: 3, octave: 0 },
+        ],
+        duration: 'quarter',
+      },
       { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 'quarter' },
     ];
     document.song.lines[0].words = [document.song.lines[0].words[0]];
@@ -80,6 +87,10 @@ describe('player timeline', () => {
   });
 
   it('carries only a contiguous editor selection into a non-empty practice range', () => {
+    expect(contiguousPlayerRange(DEFAULT_DOCUMENT, [{ lineIndex: 0, wordIndex: 0 }])).toEqual({
+      startBeat: 0,
+      endBeat: 4,
+    });
     expect(
       contiguousPlayerRange(DEFAULT_DOCUMENT, [
         { lineIndex: 0, wordIndex: 0 },

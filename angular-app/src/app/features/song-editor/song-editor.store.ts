@@ -4,6 +4,7 @@ import {
   encodeLegacyNotation,
   replaceWithLegacyNotation,
 } from '../../domain/legacy-notation-codec';
+import { removeMusicEvent as removeMusicEventFromNotation } from '../../domain/music-event-editing';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import {
   MusicSelectionClipboard,
@@ -30,6 +31,10 @@ export interface EditorValue {
 }
 
 export type SaveStatus = 'loading' | 'saved' | 'saving' | 'error';
+
+export type MusicEventRemovalResult =
+  | { ok: true; selection: SongPosition }
+  | { ok: false; reason: 'invalid-selection' | 'unknown-legacy-fragments' };
 
 @Injectable({ providedIn: 'root' })
 export class SongEditorStore {
@@ -106,6 +111,31 @@ export class SongEditorStore {
     this.applyStructureSnapshot(result.document);
     void this.persistSnapshot(result.document);
     return result;
+  }
+
+  removeMusicEvent(selection: SongPosition, eventIndex: number): MusicEventRemovalResult {
+    const current = this.documentState();
+    const currentWord = current?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
+    if (!current || !currentWord || eventIndex < 0 || eventIndex >= currentWord.events.length) {
+      return { ok: false, reason: 'invalid-selection' };
+    }
+    const edit = removeMusicEventFromNotation(
+      encodeLegacyNotation(currentWord.events, currentWord.legacyNotation),
+      eventIndex,
+    );
+    if (!edit.ok) return edit;
+
+    const document = cloneDocument(current);
+    Object.assign(
+      document.song.lines[selection.lineIndex].words[selection.wordIndex],
+      replaceWithLegacyNotation(edit.notation),
+    );
+    this.structureHistory.record({ document: current, selection });
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
+    this.applyStructureSnapshot(document);
+    void this.persistSnapshot(document);
+    return { ok: true, selection: { ...selection } };
   }
 
   undoStructure(): SongPosition | null {

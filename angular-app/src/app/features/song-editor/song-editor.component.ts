@@ -142,6 +142,7 @@ export class SongEditorComponent {
       if (document && version > this.hydratedVersion) {
         this.hydratedVersion = version;
         this.hydrate(document);
+        if (this.playerLaunch.consumeEditorReturnFocus()) this.focusEditorTitle();
       }
     });
     void this.store.initialize();
@@ -327,6 +328,24 @@ export class SongEditorComponent {
     this.focusSelection(result.state.selection);
   }
 
+  removeMusicEvent(eventIndex: number): void {
+    const selection = this.selection();
+    if (!selection) return;
+    const result = this.store.removeMusicEvent(selection, eventIndex);
+    if (!result.ok) {
+      this.actionNotice.set(
+        result.reason === 'unknown-legacy-fragments'
+          ? 'Unbekannte Legacy-Fragmente verhindern das sichere Entfernen dieses Ereignisses.'
+          : 'Das Musikereignis konnte nicht entfernt werden.',
+      );
+      return;
+    }
+
+    this.setSingleSelection(result.selection, this.store.document() ?? undefined);
+    this.actionNotice.set('Musikereignis entfernt');
+    this.focusSelection(result.selection);
+  }
+
   undoStructure(): void {
     const previousSelectionState = this.selectionState();
     const selection = this.store.undoStructure();
@@ -462,6 +481,12 @@ export class SongEditorComponent {
         )
         ?.focus();
     });
+  }
+
+  private focusEditorTitle(): void {
+    setTimeout(() =>
+      document.querySelector<HTMLInputElement>('[data-testid="song-title"]')?.focus(),
+    );
   }
 
   private setSingleSelection(selection: SongPosition, document = this.store.document()): void {
