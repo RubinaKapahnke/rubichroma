@@ -101,6 +101,26 @@ describe('SongSheetComponent desktop selection gestures', () => {
 
     expect(requested).toBe(true);
   });
+
+  it('offers one clear primary entry point for adding a song block', async () => {
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    let requested = false;
+    fixture.componentInstance.blockAddRequested.subscribe(() => (requested = true));
+    fixture.detectChanges();
+
+    const addButton = fixture.nativeElement.querySelector(
+      '[data-testid="add-song-block"]',
+    ) as HTMLButtonElement;
+    expect(addButton.textContent).toContain('Liedblock hinzufügen');
+    addButton.click();
+
+    expect(requested).toBe(true);
+  });
 });
 
 afterEach(() => vi.useRealTimers());

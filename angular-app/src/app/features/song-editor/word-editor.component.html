@@ -10,7 +10,30 @@
   </header>
 
   <div class="word-editor-content">
-    <div class="block-actions" aria-label="Blockstruktur bearbeiten">
+    <section class="add-next-block" aria-labelledby="add-next-block-title">
+      <div>
+        <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
+        <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
+      </div>
+      <div class="add-next-block-actions">
+        <button
+          class="primary-block-action"
+          type="button"
+          data-testid="block-add-word"
+          (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
+        >
+          + Textblock
+        </button>
+        <button
+          type="button"
+          data-testid="block-add-melody"
+          (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
+        >
+          + Melodieblock
+        </button>
+      </div>
+    </section>
+    <div class="editor-utility-actions">
       <button
         type="button"
         data-testid="undo-structure-editor"
@@ -19,44 +42,35 @@
       >
         Rückgängig
       </button>
-      <button
-        type="button"
-        data-testid="block-add-word"
-        (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
-      >
-        Wort danach
-      </button>
-      <button
-        type="button"
-        data-testid="block-add-melody"
-        (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
-      >
-        Melodie danach
-      </button>
-      <button
-        type="button"
-        data-testid="block-duplicate"
-        (click)="structureAction.emit({ kind: 'duplicate-block' })"
-      >
-        Block duplizieren
-      </button>
-      <button
-        type="button"
-        data-testid="block-copy-next-line"
-        [disabled]="!canCopyToNextLine()"
-        (click)="structureAction.emit({ kind: 'copy-events-to-next-line' })"
-      >
-        Töne in nächste Zeile
-      </button>
-      <button
-        type="button"
-        data-testid="block-delete"
-        [disabled]="!canDeleteBlock()"
-        (click)="structureAction.emit({ kind: 'delete-block' })"
-      >
-        Block löschen
-      </button>
     </div>
+    <details class="more-block-actions" data-testid="more-block-actions">
+      <summary>Weitere Blockaktionen</summary>
+      <div class="block-actions" aria-label="Weitere Blockaktionen">
+        <button
+          type="button"
+          data-testid="block-duplicate"
+          (click)="structureAction.emit({ kind: 'duplicate-block' })"
+        >
+          Block duplizieren
+        </button>
+        <button
+          type="button"
+          data-testid="block-copy-next-line"
+          [disabled]="!canCopyToNextLine()"
+          (click)="structureAction.emit({ kind: 'copy-events-to-next-line' })"
+        >
+          Töne in nächste Zeile
+        </button>
+        <button
+          type="button"
+          data-testid="block-delete"
+          [disabled]="!canDeleteBlock()"
+          (click)="structureAction.emit({ kind: 'delete-block' })"
+        >
+          Block löschen
+        </button>
+      </div>
+    </details>
 
     <mat-form-field appearance="outline">
       <mat-label>Wort oder Textstück</mat-label>

@@ -210,6 +210,22 @@ export class SongEditorComponent {
     this.interactionMode.set('multi-select');
   }
 
+  addSongBlock(): void {
+    const document = this.store.document();
+    if (!document || document.song.lines.length === 0) return;
+    const active = this.selection();
+    const lineIndex = active?.lineIndex ?? document.song.lines.length - 1;
+    const line = document.song.lines[lineIndex];
+    if (!line?.words.length) return;
+    const anchor = {
+      lineIndex,
+      wordIndex: active?.lineIndex === lineIndex ? active.wordIndex : line.words.length - 1,
+    };
+    this.interactionMode.set('editing');
+    this.setSingleSelection(anchor, document);
+    this.applyStructureAction({ kind: 'insert-block', blockKind: 'word' });
+  }
+
   handleWordSelection(gesture: WordSelectionGesture): void {
     const document = this.store.document();
     if (!document) return;

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
 
 import { THEME_STORAGE_KEY } from '../src/app/infrastructure/theme-preference';
@@ -54,6 +54,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   });
 
   await page.getByTestId('word-card-0-0').click();
+  await openBlockActions(page);
   await page.getByTestId('block-duplicate').click();
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(4);
   await page.getByTestId('undo-structure').click();
@@ -67,6 +68,22 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('word-card-0-2')).toContainText('Melodieblock ♪');
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
+});
+
+test('offers a clear primary entry for a new song block and hides advanced actions', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await expect(page.getByText('Lied aus Blöcken aufbauen')).toBeVisible();
+  await expect(page.getByTestId('add-song-block')).toBeVisible();
+  await expect(page.getByTestId('line-duplicate-0')).toBeHidden();
+  await page.getByTestId('add-song-block').click();
+
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(3);
+  await expect(page.getByTestId('word-0-2')).toHaveValue('Neues Wort');
+  await expect(page.getByText('Nächsten Liedblock anlegen')).toBeVisible();
+  await expect(page.getByTestId('block-duplicate')).toBeHidden();
 });
 
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
@@ -180,26 +197,33 @@ test('performs block and line structure actions, transfers only events and resto
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('block-add-word').click();
   await expect(page.getByTestId('word-0-1')).toHaveValue('Neues Wort');
+  await openBlockActions(page);
   await page.getByTestId('block-delete').click();
   await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(2);
 
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('block-add-melody').click();
   await expect(page.getByTestId('word-0-1')).toHaveValue('♪');
+  await openBlockActions(page);
   await page.getByTestId('block-delete').click();
 
   await page.getByTestId('word-card-0-0').click();
+  await openBlockActions(page);
   await page.getByTestId('block-duplicate').click();
   await expect(page.getByTestId('notation-0-1')).toHaveValue('1 2 3 (135)');
+  await openLineActions(page, 0);
   await page.getByTestId('line-duplicate-0').click();
   await expect(page.locator('.song-line')).toHaveCount(2);
   await expect(page.locator('[data-testid^="word-card-1-"]')).toHaveCount(3);
+  await openLineActions(page, 1);
   await page.getByTestId('line-delete-1').click();
   await expect(page.locator('.song-line')).toHaveCount(1);
 
+  await openLineActions(page, 0);
   await page.getByTestId('line-add-0').click();
   await expect(page.locator('.song-line')).toHaveCount(2);
   await page.getByTestId('word-card-0-0').click();
+  await openBlockActions(page);
   await page.getByTestId('block-copy-next-line').click();
   await expect(page.getByTestId('word-1-0')).toHaveValue('Neue Zeile');
   await expect(page.getByTestId('notation-1-0')).toHaveValue('1 2 3 (135)');
@@ -229,8 +253,10 @@ test('undoes structure actions in session order and restores selection and keybo
   await page.getByTestId('word-card-0-0').focus();
   await page.getByTestId('word-card-0-0').press('Enter');
 
+  await openBlockActions(page);
   await page.getByTestId('block-duplicate').click();
   await expect(page.getByTestId('word-card-0-1')).toBeFocused();
+  await openLineActions(page, 0);
   await page.getByTestId('line-duplicate-0').click();
   await expect(page.getByTestId('word-card-1-0')).toBeFocused();
   await expect(page.locator('.song-line')).toHaveCount(2);
@@ -246,6 +272,20 @@ test('undoes structure actions in session order and restores selection and keybo
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
   expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
 });
+
+async function openBlockActions(page: Page): Promise<void> {
+  const actions = page.getByTestId('more-block-actions');
+  if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await actions.locator('summary').click();
+  }
+}
+
+async function openLineActions(page: Page, lineIndex: number): Promise<void> {
+  const actions = page.getByTestId(`line-actions-${lineIndex}`);
+  if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await actions.locator('summary').click();
+  }
+}
 
 test('keeps selection and focus stable during keyboard navigation', async ({ page }) => {
   await page.goto('/');

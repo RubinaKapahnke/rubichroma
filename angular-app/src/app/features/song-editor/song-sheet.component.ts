@@ -36,6 +36,7 @@ export class SongSheetComponent {
   readonly selectionChange = output<WordSelection | null>();
   readonly wordSelect = output<WordSelectionGesture>();
   readonly multiSelectionRequested = output<void>();
+  readonly blockAddRequested = output<void>();
   readonly structureAction = output<SongStructureAction>();
   private readonly destroyRef = inject(DestroyRef);
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;

@@ -12,6 +12,23 @@
     <strong>Weitere Blöcke antippen.</strong>
   }
 </div>
+<section class="sheet-intro" aria-labelledby="song-structure-title">
+  <div>
+    <strong id="song-structure-title">Lied aus Blöcken aufbauen</strong>
+    <p>
+      Beispiel: „Hallo“ ist ein Textblock, ♪ ein Melodieblock. Tippe einen Block zum Bearbeiten an
+      oder lege direkt einen neuen an.
+    </p>
+  </div>
+  <button
+    class="add-block-button"
+    type="button"
+    data-testid="add-song-block"
+    (click)="blockAddRequested.emit()"
+  >
+    + Liedblock hinzufügen
+  </button>
+</section>
 <div
   class="song-lines"
   aria-label="Bearbeitbare Liedblöcke"
@@ -21,30 +38,37 @@
     <section class="song-line" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">
       <div class="line-heading">
         <span class="line-number">{{ lineIndex + 1 }}</span>
-        <div class="line-actions" [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)">
-          <button
-            type="button"
-            [attr.data-testid]="'line-add-' + lineIndex"
-            (click)="structureAction.emit({ kind: 'insert-line', lineIndex })"
-          >
-            Zeile danach
-          </button>
-          <button
-            type="button"
-            [attr.data-testid]="'line-duplicate-' + lineIndex"
-            (click)="structureAction.emit({ kind: 'duplicate-line', lineIndex })"
-          >
-            Duplizieren
-          </button>
-          <button
-            type="button"
-            [attr.data-testid]="'line-delete-' + lineIndex"
-            [disabled]="lines().length === 1"
-            (click)="structureAction.emit({ kind: 'delete-line', lineIndex })"
-          >
-            Löschen
-          </button>
-        </div>
+        <details
+          class="line-actions"
+          [attr.data-testid]="'line-actions-' + lineIndex"
+          [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)"
+        >
+          <summary>Weitere Zeilenaktionen</summary>
+          <div class="line-action-menu">
+            <button
+              type="button"
+              [attr.data-testid]="'line-add-' + lineIndex"
+              (click)="structureAction.emit({ kind: 'insert-line', lineIndex })"
+            >
+              Neue Liedzeile danach
+            </button>
+            <button
+              type="button"
+              [attr.data-testid]="'line-duplicate-' + lineIndex"
+              (click)="structureAction.emit({ kind: 'duplicate-line', lineIndex })"
+            >
+              Zeile duplizieren
+            </button>
+            <button
+              type="button"
+              [attr.data-testid]="'line-delete-' + lineIndex"
+              [disabled]="lines().length === 1"
+              (click)="structureAction.emit({ kind: 'delete-line', lineIndex })"
+            >
+              Zeile löschen
+            </button>
+          </div>
+        </details>
       </div>
       <div class="words">
         @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
