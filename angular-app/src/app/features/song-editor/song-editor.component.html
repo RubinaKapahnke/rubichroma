@@ -116,6 +116,7 @@
             [lines]="lines()"
             [selection]="selection()"
             [selectedPositions]="selectedPositions()"
+            [melodyPositions]="melodyPositions()"
             [touchSelectionActive]="touchSelectionActive()"
             (selectionChange)="changeSelection($event)"
             (wordSelect)="handleWordSelection($event)"
@@ -148,10 +149,10 @@
           data-testid="import-button"
           (click)="fileInput.click()"
         >
-          JSON importieren
+          Sicherung laden
         </button>
         <button mat-flat-button type="button" data-testid="export-button" (click)="exportFile()">
-          JSON exportieren
+          Song sichern
         </button>
       </mat-card-actions>
     </mat-card>
@@ -160,8 +161,8 @@
   }
 
   <p class="privacy-note">
-    Nur dieser Browser: IndexedDB und ein vorhandener Legacy-Stand desselben Origins werden
-    verwendet.
+    Nur in diesem Browser gespeichert. IndexedDB und ein vorhandener Legacy-Stand desselben Origins
+    werden verwendet.
   </p>
 </main>
 
@@ -173,6 +174,7 @@
       [location]="selectionLocation()"
       [testIdSuffix]="selectionTestId()"
       [keys]="kalimbaKeys()"
+      [isMelodyBlock]="selectedWordIsMelody()"
       [canDeleteBlock]="canDeleteSelectedBlock()"
       [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
       [canUndo]="store.canUndo()"

@@ -71,6 +71,15 @@ export class SongEditorComponent {
   });
   readonly selection = computed(() => this.selectionState().active);
   readonly selectedPositions = computed(() => this.selectionState().positions);
+  readonly melodyPositions = computed<readonly WordSelection[]>(() => {
+    const document = this.store.document();
+    if (!document) return [];
+    return document.song.lines.flatMap((line, lineIndex) =>
+      line.words.flatMap((word, wordIndex) =>
+        word.toneCount === undefined ? [] : [{ lineIndex, wordIndex }],
+      ),
+    );
+  });
   readonly interactionMode = signal<EditorInteractionMode>('idle');
   readonly touchSelectionActive = computed(() => this.interactionMode() === 'multi-select');
   readonly mobileViewport = signal(false);
@@ -214,14 +223,10 @@ export class SongEditorComponent {
   addSongBlock(): void {
     const document = this.store.document();
     if (!document || document.song.lines.length === 0) return;
-    const active = this.selection();
-    const lineIndex = active?.lineIndex ?? document.song.lines.length - 1;
+    const lineIndex = document.song.lines.length - 1;
     const line = document.song.lines[lineIndex];
     if (!line?.words.length) return;
-    const anchor = {
-      lineIndex,
-      wordIndex: active?.lineIndex === lineIndex ? active.wordIndex : line.words.length - 1,
-    };
+    const anchor = { lineIndex, wordIndex: line.words.length - 1 };
     this.interactionMode.set('editing');
     this.setSingleSelection(anchor, document);
     this.applyStructureAction({ kind: 'insert-block', blockKind: 'word' });
@@ -371,6 +376,15 @@ export class SongEditorComponent {
   selectionTestId(): string {
     const selection = this.selection();
     return selection ? `${selection.lineIndex}-${selection.wordIndex}` : '';
+  }
+
+  selectedWordIsMelody(): boolean {
+    const selection = this.selection();
+    if (!selection) return false;
+    return this.melodyPositions().some(
+      (position) =>
+        position.lineIndex === selection.lineIndex && position.wordIndex === selection.wordIndex,
+    );
   }
 
   private hydrate(document: SongDocument): void {

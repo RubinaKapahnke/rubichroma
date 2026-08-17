@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { THEME_STORAGE_KEY } from '../src/app/infrastructure/theme-preference';
 
 const SYNTHETIC_IMPORT_FIXTURE = resolve('e2e/fixtures/synthetic-structure-song.json');
+const TWINKLE_IMPORT_FIXTURE = resolve('e2e/fixtures/twinkle-twinkle-little-star.json');
 
 test('renders an imported multi-line song immediately, then supports structure undo and reload', async ({
   page,
@@ -16,7 +18,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.locator('.song-line')).toHaveCount(3);
   await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
-  await expect(page.getByTestId('word-card-0-2')).toContainText('Melodieblock ♪');
+  await expect(page.getByTestId('word-card-0-2')).toContainText(/♪\s*Melodieblock/);
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByText('Willkommen')).toHaveCount(0);
 
@@ -36,6 +38,7 @@ test('renders an imported multi-line song immediately, then supports structure u
             song: document.song.extra.unknownSongField,
             line: document.song.lines[0].extra.unknownLineField,
             word: document.song.lines[0].words[0].extra.unknownWordField,
+            melodyText: document.song.lines[0].words[2].text,
             key: document.keys[0].unknownKeyField,
           });
         };
@@ -50,8 +53,17 @@ test('renders an imported multi-line song immediately, then supports structure u
     song: 'bleibt erhalten',
     line: 'Strophe A',
     word: ['bleibt', 1],
+    melodyText: '♪',
     key: 0,
   });
+
+  const importRoundtripDownload = page.waitForEvent('download');
+  await page.getByTestId('export-button').click();
+  const importRoundtrip = JSON.parse(
+    await readFile((await (await importRoundtripDownload).path())!, 'utf8'),
+  ) as Record<string, any>;
+  expect(importRoundtrip['song']['lines'][0]['words'][2]['text']).toBe('♪');
+  expect(importRoundtrip['unknownRoot']).toEqual({ mustSurvive: true });
 
   await page.getByTestId('word-card-0-0').click();
   await openBlockActions(page);
@@ -65,7 +77,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.locator('.song-line')).toHaveCount(3);
   await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
-  await expect(page.getByTestId('word-card-0-2')).toContainText('Melodieblock ♪');
+  await expect(page.getByTestId('word-card-0-2')).toContainText(/♪\s*Melodieblock/);
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
   await expect(page.getByTestId('redo-structure')).toBeDisabled();
@@ -77,7 +89,7 @@ test('offers a clear primary entry for a new song block and hides advanced actio
   await page.goto('/');
 
   await expect(page.getByText('Lied aus Blöcken aufbauen')).toBeVisible();
-  await expect(page.getByTestId('add-song-block')).toBeVisible();
+  await expect(page.getByTestId('add-song-block')).toHaveText(/Block am Liedende hinzufügen/);
   await expect(page.getByTestId('line-duplicate-0')).toBeHidden();
   await page.getByTestId('add-song-block').click();
 
@@ -85,6 +97,174 @@ test('offers a clear primary entry for a new song block and hides advanced actio
   await expect(page.getByTestId('word-0-2')).toHaveValue('Neues Wort');
   await expect(page.getByText('Nächsten Liedblock anlegen')).toBeVisible();
   await expect(page.getByTestId('block-duplicate')).toBeHidden();
+});
+
+test('closes line and block action menus on selection, outside click and Escape', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const lineActions = page.getByTestId('line-actions-0');
+  const lineToggle = lineActions.locator('summary');
+
+  await lineToggle.click();
+  await expect(lineActions).toHaveJSProperty('open', true);
+  await expect(lineToggle).toHaveAttribute('aria-expanded', 'true');
+  await page.getByTestId('word-card-0-0').click();
+  await expect(lineActions).toHaveJSProperty('open', false);
+  await expect(page.getByTestId('word-editor')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Editor schließen' }).click();
+  await lineToggle.click();
+  await page.getByTestId('song-title').click();
+  await expect(lineActions).toHaveJSProperty('open', false);
+
+  await lineToggle.click();
+  await page.keyboard.press('Escape');
+  await expect(lineActions).toHaveJSProperty('open', false);
+
+  await page.getByTestId('word-card-0-0').click();
+  const blockActions = page.getByTestId('more-block-actions');
+  const blockToggle = blockActions.locator('summary');
+  await blockToggle.click();
+  await expect(blockToggle).toHaveAttribute('aria-expanded', 'true');
+  await page.getByText('Musikereignisse', { exact: true }).click();
+  await expect(blockActions).toHaveJSProperty('open', false);
+  await blockToggle.click();
+  await page.keyboard.press('Escape');
+  await expect(blockActions).toHaveJSProperty('open', false);
+});
+
+test('keeps help preference, product labels and song storage separate', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'help-song-sentinel'));
+
+  await expect(page.getByTestId('import-button')).toHaveText('Sicherung laden');
+  await expect(page.getByTestId('export-button')).toHaveText('Song sichern');
+  await expect(page.getByText(/Nur in diesem Browser gespeichert/)).toBeVisible();
+  await expect(page.getByTestId('line-add-0')).toHaveText(/Zeile danach/);
+  await expect(page.getByTestId('line-add-0')).toHaveAttribute('title', 'Zeile danach einfügen');
+  await expect(page.getByTestId('undo-structure')).toHaveAttribute('title', /Strg\+Z/);
+  await expect(page.getByTestId('redo-structure')).toHaveAttribute('title', /Strg\+Y/);
+
+  await page.getByTestId('dismiss-structure-help').click();
+  await expect(page.getByTestId('show-structure-help')).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('sheet-intro')).toBeHidden();
+  await expect(page.getByTestId('show-structure-help')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'help-song-sentinel',
+  );
+  await page.getByTestId('show-structure-help').click();
+  await expect(page.getByTestId('sheet-intro')).toBeVisible();
+});
+
+test('keeps melody identity separate from optional text across autosave and reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByTestId('word-card-0-1').click();
+  await expect(page.getByTestId('melody-block-marker')).toHaveText(/♪.*Melodieblock/);
+  await expect(page.getByTestId('word-0-1')).toHaveValue('');
+  await expect(page.getByTestId('event-count')).toHaveText('4 Ereignisse');
+  expect(await readStoredWord(page, 0, 1)).toMatchObject({ text: '♪', toneCount: 3 });
+
+  await page.getByTestId('word-0-1').fill('Zwischenspiel');
+  await page.getByTestId('word-0-1').fill('');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+  await page.reload();
+  await page.getByTestId('word-card-0-1').click();
+  await expect(page.getByTestId('melody-block-marker')).toBeVisible();
+  await expect(page.getByTestId('word-0-1')).toHaveValue('');
+  expect(await readStoredWord(page, 0, 1)).toMatchObject({
+    text: '',
+    toneCount: 3,
+    events: expect.arrayContaining([expect.objectContaining({ kind: 'note' })]),
+  });
+
+  await page.getByTestId('block-add-melody').click();
+  await expect(page.getByTestId('melody-block-marker')).toBeVisible();
+  await expect(page.getByTestId('word-0-2')).toHaveValue('');
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(2);
+  await page.getByTestId('redo-structure-editor').click();
+  await expect(page.locator('[data-testid^="word-card-0-"]')).toHaveCount(3);
+  await expect(page.getByTestId('melody-block-marker')).toBeVisible();
+  await page.getByTestId('key-8-1-0').click();
+  await expect(page.getByTestId('event-count')).toHaveText('1 Ereignis');
+});
+
+test('imports, reloads and exports the canonical Twinkle fixture without inventing durations', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await expect(page.getByTestId('song-title')).toHaveValue('Twinkle, Twinkle, Little Star');
+  await expect(page.locator('.song-line')).toHaveCount(6);
+  await expectTwinkleState(page);
+
+  await page.reload();
+  await expect(page.locator('.song-line')).toHaveCount(6);
+  await expectTwinkleState(page);
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByTestId('export-button').click();
+  const download = await downloadPromise;
+  const exported = JSON.parse(await readFile((await download.path())!, 'utf8')) as Record<
+    string,
+    any
+  >;
+  expect(exported['song']['title']).toBe('Twinkle, Twinkle, Little Star');
+  expect(exported['song']['lines']).toHaveLength(6);
+  expect(
+    exported['song']['lines'].flatMap((line: Record<string, any>) =>
+      line['words'].flatMap((word: Record<string, any>) => word['notation'].split(/\s+/)),
+    ),
+  ).toEqual([
+    '1',
+    '1',
+    '5',
+    '5',
+    '6',
+    '6',
+    '5',
+    '4',
+    '4',
+    '3',
+    '3',
+    '2',
+    '2',
+    '1',
+    '5',
+    '5',
+    '4',
+    '4',
+    '3',
+    '3',
+    '2',
+    '5',
+    '5',
+    '4',
+    '4',
+    '3',
+    '3',
+    '2',
+    '1',
+    '1',
+    '5',
+    '5',
+    '6',
+    '6',
+    '5',
+    '4',
+    '4',
+    '3',
+    '3',
+    '2',
+    '2',
+    '1',
+  ]);
 });
 
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
@@ -209,7 +389,8 @@ test('performs block and line structure actions, transfers only events and resto
 
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('block-add-melody').click();
-  await expect(page.getByTestId('word-0-1')).toHaveValue('♪');
+  await expect(page.getByTestId('word-0-1')).toHaveValue('');
+  await expect(page.getByTestId('melody-block-marker')).toBeVisible();
   await openBlockActions(page);
   await page.getByTestId('block-delete').click();
 
@@ -252,7 +433,9 @@ test('performs block and line structure actions, transfers only events and resto
   );
 });
 
-test('undoes and redoes structure actions with buttons and keyboard shortcuts', async ({ page }) => {
+test('undoes and redoes structure actions with buttons and keyboard shortcuts', async ({
+  page,
+}) => {
   await page.goto('/');
   await page.getByTestId('word-card-0-0').focus();
   await page.getByTestId('word-card-0-0').press('Enter');
@@ -442,13 +625,90 @@ test('keeps the editor panel and fields inside large and compact desktop viewpor
     await expectInsideViewport(page, page.getByTestId('word-0-0'));
     await expectInsideViewport(page, page.getByTestId('notation-0-0'));
 
-    const keyPalette = page.getByTestId('key-palette');
-    await expect(keyPalette).toBeVisible();
-    expect(await keyPalette.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
-      true,
-    );
+    await expect(page.getByText('Linke Hand', { exact: true })).toBeVisible();
+    await expect(page.getByText('Rechte Hand', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('key-palette-left').locator('.key-button')).toHaveCount(8);
+    await expect(page.getByTestId('key-palette-right').locator('.key-button')).toHaveCount(9);
+    for (const hand of ['left', 'right']) {
+      const palette = page.getByTestId(`key-palette-${hand}`);
+      expect(
+        await palette.evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+      ).toBe(true);
+    }
   }
 });
+
+async function readStoredWord(
+  page: Page,
+  lineIndex: number,
+  wordIndex: number,
+): Promise<Record<string, any>> {
+  return page.evaluate(
+    async ({ lineIndex, wordIndex }) => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('kalimba-angular-v1');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        return await new Promise<Record<string, any>>((resolve, reject) => {
+          const request = database.transaction('songs').objectStore('songs').get('current');
+          request.onsuccess = () =>
+            resolve(request.result.document.song.lines[lineIndex].words[wordIndex]);
+          request.onerror = () => reject(request.error);
+        });
+      } finally {
+        database.close();
+      }
+    },
+    { lineIndex, wordIndex },
+  );
+}
+
+async function expectTwinkleState(page: Page): Promise<void> {
+  const lines = await page.locator('.song-line').evaluateAll((elements) =>
+    elements.map((line) =>
+      Array.from(line.querySelectorAll('.word-card strong'))
+        .map((element) => element.textContent?.trim() ?? '')
+        .join(' '),
+    ),
+  );
+  expect(lines).toEqual([
+    'Twinkle, twinkle, little star',
+    'How I wonder what you are',
+    'Up above the world so high',
+    'Like a diamond in the sky',
+    'Twinkle, twinkle, little star',
+    'How I wonder what you are',
+  ]);
+  const state = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('kalimba-angular-v1');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const document = await new Promise<Record<string, any>>((resolve, reject) => {
+        const request = database.transaction('songs').objectStore('songs').get('current');
+        request.onsuccess = () => resolve(request.result.document);
+        request.onerror = () => reject(request.error);
+      });
+      return {
+        keys: document['keys'].length,
+        events: document['song']['lines'].flatMap((line: Record<string, any>) =>
+          line['words'].flatMap((word: Record<string, any>) => word['events']),
+        ),
+      };
+    } finally {
+      database.close();
+    }
+  });
+  expect(state.keys).toBe(17);
+  expect(state.events).toHaveLength(42);
+  expect(state.events.every((event: Record<string, any>) => event['duration'] === 'quarter')).toBe(
+    true,
+  );
+}
 
 async function readPasteState(page: import('@playwright/test').Page): Promise<{
   targetTexts: string[];

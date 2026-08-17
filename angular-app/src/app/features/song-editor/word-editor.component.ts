@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  HostListener,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -31,6 +40,7 @@ export class WordEditorComponent {
   readonly location = input.required<string>();
   readonly testIdSuffix = input.required<string>();
   readonly keys = input.required<readonly KalimbaKeyView[]>();
+  readonly isMelodyBlock = input.required<boolean>();
   readonly canDeleteBlock = input.required<boolean>();
   readonly canCopyToNextLine = input.required<boolean>();
   readonly canUndo = input.required<boolean>();
@@ -43,9 +53,69 @@ export class WordEditorComponent {
   readonly insertMode = signal<InsertMode>('single');
   readonly chordDraft = signal<Pitch[]>([]);
   readonly notice = signal<string | null>(null);
+  readonly moreActionsOpen = signal(false);
+  readonly visibleTextControl = new FormControl('', { nonNullable: true });
+  readonly leftKeys = computed(() => this.keys().filter((key) => key.hand === 'L'));
+  readonly rightKeys = computed(() => this.keys().filter((key) => key.hand === 'R'));
+
+  constructor() {
+    effect((onCleanup) => {
+      const source = this.textControl();
+      const isMelody = this.isMelodyBlock();
+      const present = (value: string): string => (isMelody && value === '♪' ? '' : value);
+      this.visibleTextControl.setValue(present(source.value), { emitEvent: false });
+
+      const visibleSubscription = this.visibleTextControl.valueChanges.subscribe((value) => {
+        source.setValue(value);
+      });
+      const sourceSubscription = source.valueChanges.subscribe((value) => {
+        const presented = present(value);
+        if (this.visibleTextControl.value !== presented) {
+          this.visibleTextControl.setValue(presented, { emitEvent: false });
+        }
+      });
+      onCleanup(() => {
+        visibleSubscription.unsubscribe();
+        sourceSubscription.unsubscribe();
+      });
+    });
+
+    effect(() => {
+      this.testIdSuffix();
+      this.moreActionsOpen.set(false);
+    });
+  }
 
   events(): MusicEvent[] {
     return decodeLegacyNotation(this.notationControl().value).events;
+  }
+
+  eventCountLabel(): string {
+    const count = this.events().length;
+    return `${count} ${count === 1 ? 'Ereignis' : 'Ereignisse'}`;
+  }
+
+  toggleMoreActions(event: MouseEvent): void {
+    event.preventDefault();
+    this.moreActionsOpen.update((open) => !open);
+  }
+
+  runStructureAction(action: SongStructureAction): void {
+    this.moreActionsOpen.set(false);
+    this.structureAction.emit(action);
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeMoreActionsOnOutsideClick(event: MouseEvent): void {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest('.more-block-actions')) {
+      this.moreActionsOpen.set(false);
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  closeMoreActions(): void {
+    this.moreActionsOpen.set(false);
   }
 
   hasUnknownFragments(): boolean {

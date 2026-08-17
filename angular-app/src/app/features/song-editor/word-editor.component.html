@@ -57,13 +57,19 @@
         </button>
       </div>
     </section>
-    <details class="more-block-actions" data-testid="more-block-actions">
-      <summary>Weitere Blockaktionen</summary>
-      <div class="block-actions" aria-label="Weitere Blockaktionen">
+    <details class="more-block-actions" data-testid="more-block-actions" [open]="moreActionsOpen()">
+      <summary
+        aria-controls="more-block-actions-menu"
+        [attr.aria-expanded]="moreActionsOpen()"
+        (click)="toggleMoreActions($event)"
+      >
+        Weitere Blockaktionen
+      </summary>
+      <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
         <button
           type="button"
           data-testid="block-duplicate"
-          (click)="structureAction.emit({ kind: 'duplicate-block' })"
+          (click)="runStructureAction({ kind: 'duplicate-block' })"
         >
           Block duplizieren
         </button>
@@ -71,7 +77,7 @@
           type="button"
           data-testid="block-copy-next-line"
           [disabled]="!canCopyToNextLine()"
-          (click)="structureAction.emit({ kind: 'copy-events-to-next-line' })"
+          (click)="runStructureAction({ kind: 'copy-events-to-next-line' })"
         >
           Töne in nächste Zeile
         </button>
@@ -79,19 +85,27 @@
           type="button"
           data-testid="block-delete"
           [disabled]="!canDeleteBlock()"
-          (click)="structureAction.emit({ kind: 'delete-block' })"
+          (click)="runStructureAction({ kind: 'delete-block' })"
         >
           Block löschen
         </button>
       </div>
     </details>
 
+    @if (isMelodyBlock()) {
+      <div class="melody-block-marker" data-testid="melody-block-marker">
+        <span aria-hidden="true">♪</span>
+        <strong>Melodieblock</strong>
+      </div>
+    }
     <mat-form-field appearance="outline">
-      <mat-label>Wort oder Textstück</mat-label>
+      <mat-label>{{
+        isMelodyBlock() ? 'Optionaler Text zum Melodieblock' : 'Wort oder Textstück'
+      }}</mat-label>
       <input
         matInput
         [attr.data-testid]="'word-' + testIdSuffix()"
-        [formControl]="textControl()"
+        [formControl]="visibleTextControl"
         autocomplete="off"
       />
     </mat-form-field>
@@ -99,7 +113,7 @@
     <section aria-labelledby="events-title">
       <div class="section-heading">
         <h3 id="events-title">Musikereignisse</h3>
-        <span>{{ events().length }}</span>
+        <span data-testid="event-count">{{ eventCountLabel() }}</span>
       </div>
       @if (events().length) {
         <div class="event-list">
@@ -150,39 +164,67 @@
         </fieldset>
       </div>
       <p class="key-help">Umrandet = im Block vorhanden. Pink = für den neuen Akkord ausgewählt.</p>
-      <p class="key-scroll-hint" id="key-scroll-hint">Seitlich wischen für alle Zungen.</p>
-      <div class="key-palette-shell">
-        <div
-          class="key-palette"
-          data-testid="key-palette"
-          aria-label="17 Kalimba-Zungen in physischer Reihenfolge"
-          aria-describedby="key-scroll-hint"
-        >
-          @for (key of keys(); track key.id) {
-            <button
-              class="key-button"
-              type="button"
-              [class.is-used]="isPitchUsed(key.pitch)"
-              [class.is-draft]="isPitchInDraft(key.pitch)"
-              [style.--key-color]="key.color"
-              [attr.data-testid]="'key-' + key.id"
-              [attr.aria-pressed]="insertMode() === 'chord' ? isPitchInDraft(key.pitch) : null"
-              [attr.aria-label]="
-                key.letter +
-                ' ' +
-                key.value +
-                ', ' +
-                (key.hand === 'R' ? 'rechte' : 'linke') +
-                ' Hand'
-              "
-              (click)="handleKey(key)"
-            >
-              <small>{{ key.hand }}</small>
-              <strong>{{ key.letter }}</strong>
-              <span>{{ key.value }}</span>
-            </button>
-          }
-        </div>
+      <p class="key-scroll-hint" id="key-scroll-hint">
+        Nach Spielhand gruppiert. Auf kleinen Bildschirmen je Hand seitlich wischen.
+      </p>
+      <div
+        class="key-hands"
+        data-testid="key-palette"
+        aria-label="17 Kalimba-Zungen, nach linker und rechter Hand gruppiert"
+        aria-describedby="key-scroll-hint"
+      >
+        @for (
+          group of [
+            { label: 'Linke Hand', id: 'left', keys: leftKeys() },
+            { label: 'Rechte Hand', id: 'right', keys: rightKeys() },
+          ];
+          track group.id
+        ) {
+          <section
+            class="key-hand-group"
+            [attr.aria-labelledby]="'key-hand-' + group.id + '-title'"
+          >
+            <div class="key-hand-heading">
+              <strong [id]="'key-hand-' + group.id + '-title'">{{ group.label }}</strong>
+              <span>{{ group.keys.length }} Zungen</span>
+            </div>
+            <div class="key-palette-shell">
+              <span class="key-scroll-cue" aria-hidden="true">← seitlich wischen →</span>
+              <div
+                class="key-palette"
+                [attr.data-testid]="'key-palette-' + group.id"
+                [attr.aria-label]="group.label + ': ' + group.keys.length + ' Kalimba-Zungen'"
+              >
+                @for (key of group.keys; track key.id) {
+                  <button
+                    class="key-button"
+                    type="button"
+                    [class.is-used]="isPitchUsed(key.pitch)"
+                    [class.is-draft]="isPitchInDraft(key.pitch)"
+                    [style.--key-color]="key.color"
+                    [attr.data-testid]="'key-' + key.id"
+                    [attr.aria-pressed]="
+                      insertMode() === 'chord' ? isPitchInDraft(key.pitch) : null
+                    "
+                    [attr.aria-label]="
+                      key.letter +
+                      ' ' +
+                      key.value +
+                      ', ' +
+                      (key.hand === 'R' ? 'rechte' : 'linke') +
+                      ' Hand'
+                    "
+                    (click)="handleKey(key)"
+                  >
+                    <small>{{ key.hand }}</small>
+                    <strong>{{ key.letter }}</strong>
+                    <span>{{ key.value }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          </section>
+        }
       </div>
       @if (insertMode() === 'chord') {
         <div class="chord-draft" aria-live="polite">

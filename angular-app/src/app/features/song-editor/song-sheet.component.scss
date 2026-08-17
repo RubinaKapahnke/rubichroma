@@ -33,6 +33,28 @@
   }
 }
 
+.dismiss-help-button,
+.show-help-button {
+  min-height: var(--rc-control-min-size);
+  color: var(--rc-color-text-muted);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+  cursor: pointer;
+}
+
+.dismiss-help-button {
+  width: var(--rc-control-min-size);
+  flex: 0 0 var(--rc-control-min-size);
+  padding: 0;
+  font-size: 1.2rem;
+}
+
+.show-help-button {
+  margin-bottom: 0.5rem;
+  padding: 0.45rem 0.7rem;
+}
+
 .add-block-button {
   min-height: var(--rc-control-min-size);
   flex: 0 0 auto;
@@ -43,6 +65,7 @@
   background: var(--rc-color-primary-container);
   font-weight: 700;
   cursor: pointer;
+  margin-bottom: 0.75rem;
 }
 
 .touch-selection-help {
@@ -175,6 +198,17 @@
     max-width: 100%;
     overflow-wrap: anywhere;
   }
+}
+
+.melody-marker {
+  display: inline-grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 0.2rem;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--rc-color-primary-text);
+  background: var(--rc-color-primary-container);
 }
 
 .word-card:hover,

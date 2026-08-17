@@ -2,7 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
 import { createSongLinesForm } from './song-editor-form';
-import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component';
+import {
+  SONG_STRUCTURE_HELP_HIDDEN_KEY,
+  SongSheetComponent,
+  WordSelectionGesture,
+} from './song-sheet.component';
 
 describe('SongSheetComponent desktop selection gestures', () => {
   it('maps Shift and Ctrl/Command clicks without losing the clicked position', async () => {
@@ -116,11 +120,37 @@ describe('SongSheetComponent desktop selection gestures', () => {
     const addButton = fixture.nativeElement.querySelector(
       '[data-testid="add-song-block"]',
     ) as HTMLButtonElement;
-    expect(addButton.textContent).toContain('Liedblock hinzufügen');
+    expect(addButton.textContent).toContain('Block am Liedende hinzufügen');
     addButton.click();
 
     expect(requested).toBe(true);
   });
+
+  it('remembers a dismissed structure help without touching song storage', async () => {
+    localStorage.setItem('kalimba-note-tool-v1', 'song-sentinel');
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    fixture.detectChanges();
+
+    (
+      fixture.nativeElement.querySelector('[data-testid="dismiss-structure-help"]') as HTMLElement
+    ).click();
+    fixture.detectChanges();
+
+    expect(localStorage.getItem(SONG_STRUCTURE_HELP_HIDDEN_KEY)).toBe('true');
+    expect(localStorage.getItem('kalimba-note-tool-v1')).toBe('song-sentinel');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="show-structure-help"]'),
+    ).not.toBeNull();
+  });
 });
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  localStorage.removeItem(SONG_STRUCTURE_HELP_HIDDEN_KEY);
+  localStorage.removeItem('kalimba-note-tool-v1');
+});

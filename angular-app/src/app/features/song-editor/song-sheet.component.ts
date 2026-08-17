@@ -2,9 +2,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  HostListener,
   inject,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { FormArray } from '@angular/forms';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
@@ -21,6 +23,7 @@ export interface WordSelectionGesture {
 
 const LONG_PRESS_DURATION_MS = 500;
 const LONG_PRESS_MOVE_TOLERANCE_PX = 12;
+export const SONG_STRUCTURE_HELP_HIDDEN_KEY = 'rubichroma-song-structure-help-hidden-v1';
 
 @Component({
   selector: 'app-song-sheet',
@@ -32,12 +35,15 @@ export class SongSheetComponent {
   readonly lines = input.required<FormArray<LineForm>>();
   readonly selection = input.required<WordSelection | null>();
   readonly selectedPositions = input.required<readonly WordSelection[]>();
+  readonly melodyPositions = input<readonly WordSelection[]>([]);
   readonly touchSelectionActive = input.required<boolean>();
   readonly selectionChange = output<WordSelection | null>();
   readonly wordSelect = output<WordSelectionGesture>();
   readonly multiSelectionRequested = output<void>();
   readonly blockAddRequested = output<void>();
   readonly structureAction = output<SongStructureAction>();
+  readonly structureHelpVisible = signal(readStructureHelpVisibility());
+  readonly openLineMenuIndex = signal<number | null>(null);
   private readonly destroyRef = inject(DestroyRef);
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;
   private touchPointerId: number | null = null;
@@ -50,6 +56,7 @@ export class SongSheetComponent {
   }
 
   selectWord(event: MouseEvent, lineIndex: number, wordIndex: number): void {
+    this.closeLineActions();
     const isTouchClick =
       this.touchClickPending ||
       (typeof PointerEvent !== 'undefined' &&
@@ -74,6 +81,7 @@ export class SongSheetComponent {
   startLongPress(event: PointerEvent, lineIndex: number, wordIndex: number): void {
     if (event.pointerType !== 'touch' || !event.isPrimary) return;
 
+    this.closeLineActions();
     this.cancelLongPress();
     this.suppressNextTouchClick = false;
     this.touchPointerId = event.pointerId;
@@ -117,8 +125,55 @@ export class SongSheetComponent {
     return selection?.lineIndex === lineIndex && selection.wordIndex === wordIndex;
   }
 
-  wordLabel(word: WordForm): string {
-    return word.controls.text.value.trim() || '♪ Melodie';
+  isMelody(lineIndex: number, wordIndex: number): boolean {
+    return this.melodyPositions().some(
+      (position) => position.lineIndex === lineIndex && position.wordIndex === wordIndex,
+    );
+  }
+
+  wordLabel(word: WordForm, lineIndex: number, wordIndex: number): string {
+    const text = word.controls.text.value.trim();
+    if (this.isMelody(lineIndex, wordIndex) && (!text || text === '♪')) return 'Melodieblock';
+    return text || 'Leerer Textblock';
+  }
+
+  toggleLineActions(event: MouseEvent, lineIndex: number): void {
+    event.preventDefault();
+    this.openLineMenuIndex.update((current) => (current === lineIndex ? null : lineIndex));
+  }
+
+  runStructureAction(action: SongStructureAction): void {
+    this.closeLineActions();
+    this.structureAction.emit(action);
+  }
+
+  dismissStructureHelp(): void {
+    this.structureHelpVisible.set(false);
+    try {
+      localStorage.setItem(SONG_STRUCTURE_HELP_HIDDEN_KEY, 'true');
+    } catch {
+      // The help remains dismissible for this session when storage is unavailable.
+    }
+  }
+
+  showStructureHelp(): void {
+    this.structureHelpVisible.set(true);
+    try {
+      localStorage.removeItem(SONG_STRUCTURE_HELP_HIDDEN_KEY);
+    } catch {
+      // The visible state still changes for this session.
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeLineActionsOnOutsideClick(event: MouseEvent): void {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest('.line-actions')) this.closeLineActions();
+  }
+
+  @HostListener('document:keydown.escape')
+  closeLineActions(): void {
+    this.openLineMenuIndex.set(null);
   }
 
   eventLabel(event: MusicEvent): string {
@@ -139,6 +194,7 @@ export class SongSheetComponent {
   handleWordKeydown(event: KeyboardEvent, lineIndex: number, wordIndex: number): void {
     if (event.key === 'Escape') {
       event.preventDefault();
+      this.closeLineActions();
       this.selectionChange.emit(null);
       return;
     }
@@ -157,6 +213,7 @@ export class SongSheetComponent {
     if (!target) return;
 
     event.preventDefault();
+    this.closeLineActions();
     this.selectionChange.emit(target);
     queueMicrotask(() =>
       document
@@ -173,6 +230,14 @@ export class SongSheetComponent {
     this.touchPointerId = null;
     this.touchStart = null;
     if (clearPendingClick) this.touchClickPending = false;
+  }
+}
+
+function readStructureHelpVisibility(): boolean {
+  try {
+    return localStorage.getItem(SONG_STRUCTURE_HELP_HIDDEN_KEY) !== 'true';
+  } catch {
+    return true;
   }
 }
 

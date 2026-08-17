@@ -173,7 +173,7 @@ function success(
 
 function createBlock(kind: 'word' | 'melody'): SongWord {
   return {
-    text: kind === 'word' ? 'Neues Wort' : '♪',
+    text: kind === 'word' ? 'Neues Wort' : '',
     ...replaceWithLegacyNotation(''),
     ...(kind === 'melody' ? { toneCount: 4 } : {}),
     extra: {},

@@ -27,7 +27,7 @@ describe('song structure editing', () => {
       editSongStructure(inserted.state, { kind: 'insert-block', blockKind: 'melody' }),
     );
     expect(melody.state.document.song.lines[0].words[2]).toMatchObject({
-      text: '♪',
+      text: '',
       toneCount: 4,
       events: [],
     });

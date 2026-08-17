@@ -31,20 +31,25 @@ test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed 
   await expect(page.locator('main')).toHaveAttribute('inert', '');
   await expect(page.locator('.topbar')).toHaveAttribute('inert', '');
 
-  const keyPalette = page.getByTestId('key-palette');
-  await expect(keyPalette).toBeVisible();
-  expect(await keyPalette.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
-    true,
-  );
-  expect(await keyPalette.evaluate((element) => getComputedStyle(element).overflowX)).toBe('auto');
-  const firstKey = keyPalette.locator('[data-testid^="key-"]').first();
-  const lastKey = keyPalette.locator('[data-testid^="key-"]').last();
-  await expectKeyInsidePalette(keyPalette, firstKey);
-  await keyPalette.evaluate((element) => {
-    element.scrollLeft = element.scrollWidth;
-  });
-  await expectKeyInsidePalette(keyPalette, lastKey);
-  await lastKey.tap();
+  await expect(page.getByText('← seitlich wischen →').first()).toBeVisible();
+  for (const hand of ['left', 'right']) {
+    const keyPalette = page.getByTestId(`key-palette-${hand}`);
+    await expect(keyPalette).toBeVisible();
+    expect(await keyPalette.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+      true,
+    );
+    expect(await keyPalette.evaluate((element) => getComputedStyle(element).overflowX)).toBe(
+      'auto',
+    );
+    const firstKey = keyPalette.locator('[data-testid^="key-"]').first();
+    const lastKey = keyPalette.locator('[data-testid^="key-"]').last();
+    await expectKeyInsidePalette(keyPalette, firstKey);
+    await keyPalette.evaluate((element) => {
+      element.scrollLeft = element.scrollWidth;
+    });
+    await expectKeyInsidePalette(keyPalette, lastKey);
+    await lastKey.tap();
+  }
   await expect(page.getByTestId('notation-0-0')).not.toHaveValue('1 2 3 (135)');
 
   const viewport = page.viewportSize();
@@ -60,6 +65,38 @@ test('keeps the iOS-style editor sheet inside the dynamic viewport with a fixed 
   await expect(editor).toBeHidden();
   await expect(page.locator('main')).not.toHaveAttribute('inert', '');
   await expectPageScrollUnlocked(page);
+});
+
+test('closes mobile action menus on selection, outside tap and Escape', async ({ page }) => {
+  await page.goto('/');
+  const lineActions = page.getByTestId('line-actions-0');
+  const lineToggle = lineActions.locator('summary');
+
+  await lineToggle.tap();
+  await expect(lineToggle).toHaveAttribute('aria-expanded', 'true');
+  await page.getByTestId('song-title').tap();
+  await expect(lineActions).toHaveJSProperty('open', false);
+
+  await lineToggle.tap();
+  await page.keyboard.press('Escape');
+  await expect(lineActions).toHaveJSProperty('open', false);
+
+  await lineToggle.tap();
+  await page.getByTestId('word-card-0-0').tap();
+  await expect(page.getByTestId('word-editor')).toBeVisible();
+  await expect(lineActions).toHaveJSProperty('open', false);
+
+  const blockActions = page.getByTestId('more-block-actions');
+  const blockToggle = blockActions.locator('summary');
+  await blockToggle.tap();
+  await expect(blockToggle).toHaveAttribute('aria-expanded', 'true');
+  await page.getByText('Musikereignisse', { exact: true }).tap();
+  await expect(blockActions).toHaveJSProperty('open', false);
+  await blockToggle.tap();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('word-editor')).toBeHidden();
+  await expect(blockActions).toBeHidden();
+  await expectNoPageOverflow(page);
 });
 
 test('latches ordered touch selection, keeps a compact bottom action bar and pastes safely', async ({
