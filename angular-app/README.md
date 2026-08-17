@@ -14,7 +14,7 @@ pnpm build
 pnpm e2e
 ```
 
-`pnpm e2e` erwartet einen installierten Playwright-Chromium-Browser (`pnpm exec playwright install chromium`). Der Browser-Download ist bewusst kein Installationsskript.
+`pnpm e2e` erwartet installierte Playwright-Browser für Chromium und WebKit (`pnpm exec playwright install chromium webkit`). Der Browser-Download ist bewusst kein Installationsskript.
 
 ## Daten und Kompatibilität
 
@@ -34,7 +34,7 @@ Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus de
 
 ## Aktueller Schnitt
 
-Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, Block- und Zeilenstrukturaktionen, die Übertragung von Musikereignissen in die nächste Zeile, sitzungsbezogenes Undo, Desktop-Mehrfachauswahl mit Shift und Strg/⌘ sowie eine einfache positionsweise Noten-/Akkord-Zwischenablage, ein mobiles Editor-Bottom-Sheet, Autosave und JSON-Import/-Export. Noch nicht enthalten sind vollständige Vanilla-Featureparität, Touch-/Langdruck-Auswahl, komplexe Verteilmodi, Drag-and-drop, Silbentrennung, Audio/Tone.js, Fotoimport, Backend, NgRx oder Capacitor.
+Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, Block- und Zeilenstrukturaktionen, die Übertragung von Musikereignissen in die nächste Zeile, sitzungsbezogenes Undo, Desktop-Mehrfachauswahl mit Shift und Strg/⌘, Touch-/Langdruck-Mehrfachauswahl in Liedreihenfolge sowie eine einfache positionsweise Noten-/Akkord-Zwischenablage, ein responsives mobiles Editor-Bottom-Sheet, Autosave und JSON-Import/-Export. Noch nicht enthalten sind vollständige Vanilla-Featureparität, komplexe Verteilmodi, Drag-and-drop, Silbentrennung, Audio/Tone.js, Fotoimport, Backend, NgRx oder Capacitor.
 
 ## Ablösung der Alt-App
 

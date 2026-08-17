@@ -39,30 +39,50 @@ export type SongStructureEditResult =
     };
 
 export class SongStructureHistory {
-  private readonly snapshots: SongStructureState[] = [];
+  private readonly undoSnapshots: SongStructureState[] = [];
+  private readonly redoSnapshots: SongStructureState[] = [];
 
   constructor(private readonly limit = 50) {}
 
   get canUndo(): boolean {
-    return this.snapshots.length > 0;
+    return this.undoSnapshots.length > 0;
+  }
+
+  get canRedo(): boolean {
+    return this.redoSnapshots.length > 0;
   }
 
   get depth(): number {
-    return this.snapshots.length;
+    return this.undoSnapshots.length;
   }
 
   record(state: SongStructureState): void {
-    this.snapshots.push(cloneState(state));
-    if (this.snapshots.length > this.limit) this.snapshots.shift();
+    this.push(this.undoSnapshots, state);
+    this.redoSnapshots.length = 0;
   }
 
-  undo(): SongStructureState | null {
-    const snapshot = this.snapshots.pop();
+  undo(current: SongStructureState): SongStructureState | null {
+    const snapshot = this.undoSnapshots.pop();
+    if (!snapshot) return null;
+    this.push(this.redoSnapshots, current);
+    return cloneState(snapshot);
+  }
+
+  redo(current: SongStructureState): SongStructureState | null {
+    const snapshot = this.redoSnapshots.pop();
+    if (!snapshot) return null;
+    this.push(this.undoSnapshots, current);
     return snapshot ? cloneState(snapshot) : null;
   }
 
   clear(): void {
-    this.snapshots.length = 0;
+    this.undoSnapshots.length = 0;
+    this.redoSnapshots.length = 0;
+  }
+
+  private push(stack: SongStructureState[], state: SongStructureState): void {
+    stack.push(cloneState(state));
+    if (stack.length > this.limit) stack.shift();
   }
 }
 
@@ -153,7 +173,7 @@ function success(
 
 function createBlock(kind: 'word' | 'melody'): SongWord {
   return {
-    text: kind === 'word' ? 'Neues Wort' : '♪',
+    text: kind === 'word' ? 'Neues Wort' : '',
     ...replaceWithLegacyNotation(''),
     ...(kind === 'melody' ? { toneCount: 4 } : {}),
     extra: {},

@@ -1,4 +1,8 @@
-<mat-toolbar class="topbar">
+<mat-toolbar
+  class="topbar"
+  [attr.inert]="interactionMode() === 'editing' && mobileViewport() ? '' : null"
+  [attr.aria-hidden]="interactionMode() === 'editing' && mobileViewport() ? 'true' : null"
+>
   <div class="brand-lockup" aria-label="RubiChroma, Kalimba-Editor">
     <strong class="wordmark" aria-hidden="true"
       ><span class="wordmark-rubi">Rubi</span><span>Chroma</span></strong
@@ -22,22 +26,30 @@
   <span class="save-state" role="status" aria-live="polite" [attr.data-status]="store.status()">
     @switch (store.status()) {
       @case ('loading') {
-        Wird geladen …
+        <span class="save-state-long">Wird geladen …</span
+        ><span class="save-state-short">Lädt</span>
       }
       @case ('saving') {
-        Speichert …
+        <span class="save-state-long">Speichert …</span
+        ><span class="save-state-short">Speichert</span>
       }
       @case ('saved') {
-        Lokal gespeichert
+        <span class="save-state-long">Lokal gespeichert</span
+        ><span class="save-state-short">Gespeichert</span>
       }
       @case ('error') {
-        Aktion erforderlich
+        <span class="save-state-long">Aktion erforderlich</span
+        ><span class="save-state-short">Fehler</span>
       }
     }
   </span>
 </mat-toolbar>
 
-<main>
+<main
+  [class.has-multi-selection]="touchSelectionActive()"
+  [attr.inert]="interactionMode() === 'editing' && mobileViewport() ? '' : null"
+  [attr.aria-hidden]="interactionMode() === 'editing' && mobileViewport() ? 'true' : null"
+>
   <section class="hero">
     <p class="kicker" lang="en">Color Your Music</p>
     <h1>Musik wird sichtbar – in deinen Farben.</h1>
@@ -53,45 +65,6 @@
   }
 
   @if (store.hasDocument()) {
-    @if (selectedPositions().length > 0) {
-      <div
-        class="selection-toolbar"
-        role="toolbar"
-        aria-label="Aktionen für ausgewählte Liedblöcke"
-        data-testid="selection-toolbar"
-      >
-        <strong data-testid="selection-count">{{ selectionCountLabel() }}</strong>
-        @if (clipboardCount() > 0) {
-          <span data-testid="clipboard-count">{{ clipboardCount() }} kopiert</span>
-        }
-        <span class="selection-spacer"></span>
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="copy-selection"
-          (click)="copyMusicSelection()"
-        >
-          Noten/Akkorde kopieren
-        </button>
-        <button
-          mat-flat-button
-          type="button"
-          data-testid="paste-selection"
-          [disabled]="!canPasteMusicSelection()"
-          (click)="pasteMusicSelection()"
-        >
-          In Auswahl einfügen
-        </button>
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="clear-selection"
-          (click)="closeWordEditor()"
-        >
-          Auswahl beenden
-        </button>
-      </div>
-    }
     <mat-card class="editor-card">
       <mat-card-header>
         <mat-card-title>Song</mat-card-title>
@@ -101,15 +74,32 @@
       </mat-card-header>
       <mat-card-content>
         <div class="structure-toolbar">
-          <button
-            mat-stroked-button
-            type="button"
-            data-testid="undo-structure"
-            [disabled]="!store.canUndo()"
-            (click)="undoStructure()"
-          >
-            Rückgängig
-          </button>
+          <div class="history-actions" role="group" aria-label="Änderungsverlauf">
+            <button
+              class="history-action"
+              type="button"
+              data-testid="undo-structure"
+              aria-label="Rückgängig"
+              aria-keyshortcuts="Control+Z Meta+Z"
+              title="Rückgängig (Strg+Z)"
+              [disabled]="!store.canUndo()"
+              (click)="undoStructure()"
+            >
+              <span aria-hidden="true">↶</span>
+            </button>
+            <button
+              class="history-action"
+              type="button"
+              data-testid="redo-structure"
+              aria-label="Wiederholen"
+              aria-keyshortcuts="Control+Y Meta+Shift+Z"
+              title="Wiederholen (Strg+Y)"
+              [disabled]="!store.canRedo()"
+              (click)="redoStructure()"
+            >
+              <span aria-hidden="true">↷</span>
+            </button>
+          </div>
           @if (actionNotice(); as message) {
             <span role="status" aria-live="polite" data-testid="structure-status">{{
               message
@@ -126,31 +116,17 @@
             [lines]="lines()"
             [selection]="selection()"
             [selectedPositions]="selectedPositions()"
+            [melodyPositions]="melodyPositions()"
+            [touchSelectionActive]="touchSelectionActive()"
             (selectionChange)="changeSelection($event)"
             (wordSelect)="handleWordSelection($event)"
+            (multiSelectionRequested)="startMultiSelection()"
+            (blockAddRequested)="addSongBlock()"
             (structureAction)="applyStructureAction($event)"
           />
 
-          @if (selectedWord(); as word) {
-            <button
-              class="editor-backdrop"
-              type="button"
-              aria-label="Editor schließen"
-              (click)="closeWordEditor()"
-            ></button>
-            <app-word-editor
-              [textControl]="word.controls.text"
-              [notationControl]="word.controls.notation"
-              [location]="selectionLocation()"
-              [testIdSuffix]="selectionTestId()"
-              [keys]="kalimbaKeys()"
-              [canDeleteBlock]="canDeleteSelectedBlock()"
-              [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
-              [canUndo]="store.canUndo()"
-              (closed)="closeWordEditor()"
-              (structureAction)="applyStructureAction($event)"
-              (undoRequested)="undoStructure()"
-            />
+          @if (selectedWord() && !mobileViewport()) {
+            <ng-container [ngTemplateOutlet]="wordEditorContent" />
           } @else {
             <aside class="editor-placeholder">
               <strong>Block auswählen</strong>
@@ -173,10 +149,10 @@
           data-testid="import-button"
           (click)="fileInput.click()"
         >
-          JSON importieren
+          Sicherung laden
         </button>
         <button mat-flat-button type="button" data-testid="export-button" (click)="exportFile()">
-          JSON exportieren
+          Song sichern
         </button>
       </mat-card-actions>
     </mat-card>
@@ -185,7 +161,83 @@
   }
 
   <p class="privacy-note">
-    Nur dieser Browser: IndexedDB und ein vorhandener Legacy-Stand desselben Origins werden
-    verwendet.
+    Dein Song wird nur in diesem Browser gespeichert und nicht in eine Cloud übertragen. Vorhandene
+    ältere RubiChroma-Daten bleiben erhalten.
   </p>
 </main>
+
+<ng-template #wordEditorContent>
+  @if (selectedWord(); as word) {
+    <app-word-editor
+      [textControl]="word.controls.text"
+      [notationControl]="word.controls.notation"
+      [location]="selectionLocation()"
+      [testIdSuffix]="selectionTestId()"
+      [keys]="kalimbaKeys()"
+      [isMelodyBlock]="selectedWordIsMelody()"
+      [canDeleteBlock]="canDeleteSelectedBlock()"
+      [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
+      [canUndo]="store.canUndo()"
+      [canRedo]="store.canRedo()"
+      (closed)="closeWordEditor()"
+      (structureAction)="applyStructureAction($event)"
+      (undoRequested)="undoStructure()"
+      (redoRequested)="redoStructure()"
+    />
+  }
+</ng-template>
+
+<ng-template cdkPortal #editorPortal="cdkPortal">
+  <div
+    class="editor-sheet-frame"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Wort und Töne bearbeiten"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <ng-container [ngTemplateOutlet]="wordEditorContent" />
+  </div>
+</ng-template>
+
+<ng-template cdkPortal #selectionPortal="cdkPortal">
+  <div
+    class="selection-toolbar"
+    role="toolbar"
+    aria-label="Aktionen für ausgewählte Liedblöcke"
+    data-testid="selection-toolbar"
+  >
+    <span class="selection-summary">
+      <strong data-testid="selection-count">{{ selectionCountLabel() }}</strong>
+      @if (clipboardCount() > 0) {
+        <span data-testid="clipboard-count">{{ clipboardCount() }} kopiert</span>
+      }
+    </span>
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="copy-selection"
+      [disabled]="selectedPositions().length === 0"
+      (click)="copyMusicSelection()"
+    >
+      Kopieren
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      data-testid="paste-selection"
+      [disabled]="!canPasteMusicSelection()"
+      (click)="pasteMusicSelection()"
+    >
+      Einfügen
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="clear-selection"
+      (click)="closeWordEditor()"
+    >
+      Beenden
+    </button>
+  </div>
+</ng-template>

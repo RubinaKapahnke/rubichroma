@@ -1,31 +1,108 @@
-<div class="song-lines" aria-label="Bearbeitbare Liedblöcke">
+<div class="touch-selection-help" id="touch-selection-help">
+  <span>Gedrückt halten startet die Mehrfachauswahl.</span>
+  @if (!touchSelectionActive()) {
+    <button
+      type="button"
+      data-testid="start-multi-selection"
+      (click)="multiSelectionRequested.emit()"
+    >
+      Mehrfach auswählen
+    </button>
+  } @else {
+    <strong>Weitere Blöcke antippen.</strong>
+  }
+</div>
+@if (structureHelpVisible()) {
+  <section class="sheet-intro" aria-labelledby="song-structure-title" data-testid="sheet-intro">
+    <div>
+      <strong id="song-structure-title">Lied aus Blöcken aufbauen</strong>
+      <p>
+        Beispiel: „Hallo“ ist ein Textblock, ♪ ein Melodieblock. Tippe einen Block zum Bearbeiten an
+        oder lege direkt einen neuen an.
+      </p>
+    </div>
+    <button
+      class="dismiss-help-button"
+      type="button"
+      data-testid="dismiss-structure-help"
+      aria-label="Einstiegshilfe ausblenden"
+      title="Einstiegshilfe ausblenden"
+      (click)="dismissStructureHelp()"
+    >
+      <span aria-hidden="true">×</span>
+    </button>
+  </section>
+} @else {
+  <button
+    class="show-help-button"
+    type="button"
+    data-testid="show-structure-help"
+    (click)="showStructureHelp()"
+  >
+    Einstiegshilfe anzeigen
+  </button>
+}
+<button
+  class="add-block-button"
+  type="button"
+  data-testid="add-song-block"
+  (click)="blockAddRequested.emit()"
+>
+  + Block am Liedende hinzufügen
+</button>
+<div
+  class="song-lines"
+  aria-label="Bearbeitbare Liedblöcke"
+  aria-describedby="touch-selection-help"
+>
   @for (line of lines().controls; track $index; let lineIndex = $index) {
     <section class="song-line" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">
       <div class="line-heading">
         <span class="line-number">{{ lineIndex + 1 }}</span>
-        <div class="line-actions" [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)">
+        <div class="line-primary-actions">
           <button
+            class="add-line-button"
             type="button"
             [attr.data-testid]="'line-add-' + lineIndex"
-            (click)="structureAction.emit({ kind: 'insert-line', lineIndex })"
+            [attr.aria-label]="'Zeile nach Zeile ' + (lineIndex + 1) + ' einfügen'"
+            title="Zeile danach einfügen"
+            (click)="runStructureAction({ kind: 'insert-line', lineIndex })"
           >
-            Zeile danach
+            + Zeile danach
           </button>
-          <button
-            type="button"
-            [attr.data-testid]="'line-duplicate-' + lineIndex"
-            (click)="structureAction.emit({ kind: 'duplicate-line', lineIndex })"
+          <details
+            class="line-actions"
+            [open]="openLineMenuIndex() === lineIndex"
+            [attr.data-testid]="'line-actions-' + lineIndex"
+            [attr.aria-label]="'Aktionen für Zeile ' + (lineIndex + 1)"
           >
-            Duplizieren
-          </button>
-          <button
-            type="button"
-            [attr.data-testid]="'line-delete-' + lineIndex"
-            [disabled]="lines().length === 1"
-            (click)="structureAction.emit({ kind: 'delete-line', lineIndex })"
-          >
-            Löschen
-          </button>
+            <summary
+              [attr.aria-label]="'Weitere Aktionen für Zeile ' + (lineIndex + 1)"
+              [attr.aria-expanded]="openLineMenuIndex() === lineIndex"
+              [attr.aria-controls]="'line-action-menu-' + lineIndex"
+              title="Weitere Zeilenaktionen"
+              (click)="toggleLineActions($event, lineIndex)"
+            >
+              <span aria-hidden="true">•••</span>
+            </summary>
+            <div class="line-action-menu" [id]="'line-action-menu-' + lineIndex">
+              <button
+                type="button"
+                [attr.data-testid]="'line-duplicate-' + lineIndex"
+                (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"
+              >
+                Zeile duplizieren
+              </button>
+              <button
+                type="button"
+                [attr.data-testid]="'line-delete-' + lineIndex"
+                [disabled]="lines().length === 1"
+                (click)="runStructureAction({ kind: 'delete-line', lineIndex })"
+              >
+                Zeile löschen
+              </button>
+            </div>
+          </details>
         </div>
       </div>
       <div class="words">
@@ -38,13 +115,18 @@
             [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
             [attr.aria-pressed]="isSelected(lineIndex, wordIndex)"
             [attr.aria-label]="
-              wordLabel(word) +
+              wordLabel(word, lineIndex, wordIndex) +
               ', Zeile ' +
               (lineIndex + 1) +
               ', Block ' +
               (wordIndex + 1) +
               ', bearbeiten'
             "
+            (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
+            (pointermove)="trackLongPress($event)"
+            (pointerup)="finishLongPress($event)"
+            (pointercancel)="finishLongPress($event)"
+            (contextmenu)="preventTouchContextMenu($event)"
             (click)="selectWord($event, lineIndex, wordIndex)"
             (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
           >
@@ -57,7 +139,12 @@
                 <span class="empty-event">+</span>
               }
             </span>
-            <strong>{{ wordLabel(word) }}</strong>
+            <strong>
+              @if (isMelody(lineIndex, wordIndex)) {
+                <span class="melody-marker" aria-hidden="true">♪</span>
+              }
+              {{ wordLabel(word, lineIndex, wordIndex) }}
+            </strong>
           </button>
         }
       </div>

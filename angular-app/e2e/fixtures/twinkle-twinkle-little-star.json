@@ -1,0 +1,75 @@
+{
+  "fixtureVersion": 1,
+  "song": {
+    "title": "Twinkle, Twinkle, Little Star",
+    "lines": [
+      {
+        "words": [
+          { "text": "Twinkle,", "notation": "1 1" },
+          { "text": "twinkle,", "notation": "5 5" },
+          { "text": "little", "notation": "6 6" },
+          { "text": "star", "notation": "5" }
+        ]
+      },
+      {
+        "words": [
+          { "text": "How", "notation": "4 4" },
+          { "text": "I", "notation": "3 3" },
+          { "text": "wonder", "notation": "2 2" },
+          { "text": "what you are", "notation": "1" }
+        ]
+      },
+      {
+        "words": [
+          { "text": "Up", "notation": "5 5" },
+          { "text": "above", "notation": "4 4" },
+          { "text": "the world", "notation": "3 3" },
+          { "text": "so high", "notation": "2" }
+        ]
+      },
+      {
+        "words": [
+          { "text": "Like", "notation": "5 5" },
+          { "text": "a diamond", "notation": "4 4" },
+          { "text": "in the", "notation": "3 3" },
+          { "text": "sky", "notation": "2" }
+        ]
+      },
+      {
+        "words": [
+          { "text": "Twinkle,", "notation": "1 1" },
+          { "text": "twinkle,", "notation": "5 5" },
+          { "text": "little", "notation": "6 6" },
+          { "text": "star", "notation": "5" }
+        ]
+      },
+      {
+        "words": [
+          { "text": "How", "notation": "4 4" },
+          { "text": "I", "notation": "3 3" },
+          { "text": "wonder", "notation": "2 2" },
+          { "text": "what you are", "notation": "1" }
+        ]
+      }
+    ]
+  },
+  "keys": [
+    { "value": "2″", "letter": "D", "color": "#7A8CC9", "hand": "L" },
+    { "value": "7′", "letter": "B", "color": "#864B9F", "hand": "L" },
+    { "value": "5′", "letter": "G", "color": "#F78853", "hand": "L" },
+    { "value": "3′", "letter": "E", "color": "#45A953", "hand": "L" },
+    { "value": "1′", "letter": "C", "color": "#3CB8A6", "hand": "L" },
+    { "value": "6", "letter": "A", "color": "#F7BD30", "hand": "L" },
+    { "value": "4", "letter": "F", "color": "#E95784", "hand": "L" },
+    { "value": "2", "letter": "D", "color": "#342E38", "hand": "L" },
+    { "value": "1", "letter": "C", "color": "#2E7975", "hand": "R" },
+    { "value": "3", "letter": "E", "color": "#26562A", "hand": "R" },
+    { "value": "5", "letter": "G", "color": "#D41C33", "hand": "R" },
+    { "value": "7", "letter": "B", "color": "#6B1E69", "hand": "R" },
+    { "value": "2′", "letter": "D", "color": "#374469", "hand": "R" },
+    { "value": "4′", "letter": "F", "color": "#F89FB5", "hand": "R" },
+    { "value": "6′", "letter": "A", "color": "#F8D360", "hand": "R" },
+    { "value": "1″", "letter": "C", "color": "#A8DDBF", "hand": "R" },
+    { "value": "3″", "letter": "E", "color": "#81B07A", "hand": "R" }
+  ]
+}

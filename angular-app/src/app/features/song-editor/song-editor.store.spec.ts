@@ -59,7 +59,7 @@ describe('SongEditorStore structure persistence', () => {
     expect(reloaded).toEqual(persisted);
   });
 
-  it('undoes multiple structure actions in reverse order and persists the final snapshot', async () => {
+  it('undoes and redoes multiple structure actions and persists the final snapshot', async () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
     await store.initialize();
     const original = structuredClone(store.document()!);
@@ -74,14 +74,29 @@ describe('SongEditorStore structure persistence', () => {
       ).ok,
     ).toBe(true);
     expect(store.canUndo()).toBe(true);
+    expect(store.canRedo()).toBe(false);
     expect(store.document()?.song.lines).toHaveLength(2);
 
     expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
     expect(store.document()?.song.lines).toHaveLength(1);
+    expect(store.canRedo()).toBe(true);
+    expect(store.redoStructure()).toEqual({ lineIndex: 1, wordIndex: 0 });
+    expect(store.document()?.song.lines).toHaveLength(2);
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
     expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 0 });
     expect(store.document()).toEqual(original);
     expect(store.canUndo()).toBe(false);
     expect(store.undoStructure()).toBeNull();
+    expect(store.canRedo()).toBe(true);
+
+    expect(store.redoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(store.redoStructure()).toEqual({ lineIndex: 1, wordIndex: 0 });
+    expect(store.document()?.song.lines).toHaveLength(2);
+    expect(store.canRedo()).toBe(false);
+    expect(store.redoStructure()).toBeNull();
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 0 });
+    expect(store.document()).toEqual(original);
 
     await expectSaved(store);
     expect(await repository.load()).toEqual(original);
@@ -93,6 +108,8 @@ describe('SongEditorStore structure persistence', () => {
     expect(
       store.applyStructureAction({ kind: 'duplicate-block' }, { lineIndex: 0, wordIndex: 0 }).ok,
     ).toBe(true);
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 0 });
+    expect(store.canRedo()).toBe(true);
 
     const document = store.document()!;
     await store.saveEditorValue({
@@ -106,6 +123,7 @@ describe('SongEditorStore structure persistence', () => {
     });
 
     expect(store.canUndo()).toBe(false);
+    expect(store.canRedo()).toBe(false);
     expect(store.undoStructure()).toBeNull();
     expect(store.document()?.song.title).toBe('Neuerer Titel');
     await expectSaved(store);
@@ -133,6 +151,17 @@ describe('SongEditorStore structure persistence', () => {
     await expectSaved(store);
     expect(await repository.load()).toEqual(store.document());
 
+    expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(store.document()).toEqual(original);
+    expect(store.canRedo()).toBe(true);
+    expect(store.redoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(store.document()?.song.lines[0].words[1].events.map((event) => event.kind)).toEqual([
+      'note',
+      'separator',
+      'note',
+      'note',
+      'chord',
+    ]);
     expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
     expect(store.document()).toEqual(original);
     await expectSaved(store);

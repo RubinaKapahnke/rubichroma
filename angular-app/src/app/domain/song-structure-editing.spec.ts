@@ -27,7 +27,7 @@ describe('song structure editing', () => {
       editSongStructure(inserted.state, { kind: 'insert-block', blockKind: 'melody' }),
     );
     expect(melody.state.document.song.lines[0].words[2]).toMatchObject({
-      text: '♪',
+      text: '',
       toneCount: 4,
       events: [],
     });
@@ -113,24 +113,37 @@ describe('song structure editing', () => {
 });
 
 describe('SongStructureHistory', () => {
-  it('restores full cloned snapshots in reverse order and has no redo state', () => {
+  it('restores cloned snapshots in both directions and clears redo after a new edit', () => {
     const history = new SongStructureHistory();
     const first = state(documentFixture());
     const second = expectSuccess(editSongStructure(first, { kind: 'duplicate-block' })).state;
+    const third = expectSuccess(editSongStructure(second, { kind: 'duplicate-block' })).state;
     history.record(first);
     history.record(second);
 
-    second.document.song.title = 'newer in-memory title';
-    const undoSecond = history.undo();
+    third.document.song.title = 'newer in-memory title';
+    const undoSecond = history.undo(third);
     expect(undoSecond?.document.song.lines[0].words).toHaveLength(3);
     expect(undoSecond?.document.song.title).toBe('Fixture');
     undoSecond!.document.song.title = 'mutated returned clone';
 
-    const undoFirst = history.undo();
+    const undoFirst = history.undo(undoSecond!);
     expect(undoFirst?.document.song.lines[0].words).toHaveLength(2);
     expect(undoFirst?.document.song.title).toBe('Fixture');
-    expect(history.undo()).toBeNull();
+    expect(history.undo(undoFirst!)).toBeNull();
     expect(history.canUndo).toBe(false);
+    expect(history.canRedo).toBe(true);
+
+    const redoFirst = history.redo(undoFirst!);
+    expect(redoFirst?.document.song.lines[0].words).toHaveLength(3);
+    const redoSecond = history.redo(redoFirst!);
+    expect(redoSecond?.document.song.lines[0].words).toHaveLength(4);
+    expect(redoSecond?.document.song.title).toBe('newer in-memory title');
+    expect(history.canRedo).toBe(false);
+
+    history.undo(redoSecond!);
+    history.record(redoFirst!);
+    expect(history.canRedo).toBe(false);
   });
 });
 

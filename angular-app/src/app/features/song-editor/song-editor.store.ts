@@ -39,13 +39,16 @@ export class SongEditorStore {
   private readonly errorState = signal<string | null>(null);
   private readonly hydrationVersionState = signal(0);
   private readonly canUndoState = signal(false);
+  private readonly canRedoState = signal(false);
   private readonly structureHistory = new SongStructureHistory();
+  private lastStructureSelection: SongPosition | null = null;
 
   readonly document = this.documentState.asReadonly();
   readonly status = this.statusState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly hydrationVersion = this.hydrationVersionState.asReadonly();
   readonly canUndo = this.canUndoState.asReadonly();
+  readonly canRedo = this.canRedoState.asReadonly();
   readonly hasDocument = computed(() => this.documentState() !== null);
 
   async initialize(): Promise<void> {
@@ -55,8 +58,7 @@ export class SongEditorStore {
       const legacyJson = localStorage.getItem(LEGACY_STORAGE_KEY);
       const document = await this.repository.migrateLegacy(legacyJson, DEFAULT_DOCUMENT);
       this.documentState.set(document);
-      this.structureHistory.clear();
-      this.canUndoState.set(false);
+      this.clearStructureHistory();
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
     } catch (error) {
@@ -75,7 +77,8 @@ export class SongEditorStore {
     if (!result.ok) return result;
 
     this.structureHistory.record({ document: current, selection });
-    this.canUndoState.set(true);
+    this.lastStructureSelection = { ...result.state.selection };
+    this.syncHistoryAvailability();
     this.applyStructureSnapshot(result.state.document);
     void this.persistSnapshot(result.state.document);
     return result;
@@ -92,19 +95,41 @@ export class SongEditorStore {
     if (!result.ok) return result;
 
     this.structureHistory.record({ document: current, selection });
-    this.canUndoState.set(true);
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
     this.applyStructureSnapshot(result.document);
     void this.persistSnapshot(result.document);
     return result;
   }
 
   undoStructure(): SongPosition | null {
-    const previous = this.structureHistory.undo();
-    this.canUndoState.set(this.structureHistory.canUndo);
+    const current = this.documentState();
+    if (!current || !this.lastStructureSelection) return null;
+    const previous = this.structureHistory.undo({
+      document: current,
+      selection: this.lastStructureSelection,
+    });
+    this.syncHistoryAvailability();
     if (!previous) return null;
+    this.lastStructureSelection = { ...previous.selection };
     this.applyStructureSnapshot(previous.document);
     void this.persistSnapshot(previous.document);
     return previous.selection;
+  }
+
+  redoStructure(): SongPosition | null {
+    const current = this.documentState();
+    if (!current || !this.lastStructureSelection) return null;
+    const next = this.structureHistory.redo({
+      document: current,
+      selection: this.lastStructureSelection,
+    });
+    this.syncHistoryAvailability();
+    if (!next) return null;
+    this.lastStructureSelection = { ...next.selection };
+    this.applyStructureSnapshot(next.document);
+    void this.persistSnapshot(next.document);
+    return next.selection;
   }
 
   async saveEditorValue(value: EditorValue): Promise<void> {
@@ -142,8 +167,7 @@ export class SongEditorStore {
     });
 
     // A non-structural edit is a newer state that an older structure snapshot must not overwrite.
-    this.structureHistory.clear();
-    this.canUndoState.set(false);
+    this.clearStructureHistory();
     this.documentState.set(candidate);
     this.statusState.set('saving');
     this.errorState.set(null);
@@ -158,8 +182,7 @@ export class SongEditorStore {
     try {
       const saved = await this.repository.replace(candidate);
       this.documentState.set(saved);
-      this.structureHistory.clear();
-      this.canUndoState.set(false);
+      this.clearStructureHistory();
       this.hydrationVersionState.update((version) => version + 1);
       this.statusState.set('saved');
     } catch (error) {
@@ -185,6 +208,17 @@ export class SongEditorStore {
     this.hydrationVersionState.update((version) => version + 1);
     this.statusState.set('saving');
     this.errorState.set(null);
+  }
+
+  private clearStructureHistory(): void {
+    this.structureHistory.clear();
+    this.lastStructureSelection = null;
+    this.syncHistoryAvailability();
+  }
+
+  private syncHistoryAvailability(): void {
+    this.canUndoState.set(this.structureHistory.canUndo);
+    this.canRedoState.set(this.structureHistory.canRedo);
   }
 
   private async persistSnapshot(snapshot: SongDocument): Promise<void> {
