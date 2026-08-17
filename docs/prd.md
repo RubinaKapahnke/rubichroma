@@ -255,6 +255,7 @@ Für die Laufnotation gilt:
 Für die Kalimba gilt in Flow:
 
 - Alle Zungen des persönlichen Instrumentprofils erscheinen als feste Spuren in exakt der physischen Links-rechts-Anordnung. Sie werden nicht nach Tonhöhe umsortiert.
+- Die 17 Fallspuren, die Ziel- beziehungsweise Jetzt-Linie und die 17 sichtbaren Zungen verwenden eine gemeinsame responsive Geometrie- und Positionsquelle. Die Mittellinie jedes Notenbalkens trifft auf die Mitte der Zunge desselben Tons; diese Zuordnung bleibt auf Desktop, Mobilgeräten und nach Größenänderungen stabil.
 - Die sichtbaren Zungen sind als Instrumentabbildung eindeutig erkennbar: metallische, unterschiedlich lange und eher schlanke Zungen mit kalimbatypischer Form statt kurzer breiter Tasten oder abstrakter Rechtecke. Das oben eingespannte Ende ist gerade; das unten liegende freie Spielende ist nur moderat abgerundet und wirkt nicht pillenförmig.
 - In der kompakten Playerdarstellung wird kein dekorativer Steg gezeigt, wenn er wegen der verfügbaren Größe nicht mit glaubwürdiger Position und Proportion dargestellt werden kann.
 - Tonbuchstabe und Kalimba-Zahl beziehungsweise Oktavmarkierung stehen wie eine Prägung oder aufgedruckte Instrumentbeschriftung direkt auf der jeweiligen Zunge. Die Beschriftung bleibt auch bei abgeschwächter oder ausgeschalteter Farbhilfe lesbar.
@@ -305,6 +306,7 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 - Nach erneutem Öffnen sind die bestätigten stückbezogenen Einstellungen und der letzte Loop-Bereich vorhanden, der Loop läuft aber nicht automatisch an.
 - Die Laufnotation bewegt Ereignisse von rechts nach links zu einer festen Spiellinie; aktive Note, Akkord und Pause bleiben auch bei abgeschwächter oder ausgeschalteter Farbhilfe eindeutig erkennbar.
 - Die spätere Flow-Ansicht bewegt Ereignisse von oben nach unten auf die physische Zungenanordnung zu und bildet Einsatz, Haltedauer, Loslassen, Akkorde und Pausen korrekt ab.
+- Für alle 17 Töne endet die Mittellinie des Flow-Balkens auf der Mitte der tonidentischen Zunge in physischer Kalimba-Reihenfolge. Die Abweichung beträgt auf Desktop, 390 Pixel Breite und nach dynamischer Größenänderung höchstens zwei CSS-Pixel; auch gleichzeitig eintreffende Akkordbalken bleiben korrekt ausgerichtet.
 - Die Instrumentdarstellung ist ohne zusätzliche Erklärung als 17-Zungen-Kalimba erkennbar; schlanke Zungenproportionen, Metallcharakter, reale Anordnung, moderate Rundung am freien Ende und direkt aufgebrachte Ton-/Zahlbeschriftung unterstützen die Zuordnung. Die kompakte Darstellung verzichtet auf einen sachlich falsch proportionierten Steg.
 - Die Zungenprägung zeigt Grundoktave sowie höhere und gegebenenfalls tiefere Oktavlagen durch keine, oberhalb oder unterhalb der Ziffer gesetzte Punkte; auf den physischen Zungen erscheinen dafür keine Apostroph- oder Prime-Zeichen.
 - Aktuelle und nächste Zunge sind als starke beziehungsweise schwächere Markierung unterscheidbar. Die aktive Markierung endet zuverlässig, und zwei aufeinanderfolgende Ereignisse derselben Zunge bleiben als getrennte Einsätze sichtbar, einschließlich des Übergangs von Akkord zu Melodie.
