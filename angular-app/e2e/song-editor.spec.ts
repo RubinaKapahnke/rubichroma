@@ -306,9 +306,9 @@ test('edits title, word and raw notation and restores them after reload', async 
         { degree: 1, octave: 0 },
         { degree: 3, octave: 0 },
       ],
-      duration: 'quarter',
+      duration: 1,
     },
-    { kind: 'note', pitch: { degree: 5, octave: 1 }, duration: 'quarter' },
+    { kind: 'note', pitch: { degree: 5, octave: 1 }, duration: 1 },
     { kind: 'separator' },
   ]);
   expect(persistedWord['legacyNotation']).toMatchObject({ raw: '(13) 5′-x(' });
@@ -414,6 +414,59 @@ test('opens and closes the focused word editor as a mobile bottom sheet', async 
   await page.getByRole('button', { name: 'Editor schließen' }).last().click();
   await expect(page.getByTestId('word-editor')).toBeHidden();
   await expect(page.getByTestId('word-card-0-0')).toBeFocused();
+});
+
+test('preserves a two-beat phrase ending through undo, export, reload and player projection', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'duration-sentinel'));
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('word-card-0-3').click();
+
+  const duration = page.getByTestId('event-duration-0');
+  await expect(duration).toHaveValue('2');
+  await duration.selectOption('1');
+  await expect(duration).toHaveValue('1');
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(duration).toHaveValue('2');
+  await page.getByTestId('redo-structure-editor').click();
+  await expect(duration).toHaveValue('1');
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(duration).toHaveValue('2');
+  await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
+
+  const exportDownload = page.waitForEvent('download');
+  await page.getByTestId('export-button').click();
+  const exported = JSON.parse(
+    await readFile((await (await exportDownload).path())!, 'utf8'),
+  ) as Record<string, any>;
+  expect(exported['song']['lines'][0]['words'][3]['eventDurations']).toEqual([2]);
+
+  await page.reload();
+  await page.getByTestId('word-card-0-3').click();
+  await expect(page.getByTestId('event-duration-0')).toHaveValue('2');
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'duration-sentinel',
+  );
+
+  await page.getByTestId('open-player').click();
+  await expect(page.getByTestId('position')).toHaveAttribute('max', '48');
+  const phraseEnding = page.getByTestId('score-word-0-3').locator('.score-event');
+  await expect(phraseEnding).toHaveAttribute('data-duration-beats', '2');
+  await expect(phraseEnding).toContainText('2 Schläge');
+  const oneBeatFlow = await page
+    .locator('.falling-event-slot[data-start="0"] .flow-event')
+    .first()
+    .boundingBox();
+  const twoBeatFlow = await page
+    .locator('.falling-event-slot[data-start="6"] .flow-event')
+    .first()
+    .boundingBox();
+  expect(oneBeatFlow).not.toBeNull();
+  expect(twoBeatFlow).not.toBeNull();
+  expect(twoBeatFlow!.height).toBeGreaterThan(oneBeatFlow!.height);
 });
 
 test('performs block and line structure actions, transfers only events and restores them after reload', async ({
@@ -749,9 +802,12 @@ async function expectTwinkleState(page: Page): Promise<void> {
   });
   expect(state.keys).toBe(17);
   expect(state.events).toHaveLength(42);
-  expect(state.events.every((event: Record<string, any>) => event['duration'] === 'quarter')).toBe(
-    true,
+  expect(state.events.filter((event: Record<string, any>) => event['duration'] === 2)).toHaveLength(
+    6,
   );
+  expect(
+    state.events.every((event: Record<string, any>) => [1, 2].includes(event['duration'])),
+  ).toBe(true);
 }
 
 async function readPasteState(page: import('@playwright/test').Page): Promise<{

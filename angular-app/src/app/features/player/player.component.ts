@@ -345,6 +345,10 @@ export class PlayerComponent implements OnDestroy {
     return `${Math.max(5.5, event.durationBeats * 6.5)}%`;
   }
 
+  eventDurationLabel(event: PlayerTimelineEvent): string {
+    return `${event.durationBeats} ${event.durationBeats === 1 ? 'Schlag' : 'Schläge'}`;
+  }
+
   selectEvent(event: PlayerTimelineEvent): void {
     this.transport.seek(event.startBeat);
   }

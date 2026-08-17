@@ -13,7 +13,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { appendMusicEvent } from '../../domain/music-event-editing';
-import { MusicEvent, Pitch } from '../../domain/music-event';
+import {
+  durationLabel,
+  eventDurationInBeats,
+  MusicEvent,
+  Pitch,
+} from '../../domain/music-event';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 
 export interface KalimbaKeyView {
@@ -37,6 +42,7 @@ type InsertMode = 'single' | 'chord';
 export class WordEditorComponent {
   readonly textControl = input.required<FormControl<string>>();
   readonly notationControl = input.required<FormControl<string>>();
+  readonly structuredEvents = input<readonly MusicEvent[] | null>(null);
   readonly location = input.required<string>();
   readonly testIdSuffix = input.required<string>();
   readonly keys = input.required<readonly KalimbaKeyView[]>();
@@ -48,6 +54,7 @@ export class WordEditorComponent {
   readonly closed = output<void>();
   readonly structureAction = output<SongStructureAction>();
   readonly musicEventRemovalRequested = output<number>();
+  readonly musicEventDurationRequested = output<{ eventIndex: number; durationBeats: number }>();
   readonly undoRequested = output<void>();
   readonly redoRequested = output<void>();
 
@@ -88,7 +95,7 @@ export class WordEditorComponent {
   }
 
   events(): MusicEvent[] {
-    return decodeLegacyNotation(this.notationControl().value).events;
+    return [...(this.structuredEvents() ?? decodeLegacyNotation(this.notationControl().value).events)];
   }
 
   eventCountLabel(): string {
@@ -131,7 +138,7 @@ export class WordEditorComponent {
 
   handleKey(key: KalimbaKeyView): void {
     if (this.insertMode() === 'single') {
-      this.append({ kind: 'note', pitch: key.pitch, duration: 'quarter' });
+      this.append({ kind: 'note', pitch: key.pitch, duration: 1 });
       return;
     }
 
@@ -146,7 +153,7 @@ export class WordEditorComponent {
   insertChord(): void {
     const pitches = this.chordDraft();
     if (pitches.length < 2) return;
-    this.append({ kind: 'chord', pitches, duration: 'quarter' });
+    this.append({ kind: 'chord', pitches, duration: 1 });
     this.chordDraft.set([]);
   }
 
@@ -156,6 +163,18 @@ export class WordEditorComponent {
 
   removeEvent(index: number): void {
     this.musicEventRemovalRequested.emit(index);
+  }
+
+  setEventDuration(eventIndex: number, duration: string): void {
+    this.musicEventDurationRequested.emit({ eventIndex, durationBeats: Number(duration) });
+  }
+
+  eventDurationBeats(event: MusicEvent): number {
+    return event.kind === 'separator' ? 1 : eventDurationInBeats(event);
+  }
+
+  eventDurationLabel(event: MusicEvent): string {
+    return event.kind === 'separator' ? 'Keine Dauer' : durationLabel(event.duration);
   }
 
   isPitchUsed(pitch: Pitch): boolean {

@@ -232,15 +232,27 @@ mat-form-field {
 
 .event-chip {
   display: inline-grid;
-  grid-template-columns: auto auto;
-  gap: 0.05rem 0.45rem;
+  min-width: calc(7.4rem + (var(--duration-beats) - 1) * 2.2rem);
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
   min-height: 2.75rem;
-  padding: 0.4rem 0.55rem;
+  padding: 0.35rem;
   border: 1px solid var(--rc-color-border);
   border-radius: var(--rc-radius-control);
   color: var(--rc-color-text);
   background: var(--rc-color-primary-container);
-  cursor: pointer;
+
+  .event-remove-action {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.05rem 0.45rem;
+    padding: 0.15rem 0.2rem;
+    color: inherit;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
 
   small {
     grid-column: 1;
@@ -254,14 +266,13 @@ mat-form-field {
 
   .event-remove-mark {
     grid-column: 2;
-    grid-row: 1 / 4;
+    grid-row: 1 / 3;
     align-self: center;
     font-size: 1.15rem;
   }
 
   .event-color-strip {
     display: flex;
-    grid-column: 1;
     height: 0.28rem;
     overflow: hidden;
     border-radius: 999px;
@@ -270,6 +281,29 @@ mat-form-field {
       min-width: 0.8rem;
       flex: 1;
     }
+  }
+
+  .event-duration-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    color: var(--rc-color-text-muted);
+    font-size: 0.65rem;
+
+    select {
+      min-height: 2rem;
+      padding-inline: 0.35rem;
+      color: var(--rc-color-text);
+      border: 1px solid var(--rc-color-border);
+      border-radius: 0.35rem;
+      background: var(--rc-color-surface);
+    }
+  }
+
+  .event-duration-label {
+    color: var(--rc-color-text-muted);
+    font-size: 0.65rem;
   }
 }
 

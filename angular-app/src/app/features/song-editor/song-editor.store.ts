@@ -1,10 +1,17 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
 import {
+  decodeLegacyNotation,
   encodeLegacyNotation,
+  fidelityForEvents,
   replaceWithLegacyNotation,
 } from '../../domain/legacy-notation-codec';
-import { removeMusicEvent as removeMusicEventFromNotation } from '../../domain/music-event-editing';
+import {
+  cloneMusicEvents,
+  eventDurationInBeats,
+  MusicEvent,
+  Pitch,
+} from '../../domain/music-event';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import {
   MusicSelectionClipboard,
@@ -119,17 +126,56 @@ export class SongEditorStore {
     if (!current || !currentWord || eventIndex < 0 || eventIndex >= currentWord.events.length) {
       return { ok: false, reason: 'invalid-selection' };
     }
-    const edit = removeMusicEventFromNotation(
-      encodeLegacyNotation(currentWord.events, currentWord.legacyNotation),
-      eventIndex,
-    );
-    if (!edit.ok) return edit;
+    if (decodeLegacyNotation(currentWord.legacyNotation.raw).hasUnknownFragments) {
+      return { ok: false, reason: 'unknown-legacy-fragments' };
+    }
 
     const document = cloneDocument(current);
-    Object.assign(
-      document.song.lines[selection.lineIndex].words[selection.wordIndex],
-      replaceWithLegacyNotation(edit.notation),
+    const nextEvents = cloneMusicEvents(
+      currentWord.events.filter((_, index) => index !== eventIndex),
     );
+    const notation = encodeLegacyNotation(nextEvents);
+    const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
+    target.events = nextEvents;
+    target.legacyNotation = fidelityForEvents(notation, nextEvents);
+    this.structureHistory.record({ document: current, selection });
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
+    this.applyStructureSnapshot(document);
+    void this.persistSnapshot(document);
+    return { ok: true, selection: { ...selection } };
+  }
+
+  setMusicEventDuration(
+    selection: SongPosition,
+    eventIndex: number,
+    durationBeats: number,
+  ): MusicEventRemovalResult {
+    const current = this.documentState();
+    const currentWord = current?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
+    const currentEvent = currentWord?.events[eventIndex];
+    if (
+      !current ||
+      !currentWord ||
+      !currentEvent ||
+      currentEvent.kind === 'separator' ||
+      !Number.isFinite(durationBeats) ||
+      durationBeats <= 0
+    ) {
+      return { ok: false, reason: 'invalid-selection' };
+    }
+    if (decodeLegacyNotation(currentWord.legacyNotation.raw).hasUnknownFragments) {
+      return { ok: false, reason: 'unknown-legacy-fragments' };
+    }
+
+    const document = cloneDocument(current);
+    const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
+    const nextEvents = cloneMusicEvents(target.events);
+    const nextEvent = nextEvents[eventIndex];
+    if (nextEvent.kind === 'separator') return { ok: false, reason: 'invalid-selection' };
+    nextEvent.duration = durationBeats;
+    target.events = nextEvents;
+    target.legacyNotation = fidelityForEvents(target.legacyNotation.raw, nextEvents);
     this.structureHistory.record({ document: current, selection });
     this.lastStructureSelection = { ...selection };
     this.syncHistoryAvailability();
@@ -196,7 +242,10 @@ export class SongEditorStore {
         if (target) {
           target.text = word.text;
           if (word.notation !== encodeLegacyNotation(target.events, target.legacyNotation)) {
-            Object.assign(target, replaceWithLegacyNotation(word.notation));
+            const replacement = replaceWithLegacyNotation(word.notation);
+            const events = reconcileEventDurations(target.events, replacement.events);
+            target.events = events;
+            target.legacyNotation = fidelityForEvents(word.notation, events);
           }
         }
       });
@@ -272,6 +321,34 @@ export class SongEditorStore {
       }
     }
   }
+}
+
+function reconcileEventDurations(
+  previousEvents: readonly MusicEvent[],
+  nextEvents: readonly MusicEvent[],
+): MusicEvent[] {
+  const remaining = cloneMusicEvents(previousEvents);
+  return nextEvents.map((event) => {
+    const previousIndex = remaining.findIndex((candidate) => sameEventShape(candidate, event));
+    const previous = previousIndex < 0 ? undefined : remaining.splice(previousIndex, 1)[0];
+    if (!previous || previous.kind === 'separator' || event.kind === 'separator') return event;
+    return { ...event, duration: eventDurationInBeats(previous) };
+  });
+}
+
+function sameEventShape(left: MusicEvent, right: MusicEvent): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === 'separator' || right.kind === 'separator') return true;
+  if (left.kind === 'note' && right.kind === 'note') return samePitch(left.pitch, right.pitch);
+  if (left.kind !== 'chord' || right.kind !== 'chord') return false;
+  return (
+    left.pitches.length === right.pitches.length &&
+    left.pitches.every((pitch, index) => samePitch(pitch, right.pitches[index]))
+  );
+}
+
+function samePitch(left: Pitch, right: Pitch): boolean {
+  return left.degree === right.degree && left.octave === right.octave;
 }
 
 function messageOf(error: unknown): string {

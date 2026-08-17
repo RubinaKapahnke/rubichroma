@@ -109,6 +109,13 @@ export class SongEditorComponent {
       ];
     });
   });
+  readonly selectedMusicEvents = computed(() => {
+    const selection = this.selection();
+    if (!selection) return [];
+    return (
+      this.store.document()?.song.lines[selection.lineIndex]?.words[selection.wordIndex]?.events ?? []
+    );
+  });
   private readonly destroyRef = inject(DestroyRef);
   private readonly overlay = inject(Overlay);
   private readonly selectionPortal = viewChild<CdkPortal>('selectionPortal');
@@ -343,6 +350,28 @@ export class SongEditorComponent {
 
     this.setSingleSelection(result.selection, this.store.document() ?? undefined);
     this.actionNotice.set('Musikereignis entfernt');
+    this.focusSelection(result.selection);
+  }
+
+  setMusicEventDuration(request: { eventIndex: number; durationBeats: number }): void {
+    const selection = this.selection();
+    if (!selection) return;
+    const result = this.store.setMusicEventDuration(
+      selection,
+      request.eventIndex,
+      request.durationBeats,
+    );
+    if (!result.ok) {
+      this.actionNotice.set(
+        result.reason === 'unknown-legacy-fragments'
+          ? 'Unbekannte Legacy-Fragmente verhindern das sichere Ändern der Dauer.'
+          : 'Die Ereignisdauer konnte nicht geändert werden.',
+      );
+      return;
+    }
+
+    this.setSingleSelection(result.selection, this.store.document() ?? undefined);
+    this.actionNotice.set('Ereignisdauer geändert');
     this.focusSelection(result.selection);
   }
 

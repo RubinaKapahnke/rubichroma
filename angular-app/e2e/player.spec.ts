@@ -27,10 +27,10 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.getByTestId('score-sheet')).toBeVisible();
   await expect(page.locator('.score-entry')).toHaveCount(24);
   await expect(page.locator('.score-event')).toHaveCount(42);
-  await expect(page.locator('.score-event.bar-start')).toHaveCount(11);
-  await expect(page.locator('.score-event-bar')).toHaveCount(11);
+  await expect(page.locator('.score-event.bar-start')).toHaveCount(12);
+  await expect(page.locator('.score-event-bar')).toHaveCount(12);
   await expect(page.locator('.score-event-bar').first()).toHaveText('Takt 1');
-  await expect(page.locator('.score-event-bar').last()).toHaveText('Takt 11');
+  await expect(page.locator('.score-event-bar').last()).toHaveText('Takt 12');
   await expect(page.getByTestId('tempo-unit-bpm')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('preview-2')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('loop-enabled')).not.toBeChecked();
@@ -38,7 +38,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expectLaneGeometry(page, 2);
 
   const position = page.getByTestId('position');
-  await expect(position).toHaveAttribute('max', '42');
+  await expect(position).toHaveAttribute('max', '48');
   await position.fill('2.1');
   await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
   await expect(page.getByTestId('lyric-0-0')).toHaveClass(/past/);
@@ -109,11 +109,11 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.getByTestId('loop-summary')).toContainText('Takt 2–3');
 
   await page.getByTestId('loop-start-bar').selectOption('1');
-  await page.getByTestId('loop-end-bar').selectOption('11');
+  await page.getByTestId('loop-end-bar').selectOption('12');
 
   const lastScoreEntry = scoreEntries.last();
   await lastScoreEntry.click();
-  await expect(position).toHaveValue('41');
+  await expect(position).toHaveValue('46');
 
   await page.reload();
   await expect(page.getByTestId('player-title')).toHaveText('Twinkle, Twinkle, Little Star');
@@ -238,8 +238,8 @@ test('starts Twinkle at full duration and applies a prepared range only after lo
   await expect(loop).not.toBeChecked();
   await expect(page.getByTestId('loop-summary')).toContainText('Schlag 1 bis 4');
   await expect(position).toHaveAttribute('min', '0');
-  await expect(position).toHaveAttribute('max', '42');
-  await expect(page.getByTestId('play-status')).toContainText('/ 0:35');
+  await expect(position).toHaveAttribute('max', '48');
+  await expect(page.getByTestId('play-status')).toContainText('/ 0:40');
 
   await page.getByTestId('loop-drawer').locator('summary').click();
   await loop.check();
@@ -250,8 +250,8 @@ test('starts Twinkle at full duration and applies a prepared range only after lo
   await loop.uncheck();
   await expect(loop).not.toBeChecked();
   await expect(position).toHaveAttribute('min', '0');
-  await expect(position).toHaveAttribute('max', '42');
-  await expect(page.getByTestId('play-status')).toContainText('/ 0:35');
+  await expect(position).toHaveAttribute('max', '48');
+  await expect(page.getByTestId('play-status')).toContainText('/ 0:40');
 });
 
 test('keeps the player stable while only the bounded score follows later lines', async ({
