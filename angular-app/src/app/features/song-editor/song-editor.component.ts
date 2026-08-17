@@ -22,7 +22,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router } from '@angular/router';
 import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
-import { MusicEvent, MusicTrackId } from '../../domain/music-event';
+import { MusicEvent, MusicTrackId, Pitch } from '../../domain/music-event';
+import { buildPlayerTimeline } from '../../domain/player-timeline';
 import { SongDocument } from '../../domain/song-document';
 import {
   createMusicSelectionClipboard,
@@ -35,6 +36,7 @@ import {
 } from '../../domain/song-selection-editing';
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
 import { ThemeService } from '../../infrastructure/theme.service';
+import { AudioPreviewService } from '../player/audio-preview.service';
 import { PlayerLaunchService } from '../player/player-launch.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
 import { EditorValue, SongEditorStore } from './song-editor.store';
@@ -68,6 +70,7 @@ export class SongEditorComponent {
   readonly theme = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly playerLaunch = inject(PlayerLaunchService);
+  private readonly audioPreview = inject(AudioPreviewService);
   readonly title = new FormControl('', { nonNullable: true });
   readonly lines = signal<FormArray<LineForm>>(new FormArray<LineForm>([]));
   readonly selectionState = signal<SongSelectionState>({
@@ -185,6 +188,7 @@ export class SongEditorComponent {
       window.visualViewport?.removeEventListener('scroll', this.updateViewportMetrics);
       window.removeEventListener('resize', this.updateViewportMetrics);
       document.documentElement.style.removeProperty('--rc-selection-bar-height');
+      this.audioPreview.stop();
     });
   }
 
@@ -218,6 +222,7 @@ export class SongEditorComponent {
   }
 
   async openPlayer(): Promise<void> {
+    this.audioPreview.stop();
     await this.persist();
     this.playerLaunch.prepare(this.store.document(), this.selectedPositions());
     await this.router.navigateByUrl('/player');
@@ -419,6 +424,39 @@ export class SongEditorComponent {
     this.focusSelection(result.selection);
   }
 
+  previewPitch(pitch: Pitch): void {
+    void this.audioPreview.previewPitches([pitch]);
+  }
+
+  previewMusicEvent(eventIndex: number): void {
+    const selection = this.selection();
+    const document = this.store.document();
+    if (!selection || !document) return;
+    const id = `event-${selection.lineIndex}-${selection.wordIndex}-${eventIndex}`;
+    void this.audioPreview.previewTimeline(
+      buildPlayerTimeline(document).events.filter((event) => event.id === id),
+    );
+  }
+
+  previewBlock(position = this.selection()): void {
+    const document = this.store.document();
+    if (!position || !document) return;
+    void this.audioPreview.previewTimeline(
+      buildPlayerTimeline(document).events.filter(
+        (event) =>
+          event.lineIndex === position.lineIndex && event.wordIndex === position.wordIndex,
+      ),
+    );
+  }
+
+  previewLine(lineIndex: number): void {
+    const document = this.store.document();
+    if (!document) return;
+    void this.audioPreview.previewTimeline(
+      buildPlayerTimeline(document).events.filter((event) => event.lineIndex === lineIndex),
+    );
+  }
+
   undoStructure(): void {
     const previousSelectionState = this.selectionState();
     const selection = this.store.undoStructure();
@@ -592,6 +630,7 @@ export class SongEditorComponent {
   }
 
   private clearSelection(): void {
+    this.audioPreview.stop();
     this.interactionMode.set('idle');
     this.selectionState.set({ ...EMPTY_SONG_SELECTION, positions: [] });
   }

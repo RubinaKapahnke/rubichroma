@@ -169,6 +169,7 @@ h3 {
 }
 
 .icon-button,
+.preview-action,
 .secondary-action,
 .chord-draft button {
   min-height: 2.75rem;
@@ -231,6 +232,7 @@ mat-form-field {
 }
 
 .event-chip {
+  position: relative;
   display: inline-grid;
   min-width: calc(7.4rem + (var(--duration-beats) - 1) * 2.2rem);
   grid-template-columns: 1fr;

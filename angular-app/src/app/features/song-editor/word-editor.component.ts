@@ -62,6 +62,9 @@ export class WordEditorComponent {
   readonly musicEventRemovalRequested = output<number>();
   readonly musicEventDurationRequested = output<{ eventIndex: number; durationBeats: number }>();
   readonly musicEventAppendRequested = output<{ event: MusicEvent; track: MusicTrackId }>();
+  readonly musicEventPreviewRequested = output<number>();
+  readonly pitchPreviewRequested = output<Pitch>();
+  readonly blockPreviewRequested = output<void>();
   readonly undoRequested = output<void>();
   readonly redoRequested = output<void>();
 
@@ -71,6 +74,7 @@ export class WordEditorComponent {
   readonly chordDraft = signal<Pitch[]>([]);
   readonly notice = signal<string | null>(null);
   readonly moreActionsOpen = signal(false);
+  readonly auditionKeys = signal(false);
   readonly splitIndex = signal<number | null>(null);
   readonly firstSplitEventCount = signal<number | null>(null);
   readonly visibleTextControl = new FormControl('', { nonNullable: true });
@@ -219,6 +223,7 @@ export class WordEditorComponent {
   }
 
   handleKey(key: KalimbaKeyView): void {
+    if (this.auditionKeys()) this.pitchPreviewRequested.emit(key.pitch);
     if (this.insertMode() === 'single') {
       this.append({ kind: 'note', pitch: key.pitch, duration: 1 });
       return;
@@ -245,6 +250,10 @@ export class WordEditorComponent {
 
   removeEvent(index: number): void {
     this.musicEventRemovalRequested.emit(index);
+  }
+
+  previewEvent(index: number): void {
+    this.musicEventPreviewRequested.emit(index);
   }
 
   setEventDuration(eventIndex: number, duration: string): void {

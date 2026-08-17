@@ -126,6 +126,29 @@ describe('SongSheetComponent desktop selection gestures', () => {
     expect(requested).toBe(true);
   });
 
+  it('keeps block selection separate from accessible block and line previews', async () => {
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    const words: unknown[] = [];
+    const lines: number[] = [];
+    const selections: WordSelectionGesture[] = [];
+    fixture.componentInstance.wordPreviewRequested.subscribe((position) => words.push(position));
+    fixture.componentInstance.linePreviewRequested.subscribe((line) => lines.push(line));
+    fixture.componentInstance.wordSelect.subscribe((gesture) => selections.push(gesture));
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="word-preview-0-0"]') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="line-preview-0"]') as HTMLElement).click();
+
+    expect(words).toEqual([{ lineIndex: 0, wordIndex: 0 }]);
+    expect(lines).toEqual([0]);
+    expect(selections).toEqual([]);
+  });
+
   it('remembers a dismissed structure help without touching song storage', async () => {
     localStorage.setItem('kalimba-note-tool-v1', 'song-sentinel');
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();

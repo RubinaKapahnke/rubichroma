@@ -123,6 +123,8 @@
             (multiSelectionRequested)="startMultiSelection()"
             (blockAddRequested)="addSongBlock()"
             (structureAction)="applyStructureAction($event)"
+            (wordPreviewRequested)="previewBlock($event)"
+            (linePreviewRequested)="previewLine($event)"
           />
 
           @if (selectedWord() && !mobileViewport()) {
@@ -194,6 +196,9 @@
       (musicEventAppendRequested)="addMusicEvent($event)"
       (musicEventRemovalRequested)="removeMusicEvent($event)"
       (musicEventDurationRequested)="setMusicEventDuration($event)"
+      (musicEventPreviewRequested)="previewMusicEvent($event)"
+      (pitchPreviewRequested)="previewPitch($event)"
+      (blockPreviewRequested)="previewBlock()"
       (undoRequested)="undoStructure()"
       (redoRequested)="redoStructure()"
     />

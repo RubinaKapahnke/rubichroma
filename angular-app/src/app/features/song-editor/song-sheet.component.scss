@@ -175,6 +175,34 @@
   }
 }
 
+.word-card-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.word-preview-action {
+  position: absolute;
+  z-index: 1;
+  top: 0.25rem;
+  right: 0.25rem;
+  display: grid;
+  width: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  place-items: center;
+  color: var(--rc-color-primary-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: 999px;
+  background: var(--rc-color-surface);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
 .melody-marker {
   display: inline-grid;
   width: 1.5rem;

@@ -367,6 +367,34 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   await expect(page.getByTestId('track-accompaniment')).toBeVisible();
 });
 
+test('previews a line, block and event without changing selection or song data', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  const originalWord = await readStoredWord(page, 0, 0);
+
+  await page.getByTestId('line-preview-0').click();
+  await page.getByTestId('word-preview-0-0').click();
+  await expect(page.getByTestId('word-card-0-0')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('word-editor')).toHaveCount(0);
+  expect(await readStoredWord(page, 0, 0)).toEqual(originalWord);
+
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('event-preview-0').click();
+  await page.getByTestId('block-preview-editor').click();
+  await expect(page.getByTestId('audition-keys')).not.toBeChecked();
+  await page.getByTestId('audition-keys').check();
+  await expect(page.getByText('Ton beim Klick auf Zunge anhören')).toBeVisible();
+  expect(await readStoredWord(page, 0, 0)).toEqual(originalWord);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Editor schließen' }).click();
+  await page.getByTestId('word-card-0-0').click();
+  await expect(page.getByTestId('block-preview-editor')).toBeVisible();
+  await expect(page.getByTestId('event-preview-0')).toBeVisible();
+  await expectNoPageOverflow(page);
+});
+
 test('edits title, word and raw notation and restores them after reload', async ({ page }) => {
   await page.goto('/');
   const title = page.getByTestId('song-title');

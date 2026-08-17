@@ -41,6 +41,8 @@ export class SongSheetComponent {
   readonly multiSelectionRequested = output<void>();
   readonly blockAddRequested = output<void>();
   readonly structureAction = output<SongStructureAction>();
+  readonly wordPreviewRequested = output<WordSelection>();
+  readonly linePreviewRequested = output<number>();
   readonly structureHelpVisible = signal(readStructureHelpVisibility());
   private readonly destroyRef = inject(DestroyRef);
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;
@@ -135,6 +137,20 @@ export class SongSheetComponent {
 
   runStructureAction(action: SongStructureAction): void {
     this.structureAction.emit(action);
+  }
+
+  previewWord(event: MouseEvent, lineIndex: number, wordIndex: number): void {
+    event.stopPropagation();
+    this.wordPreviewRequested.emit({ lineIndex, wordIndex });
+  }
+
+  previewLine(event: MouseEvent, lineIndex: number): void {
+    event.stopPropagation();
+    this.linePreviewRequested.emit(lineIndex);
+  }
+
+  hasPlayableEvents(word: WordForm): boolean {
+    return this.wordEvents(word).some((event) => event.kind !== 'separator');
   }
 
   dismissStructureHelp(): void {
