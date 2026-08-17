@@ -1,10 +1,13 @@
 import { isJsonObject, JsonObject } from '../../domain/json-value';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import { exportVanillaCompatible, parseLegacyV0 } from '../legacy/legacy-v0.adapter';
+import { CURRENT_SONG_META_KEY } from './kalimba.database';
 import type { StoredMeta, StoredSong } from './kalimba.database';
 
 export const LOCAL_BACKUP_KIND = 'rubichroma-local-backup';
-export const LOCAL_BACKUP_FORMAT_VERSION = 1;
+export const LOCAL_BACKUP_FORMAT_VERSION = 2;
+const LEGACY_LOCAL_BACKUP_FORMAT_VERSION = 1;
+const LEGACY_BACKUP_SONG_ID = 'song-imported-current';
 
 export interface LocalBackupSnapshot {
   songs: StoredSong[];
@@ -29,10 +32,7 @@ export function serializeLocalBackup(
   snapshot: LocalBackupSnapshot,
   exportedAt = new Date().toISOString(),
 ): string {
-  const current = snapshot.songs.find((song) => song.id === 'current');
-  if (!current || snapshot.songs.length !== 1) {
-    throw new LocalBackupValidationError('Die lokale Liedablage ist nicht konsistent.');
-  }
+  requireCurrentSong(snapshot);
   const json = JSON.stringify(
     {
       kind: LOCAL_BACKUP_KIND,
@@ -42,6 +42,7 @@ export function serializeLocalBackup(
         songs: snapshot.songs.map((song) => ({
           id: song.id,
           revision: song.revision,
+          createdAt: song.createdAt,
           updatedAt: song.updatedAt,
           document: cloneDocument(song.document),
         })),
@@ -60,7 +61,11 @@ export function parseLocalBackup(input: string | unknown): LocalBackupPreview {
   if (root['kind'] !== LOCAL_BACKUP_KIND) {
     throw new LocalBackupValidationError('Die Datei ist keine RubiChroma-Sicherung.');
   }
-  if (root['formatVersion'] !== LOCAL_BACKUP_FORMAT_VERSION) {
+  const formatVersion = root['formatVersion'];
+  if (
+    formatVersion !== LEGACY_LOCAL_BACKUP_FORMAT_VERSION &&
+    formatVersion !== LOCAL_BACKUP_FORMAT_VERSION
+  ) {
     throw new LocalBackupValidationError(
       'Diese Sicherungsversion wird von dieser RubiChroma-Version nicht unterstützt.',
     );
@@ -68,27 +73,45 @@ export function parseLocalBackup(input: string | unknown): LocalBackupPreview {
   const exportedAt = requireDate(root['exportedAt'], 'Der Sicherungszeitpunkt');
   const storage = requireObject(root['storage'], 'Der Sicherungsinhalt');
   const songValues = requireArray(storage['songs'], 'Die Liedablage');
-  if (songValues.length !== 1) {
-    throw new LocalBackupValidationError('Die Sicherung muss genau ein lokales Lied enthalten.');
+  if (songValues.length === 0) {
+    throw new LocalBackupValidationError('Die Sicherung enthält keine lokalen Lieder.');
   }
   const songs = songValues.map((value, index): StoredSong => {
     const record = requireObject(value, `Lied ${index + 1}`);
-    if (record['id'] !== 'current') {
-      throw new LocalBackupValidationError('Die Sicherung enthält eine unbekannte Liedablage.');
+    const sourceId = record['id'];
+    if (typeof sourceId !== 'string' || sourceId.length === 0) {
+      throw new LocalBackupValidationError('Die Sicherung enthält eine ungültige Lied-ID.');
+    }
+    if (formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION && sourceId !== 'current') {
+      throw new LocalBackupValidationError(
+        'Die ältere Sicherung enthält eine unbekannte Liedablage.',
+      );
+    }
+    if (formatVersion === LOCAL_BACKUP_FORMAT_VERSION && sourceId === 'current') {
+      throw new LocalBackupValidationError('Die Sicherung verwendet noch keine stabile Lied-ID.');
     }
     const revision = record['revision'];
     if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 1) {
       throw new LocalBackupValidationError('Die Liedrevision der Sicherung ist ungültig.');
     }
+    const updatedAt = requireDate(record['updatedAt'], 'Der letzte Speicherzeitpunkt');
     return {
-      id: 'current',
+      id: formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION ? LEGACY_BACKUP_SONG_ID : sourceId,
       revision,
-      updatedAt: requireDate(record['updatedAt'], 'Der letzte Speicherzeitpunkt'),
+      createdAt:
+        formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION
+          ? updatedAt
+          : requireDate(record['createdAt'], 'Der Erstellungszeitpunkt'),
+      updatedAt,
       document: parseCanonicalDocument(record['document']),
     };
   });
+  if (new Set(songs.map((song) => song.id)).size !== songs.length) {
+    throw new LocalBackupValidationError('Die Sicherung enthält doppelte Lied-IDs.');
+  }
+
   const metadataValues = requireArray(storage['metadata'], 'Die Speichermetadaten');
-  const metadata = metadataValues.map((value, index): StoredMeta => {
+  let metadata = metadataValues.map((value, index): StoredMeta => {
     const entry = requireObject(value, `Metadateneintrag ${index + 1}`);
     if (typeof entry['key'] !== 'string' || typeof entry['value'] !== 'string') {
       throw new LocalBackupValidationError('Die Speichermetadaten der Sicherung sind ungültig.');
@@ -98,14 +121,36 @@ export function parseLocalBackup(input: string | unknown): LocalBackupPreview {
   if (new Set(metadata.map((entry) => entry.key)).size !== metadata.length) {
     throw new LocalBackupValidationError('Die Sicherung enthält doppelte Speichermetadaten.');
   }
+  if (formatVersion === LEGACY_LOCAL_BACKUP_FORMAT_VERSION) {
+    metadata = [
+      ...metadata.filter((entry) => entry.key !== CURRENT_SONG_META_KEY),
+      { key: CURRENT_SONG_META_KEY, value: LEGACY_BACKUP_SONG_ID },
+    ];
+  }
 
-  const current = songs[0];
+  const snapshot = { songs, metadata };
+  const current = requireCurrentSong(snapshot);
   return {
     exportedAt,
     title: current.document.song.title,
     lineCount: current.document.song.lines.length,
-    snapshot: { songs, metadata },
+    snapshot,
   };
+}
+
+function requireCurrentSong(snapshot: LocalBackupSnapshot): StoredSong {
+  const currentSongId = snapshot.metadata.find(
+    (entry) => entry.key === CURRENT_SONG_META_KEY,
+  )?.value;
+  const current = snapshot.songs.find((song) => song.id === currentSongId);
+  if (
+    !current ||
+    snapshot.songs.length === 0 ||
+    new Set(snapshot.songs.map((song) => song.id)).size !== snapshot.songs.length
+  ) {
+    throw new LocalBackupValidationError('Die lokale Liedablage ist nicht konsistent.');
+  }
+  return current;
 }
 
 function parseCanonicalDocument(value: unknown): SongDocument {

@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import Dexie from 'dexie';
 import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
 import { createMusicSelectionClipboard } from '../../domain/song-selection-editing';
-import { LEGACY_STORAGE_KEY } from '../../infrastructure/legacy/legacy-v0.adapter';
+import { cloneDocument, SongDocument } from '../../domain/song-document';
+import { LEGACY_STORAGE_KEY, parseLegacyV0 } from '../../infrastructure/legacy/legacy-v0.adapter';
 import { KalimbaDatabase } from '../../infrastructure/persistence/kalimba.database';
 import {
   BrowserSongRepository,
@@ -417,6 +418,63 @@ describe('SongEditorStore structure persistence', () => {
   });
 });
 
+describe('SongEditorStore multi-song save isolation', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    localStorage.clear();
+  });
+
+  it('never projects a late save from the previous song onto the newly opened song', async () => {
+    const first = parseLegacyDocument();
+    const second = cloneDocument(first);
+    second.song.title = 'Second song';
+    let resolveSave!: (document: SongDocument) => void;
+    let saveCandidate: SongDocument | null = null;
+    const delayedSave = new Promise<SongDocument>((resolve) => {
+      resolveSave = resolve;
+    });
+    const repository = {
+      migrateLegacy: vi.fn(async () => cloneDocument(first)),
+      currentSongId: vi.fn(async () => 'song-first'),
+      save: vi.fn((document: SongDocument, songId: string) => {
+        expect(songId).toBe('song-first');
+        saveCandidate = document;
+        return delayedSave;
+      }),
+      openSong: vi.fn(async (songId: string) => {
+        expect(songId).toBe('song-second');
+        return cloneDocument(second);
+      }),
+    };
+    TestBed.configureTestingModule({
+      providers: [SongEditorStore, { provide: BrowserSongRepository, useValue: repository }],
+    });
+    const isolatedStore = TestBed.inject(SongEditorStore);
+    localStorage.setItem(LEGACY_STORAGE_KEY, 'legacy-byte-sentinel');
+    await isolatedStore.initialize();
+
+    const savePromise = isolatedStore.saveEditorValue({
+      title: 'Late first-song edit',
+      lines: first.song.lines.map((line) => ({
+        words: line.words.map((word) => ({ text: word.text, notation: word.legacyNotation.raw })),
+      })),
+    });
+    await expect.poll(() => repository.save.mock.calls.length).toBe(1);
+    await isolatedStore.openSong('song-second');
+    resolveSave(cloneDocument(saveCandidate!));
+    await savePromise;
+
+    expect(isolatedStore.activeSongId()).toBe('song-second');
+    expect(isolatedStore.document()).toEqual(second);
+    expect(isolatedStore.status()).toBe('saved');
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe('legacy-byte-sentinel');
+  });
+});
+
 async function expectSaved(store: SongEditorStore): Promise<void> {
   await expect.poll(() => store.status(), { timeout: 2_000 }).toBe('saved');
+}
+
+function parseLegacyDocument(): SongDocument {
+  return parseLegacyV0(COMPLETE_LEGACY);
 }
