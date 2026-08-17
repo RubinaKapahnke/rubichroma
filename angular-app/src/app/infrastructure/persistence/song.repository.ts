@@ -8,6 +8,13 @@ const MIGRATION_MARKER = 'legacy-v0-imported';
 
 export type TransactionGuard = () => void | Promise<void>;
 
+export interface SongSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class SongRepository {
   constructor(
     readonly database: KalimbaDatabase,
@@ -72,6 +79,28 @@ export class SongRepository {
     if (!resolvedSongId) return null;
     const current = await this.database.songs.get(resolvedSongId);
     return current ? cloneDocument(current.document) : null;
+  }
+
+  async listSongs(): Promise<SongSummary[]> {
+    const records = await this.database.songs.toArray();
+    return records
+      .map((song) => ({
+        id: song.id,
+        title: song.document.song.title,
+        createdAt: song.createdAt,
+        updatedAt: song.updatedAt,
+      }))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  async createSong(document: SongDocument): Promise<StoredSong> {
+    return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
+      const stored = createStored(document, createSongId(), 1);
+      await this.database.songs.add(stored);
+      await this.database.meta.put({ key: CURRENT_SONG_META_KEY, value: stored.id });
+      await this.transactionGuard?.();
+      return cloneStoredSong(stored);
+    });
   }
 
   async save(document: SongDocument, songId?: string): Promise<SongDocument> {
@@ -169,4 +198,8 @@ function createStored(
 
 function createSongId(): string {
   return `song-${crypto.randomUUID()}`;
+}
+
+function cloneStoredSong(song: StoredSong): StoredSong {
+  return { ...song, document: cloneDocument(song.document) };
 }

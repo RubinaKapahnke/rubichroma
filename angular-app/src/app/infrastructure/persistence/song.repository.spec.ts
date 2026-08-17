@@ -3,6 +3,7 @@ import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
 import { encodeLegacyNotation, fidelityForEvents } from '../../domain/legacy-notation-codec';
+import { createEmptySongDocument } from '../../domain/default-document';
 import { MusicEvent } from '../../domain/music-event';
 import { createTrackedWordFields, projectSongWordEvents } from '../../domain/song-document';
 import { parseLegacyV0, stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
@@ -128,6 +129,7 @@ describe('SongRepository', () => {
     second.document.song.title = 'Second song';
     second.revision = 1;
     await repo.database.songs.put(second);
+    const secondUpdatedAt = second.updatedAt;
 
     await repo.openSong(second.id);
     const lateFirstSave = structuredClone(first);
@@ -137,6 +139,52 @@ describe('SongRepository', () => {
     expect(await repo.currentSongId()).toBe(second.id);
     expect((await repo.load(second.id))?.song.title).toBe('Second song');
     expect((await repo.load(firstId))?.song.title).toBe('Late save for first song');
+    expect((await repo.database.songs.get(second.id))?.updatedAt).toBe(secondUpdatedAt);
+  });
+
+  it('creates and lists an independent empty song without altering the existing song', async () => {
+    const repo = repository();
+    const first = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    const created = await repo.createSong(createEmptySongDocument());
+
+    expect(created.id).toMatch(/^song-/);
+    expect(created.id).not.toBe(firstId);
+    expect(created.document.song.title).toBe('Neues Lied');
+    expect(created.document.song.lines[0].words[0].text).toBe('');
+    expect(created.document.keys).toHaveLength(17);
+    expect(await repo.currentSongId()).toBe(created.id);
+    expect(await repo.load(firstId)).toEqual(first);
+    expect(await repo.listSongs()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: firstId, title: first.song.title }),
+        expect.objectContaining({ id: created.id, title: 'Neues Lied' }),
+      ]),
+    );
+  });
+
+  it('rolls back a new song and current selection when creation fails', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated create failure');
+    });
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    fail = true;
+
+    await expect(repo.createSong(createEmptySongDocument())).rejects.toThrow(
+      'simulated create failure',
+    );
+    expect(await repo.currentSongId()).toBe(firstId);
+    expect(await repo.database.songs.count()).toBe(1);
   });
 
   it('keeps the previous current song when switching fails inside the transaction', async () => {

@@ -1,4 +1,4 @@
-import { createTrackedWordFields, SongDocument } from './song-document';
+import { cloneDocument, createTrackedWordFields, SongDocument } from './song-document';
 
 const values = [
   '2″',
@@ -80,3 +80,19 @@ export const DEFAULT_DOCUMENT: SongDocument = {
   })),
   extra: {},
 };
+
+export function createEmptySongDocument(): SongDocument {
+  const document = cloneDocument(DEFAULT_DOCUMENT);
+  document.song = {
+    title: 'Neues Lied',
+    lines: [
+      {
+        words: [{ text: '', ...createTrackedWordFields(''), extra: {} }],
+        extra: {},
+      },
+    ],
+    extra: {},
+  };
+  document.extra = {};
+  return document;
+}

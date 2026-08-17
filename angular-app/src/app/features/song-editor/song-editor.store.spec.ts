@@ -60,6 +60,49 @@ describe('SongEditorStore structure persistence', () => {
     expect(reloaded).toEqual(persisted);
   });
 
+  it('creates a separate empty song and exposes both songs in the local library', async () => {
+    const legacyJson = JSON.stringify(COMPLETE_LEGACY);
+    localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
+    await store.initialize();
+    const firstId = store.activeSongId()!;
+    const first = structuredClone(store.document()!);
+
+    await store.createNewSong();
+
+    expect(store.activeSongId()).not.toBe(firstId);
+    expect(store.document()?.song.title).toBe('Neues Lied');
+    expect(store.document()?.song.lines[0].words[0].text).toBe('');
+    expect(store.document()?.keys).toHaveLength(17);
+    expect(store.songs()).toHaveLength(2);
+    expect(await repository.load(firstId)).toEqual(first);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
+
+    await store.openSong(firstId);
+    expect(store.activeSongId()).toBe(firstId);
+    expect(store.document()).toEqual(first);
+  });
+
+  it('does not write or advance updatedAt when an unchanged editor value is persisted', async () => {
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
+    await store.initialize();
+    const songId = store.activeSongId()!;
+    const before = (await database.songs.get(songId))!;
+    const document = store.document()!;
+
+    await store.saveEditorValue({
+      title: document.song.title,
+      lines: document.song.lines.map((line) => ({
+        words: line.words.map((word) => ({
+          text: word.text,
+          notation: word.legacyNotation.raw,
+        })),
+      })),
+    });
+
+    expect(await database.songs.get(songId)).toEqual(before);
+    expect(store.status()).toBe('saved');
+  });
+
   it('previews and restores a full local backup without touching legacy storage', async () => {
     const legacyJson = JSON.stringify(COMPLETE_LEGACY);
     localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
@@ -436,6 +479,7 @@ describe('SongEditorStore multi-song save isolation', () => {
     const repository = {
       migrateLegacy: vi.fn(async () => cloneDocument(first)),
       currentSongId: vi.fn(async () => 'song-first'),
+      listSongs: vi.fn(async () => []),
       save: vi.fn((document: SongDocument, songId: string) => {
         expect(songId).toBe('song-first');
         saveCandidate = document;

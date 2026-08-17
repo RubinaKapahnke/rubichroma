@@ -95,6 +95,7 @@ export class SongEditorComponent {
   readonly clipboardCount = computed(() => this.musicClipboard()?.sequences.length ?? 0);
   readonly actionNotice = signal<string | null>(null);
   readonly pendingRestore = signal<LocalBackupPreview | null>(null);
+  readonly libraryOpen = signal(false);
   readonly kalimbaKeys = computed(() => {
     const keys = this.store.document()?.keys ?? [];
     return keys.flatMap((key, index): KalimbaKeyView[] => {
@@ -262,6 +263,13 @@ export class SongEditorComponent {
     }).format(new Date(value));
   }
 
+  formatLibraryDate(value: string): string {
+    return new Intl.DateTimeFormat('de-DE', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  }
+
   async confirmLocalRestore(): Promise<void> {
     const preview = this.pendingRestore();
     if (!preview) return;
@@ -282,6 +290,47 @@ export class SongEditorComponent {
     await this.persist();
     this.playerLaunch.prepare(this.store.document(), this.selectedPositions());
     await this.router.navigateByUrl('/player');
+  }
+
+  openLibrary(): void {
+    this.finishEditing();
+    this.libraryOpen.set(true);
+    setTimeout(() =>
+      document.querySelector<HTMLButtonElement>('[data-testid="create-song"]')?.focus(),
+    );
+  }
+
+  closeLibrary(): void {
+    this.libraryOpen.set(false);
+    setTimeout(() =>
+      document.querySelector<HTMLButtonElement>('[data-testid="open-library"]')?.focus(),
+    );
+  }
+
+  async createNewSong(): Promise<void> {
+    try {
+      await this.persist();
+      await this.store.createNewSong();
+      this.libraryOpen.set(false);
+      this.documentMode.set('view');
+      this.clearSelection();
+      this.focusEditorTitle();
+    } catch {
+      // The store keeps the previous song selected when creation fails.
+    }
+  }
+
+  async openLibrarySong(songId: string): Promise<void> {
+    try {
+      await this.persist();
+      await this.store.openSong(songId);
+      this.libraryOpen.set(false);
+      this.documentMode.set('view');
+      this.clearSelection();
+      this.focusEditorTitle();
+    } catch {
+      // The store exposes the switch error without replacing the current document.
+    }
   }
 
   changeTheme(event: Event): void {
