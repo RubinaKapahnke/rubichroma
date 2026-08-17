@@ -415,6 +415,25 @@ export class SongEditorStore {
     }
   }
 
+  async importLocalBackupAsNewSong(preview: LocalBackupPreview): Promise<void> {
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      const imported = await this.repository.importLocalBackupAsNewSong(preview.snapshot);
+      this.activeSongIdState.set(imported.id);
+      this.documentState.set(imported.document);
+      this.persistedDocuments.set(imported.id, imported.document);
+      await this.refreshSongs();
+      this.clearStructureHistory();
+      this.hydrationVersionState.update((version) => version + 1);
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Import als neues Lied fehlgeschlagen: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
   setError(error: unknown): void {
     this.statusState.set('error');
     this.errorState.set(messageOf(error));

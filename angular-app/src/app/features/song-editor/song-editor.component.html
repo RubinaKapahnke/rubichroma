@@ -148,7 +148,7 @@
                 data-testid="backup-import-button"
                 (click)="backupFileInput.click()"
               >
-                Lokale Sicherung wiederherstellen
+                RubiChroma-Sicherung laden
               </button>
               <button
                 type="button"
@@ -304,8 +304,9 @@
                 {{ formatBackupDate(backup.exportedAt) }}
               </p>
               <p id="restore-preview-consequence">
-                Erst mit „Wiederherstellen“ wird das aktuell geöffnete Lied ersetzt. Die historische
-                Legacy-Ablage bleibt unverändert.
+                Importiere dieses Lied als unabhängigen neuen Bibliothekseintrag oder stelle die
+                gesamte lokale Sicherung wieder her. Bis zur Bestätigung bleiben alle Daten
+                unverändert; die historische Legacy-Ablage bleibt immer erhalten.
               </p>
             </div>
             <div class="restore-preview-actions">
@@ -316,6 +317,14 @@
                 (click)="cancelLocalRestore()"
               >
                 Abbrechen
+              </button>
+              <button
+                type="button"
+                class="restore-action"
+                data-testid="backup-import-new-confirm"
+                (click)="confirmLocalBackupImport()"
+              >
+                Als neuen Song importieren
               </button>
               <button
                 type="button"

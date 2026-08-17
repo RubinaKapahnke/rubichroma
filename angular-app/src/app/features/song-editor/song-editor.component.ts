@@ -263,7 +263,7 @@ export class SongEditorComponent {
 
   cancelLocalRestore(): void {
     this.pendingRestore.set(null);
-    this.actionNotice.set('Wiederherstellung abgebrochen');
+    this.actionNotice.set('Sicherungsimport abgebrochen');
   }
 
   formatBackupDate(value: string): string {
@@ -292,6 +292,22 @@ export class SongEditorComponent {
       this.focusEditorTitle();
     } catch {
       // The store exposes a user-facing error and leaves the previous document intact on rollback.
+    }
+  }
+
+  async confirmLocalBackupImport(): Promise<void> {
+    const preview = this.pendingRestore();
+    if (!preview) return;
+    try {
+      await this.persist();
+      await this.store.importLocalBackupAsNewSong(preview);
+      this.pendingRestore.set(null);
+      this.documentMode.set('view');
+      this.clearSelection();
+      this.libraryOpen.set(true);
+      this.actionNotice.set('Sicherung als neues Lied importiert');
+    } catch {
+      // The repository transaction preserves the previous library and active song on failure.
     }
   }
 

@@ -189,7 +189,7 @@ test('exports, previews and atomically restores a full local backup', async ({ p
   });
   await expect(page.getByTestId('restore-preview')).toContainText('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.getByTestId('restore-preview')).toContainText(
-    'Erst mit „Wiederherstellen“ wird das aktuell geöffnete Lied ersetzt',
+    'Importiere dieses Lied als unabhängigen neuen Bibliothekseintrag',
   );
   await expect(page.getByTestId('song-title')).toHaveValue('Temporärer Stand');
   await expectNoPageOverflow(page);
@@ -217,6 +217,84 @@ test('exports, previews and atomically restores a full local backup', async ({ p
   expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
     'legacy-backup-byte-sentinel',
   );
+  await expectNoPageOverflow(page);
+});
+
+test('imports a validated backup repeatedly as independent new library songs', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+  const originalId = (await readLibraryState(page)).currentId;
+
+  const downloadPromise = page.waitForEvent('download');
+  await openDocumentMenu(page);
+  await page.getByTestId('backup-export-button').click();
+  const backupBuffer = await readFile((await (await downloadPromise).path())!);
+
+  await page.getByTestId('song-title').fill('Bisheriger Song bleibt erhalten');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId('backup-file-input').setInputFiles({
+    name: 'rubichroma-sicherung.json',
+    mimeType: 'application/json',
+    buffer: backupBuffer,
+  });
+  await expect(page.getByTestId('restore-preview')).toContainText('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.getByTestId('backup-import-new-confirm')).toHaveText(
+    'Als neuen Song importieren',
+  );
+  await expect(page.getByTestId('song-title')).toHaveValue('Bisheriger Song bleibt erhalten');
+  await expectNoPageOverflow(page);
+  await page.getByTestId('backup-restore-cancel').click();
+  await expect(page.getByTestId('restore-preview')).toHaveCount(0);
+
+  await page.getByTestId('backup-file-input').setInputFiles({
+    name: 'rubichroma-sicherung.json',
+    mimeType: 'application/json',
+    buffer: backupBuffer,
+  });
+  await page.getByTestId('backup-import-new-confirm').click();
+  await expect(page.getByTestId('song-library')).toBeVisible();
+  await page.locator('.document-more-actions > summary').click();
+  await expect(page.locator('.song-library-entry')).toHaveCount(2);
+  await expect(page.locator('.song-library-entry.is-current')).toContainText(
+    'Prüflied ÄÖÜ – drei Zeilen',
+  );
+
+  const firstImportState = await readLibraryState(page);
+  const firstImportId = firstImportState.currentId;
+  const original = firstImportState.songs.find((song) => song.id === originalId);
+  const imported = firstImportState.songs.find((song) => song.id === firstImportId);
+  expect(original?.document.song.title).toBe('Bisheriger Song bleibt erhalten');
+  expect(imported?.createdAt).toBe(imported?.updatedAt);
+  expect(imported?.document.extra['unknownRoot']).toEqual({ mustSurvive: true });
+  expect(firstImportId).not.toBe(originalId);
+
+  await page.getByTestId('backup-file-input').setInputFiles({
+    name: 'rubichroma-sicherung.json',
+    mimeType: 'application/json',
+    buffer: backupBuffer,
+  });
+  await page.getByTestId('backup-import-new-confirm').click();
+  await expect(page.locator('.song-library-entry')).toHaveCount(3);
+  const secondImportId = (await readLibraryState(page)).currentId;
+  expect(new Set([originalId, firstImportId, secondImportId]).size).toBe(3);
+
+  await page.getByTestId('close-library').click();
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('song-title').fill('Import mit Folgeänderung');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+  await page.reload();
+  await expect(page.getByTestId('song-title')).toHaveValue('Import mit Folgeänderung');
   await expectNoPageOverflow(page);
 });
 
@@ -1401,6 +1479,49 @@ async function readPasteState(page: import('@playwright/test').Page): Promise<{
         unknownTarget: targets[0]['extra']['unknownPasteTarget'],
         legacySource: localStorage.getItem('kalimba-note-tool-v1'),
       };
+    } finally {
+      database.close();
+    }
+  });
+}
+
+async function readLibraryState(page: Page): Promise<{
+  currentId: string;
+  songs: Array<{
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    document: Record<string, any>;
+  }>;
+}> {
+  return page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('kalimba-angular-v1');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const transaction = database.transaction(['meta', 'songs']);
+      const currentRequest = transaction.objectStore('meta').get('current-song-id');
+      const songsRequest = transaction.objectStore('songs').getAll();
+      const [current, songs] = await Promise.all([
+        new Promise<{ value: string }>((resolve, reject) => {
+          currentRequest.onsuccess = () => resolve(currentRequest.result as { value: string });
+          currentRequest.onerror = () => reject(currentRequest.error);
+        }),
+        new Promise<
+          Array<{
+            id: string;
+            createdAt: string;
+            updatedAt: string;
+            document: Record<string, any>;
+          }>
+        >((resolve, reject) => {
+          songsRequest.onsuccess = () => resolve(songsRequest.result);
+          songsRequest.onerror = () => reject(songsRequest.error);
+        }),
+      ]);
+      return { currentId: current.value, songs };
     } finally {
       database.close();
     }
