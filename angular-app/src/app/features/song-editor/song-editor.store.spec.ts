@@ -102,6 +102,37 @@ describe('SongEditorStore structure persistence', () => {
     expect(await repository.load()).toEqual(original);
   });
 
+  it('persists a syllable split and restores its exact event assignment through undo and redo', async () => {
+    await store.initialize();
+    const original = structuredClone(store.document()!);
+    const originalEvents = structuredClone(original.song.lines[0].words[0].events);
+    const selection = { lineIndex: 0, wordIndex: 0 };
+
+    const result = store.applyStructureAction(
+      { kind: 'split-block', splitIndex: 4, firstEventCount: 2 },
+      selection,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.selection).toEqual({ lineIndex: 0, wordIndex: 1 });
+    const split = structuredClone(store.document()!);
+    expect(split.song.lines[0].words.slice(0, 2).map((word) => word.text)).toEqual([
+      'Will-',
+      'kommen',
+    ]);
+    expect(split.song.lines[0].words[0].events).toEqual(originalEvents.slice(0, 2));
+    expect(split.song.lines[0].words[1].events).toEqual(originalEvents.slice(2));
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(split);
+
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(original);
+    expect(store.redoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(store.document()).toEqual(split);
+    await expectSaved(store);
+    expect(await repository.load()).toEqual(split);
+  });
+
   it('does not let an older structure snapshot overwrite a newer editor state', async () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
     await store.initialize();

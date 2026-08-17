@@ -686,6 +686,14 @@ function structureFailureMessage(reason: string): string {
       return 'Es gibt keinen passenden Zielblock in der nächsten Zeile.';
     case 'target-has-unknown-legacy-fragments':
       return 'Der Zielblock enthält unbekannte Legacy-Fragmente und wurde deshalb nicht verändert.';
+    case 'invalid-syllable-split':
+      return 'Die gewählte Trennstelle liegt nicht zwischen zwei Buchstaben.';
+    case 'insufficient-split-events':
+      return 'Beiden Silben muss mindestens ein Musikereignis zugeordnet sein.';
+    case 'unsupported-melody-split':
+      return 'Melodieblöcke können in diesem Schritt nicht als Silben geteilt werden.';
+    case 'source-has-unknown-legacy-fragments':
+      return 'Der Block enthält unbekannte Legacy-Fragmente und wurde deshalb nicht verändert.';
     default:
       return 'Die Strukturaktion konnte nicht ausgeführt werden.';
   }

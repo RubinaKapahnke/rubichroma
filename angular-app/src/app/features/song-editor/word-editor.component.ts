@@ -21,7 +21,11 @@ import {
   MusicTrackId,
   Pitch,
 } from '../../domain/music-event';
-import { SongStructureAction } from '../../domain/song-structure-editing';
+import {
+  previewSyllableSplit,
+  SongStructureAction,
+  syllableSplitPoints,
+} from '../../domain/song-structure-editing';
 
 export interface KalimbaKeyView {
   id: string;
@@ -67,6 +71,8 @@ export class WordEditorComponent {
   readonly chordDraft = signal<Pitch[]>([]);
   readonly notice = signal<string | null>(null);
   readonly moreActionsOpen = signal(false);
+  readonly splitIndex = signal<number | null>(null);
+  readonly firstSplitEventCount = signal<number | null>(null);
   readonly visibleTextControl = new FormControl('', { nonNullable: true });
   readonly leftKeys = computed(() => this.keys().filter((key) => key.hand === 'L'));
   readonly rightKeys = computed(() => this.keys().filter((key) => key.hand === 'R'));
@@ -96,16 +102,81 @@ export class WordEditorComponent {
     effect(() => {
       this.testIdSuffix();
       this.moreActionsOpen.set(false);
+      this.splitIndex.set(null);
+      this.firstSplitEventCount.set(null);
     });
   }
 
   events(): MusicEvent[] {
-    return [...(this.structuredEvents() ?? decodeLegacyNotation(this.notationControl().value).events)];
+    return [
+      ...(this.structuredEvents() ?? decodeLegacyNotation(this.notationControl().value).events),
+    ];
   }
 
   eventCountLabel(): string {
     const count = this.events().length;
     return `${count} ${count === 1 ? 'Ereignis' : 'Ereignisse'}`;
+  }
+
+  splitPoints(): number[] {
+    return syllableSplitPoints(this.visibleTextControl.value);
+  }
+
+  splitEventCounts(): number[] {
+    const events = this.events();
+    return Array.from({ length: Math.max(0, events.length - 1) }, (_, index) => index + 1).filter(
+      (count) =>
+        events.slice(0, count).some((event) => event.kind !== 'separator') &&
+        events.slice(count).some((event) => event.kind !== 'separator'),
+    );
+  }
+
+  selectedSplitIndex(): number {
+    const points = this.splitPoints();
+    const selected = this.splitIndex();
+    return selected !== null && points.includes(selected)
+      ? selected
+      : (points[Math.floor(points.length / 2)] ?? 0);
+  }
+
+  selectedFirstEventCount(): number {
+    const counts = this.splitEventCounts();
+    const selected = this.firstSplitEventCount();
+    return selected !== null && counts.includes(selected) ? selected : (counts[0] ?? 0);
+  }
+
+  splitPreview(): { firstText: string; secondText: string } | null {
+    return previewSyllableSplit(this.visibleTextControl.value, this.selectedSplitIndex());
+  }
+
+  previewSyllableSplitFor(splitIndex: number): { firstText: string; secondText: string } | null {
+    return previewSyllableSplit(this.visibleTextControl.value, splitIndex);
+  }
+
+  canSplitSyllable(): boolean {
+    return (
+      !this.isMelodyBlock() &&
+      !this.hasUnknownFragments() &&
+      this.splitPoints().length > 0 &&
+      this.splitEventCounts().length > 0
+    );
+  }
+
+  setSplitIndex(value: string): void {
+    this.splitIndex.set(Number(value));
+  }
+
+  setFirstSplitEventCount(value: string): void {
+    this.firstSplitEventCount.set(Number(value));
+  }
+
+  splitSyllable(): void {
+    if (!this.canSplitSyllable()) return;
+    this.structureAction.emit({
+      kind: 'split-block',
+      splitIndex: this.selectedSplitIndex(),
+      firstEventCount: this.selectedFirstEventCount(),
+    });
   }
 
   toggleMoreActions(event: MouseEvent): void {
@@ -237,8 +308,9 @@ export class WordEditorComponent {
 
   draftLabel(): string {
     return (
-      this.chordDraft().map((pitch) => this.pitchLabel(pitch)).join(' + ') ||
-      'Noch keine Töne gewählt'
+      this.chordDraft()
+        .map((pitch) => this.pitchLabel(pitch))
+        .join(' + ') || 'Noch keine Töne gewählt'
     );
   }
 

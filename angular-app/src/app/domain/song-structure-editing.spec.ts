@@ -3,11 +3,96 @@ import { encodeLegacyNotation, replaceWithLegacyNotation } from './legacy-notati
 import { SongDocument } from './song-document';
 import {
   editSongStructure,
+  previewSyllableSplit,
   SongStructureHistory,
   SongStructureState,
+  syllableSplitPoints,
 } from './song-structure-editing';
 
 describe('song structure editing', () => {
+  it('previews valid manual syllable boundaries without creating a hyphen event', () => {
+    expect(previewSyllableSplit('Twinkle,', 4)).toEqual({
+      firstText: 'Twin-',
+      secondText: 'kle,',
+    });
+    expect(syllableSplitPoints('Ab-')).toEqual([]);
+    expect(previewSyllableSplit('A-b', 1)).toBeNull();
+    expect(previewSyllableSplit('Hallo', 0)).toBeNull();
+  });
+
+  it('splits text and explicitly partitions existing tracks and durations without mutating source', () => {
+    const document = documentFixture();
+    const sourceWord = {
+      text: 'Straße,',
+      ...replaceWithLegacyNotation('1 5 (35)'),
+      extra: { unknownWordField: { remains: true } },
+    };
+    const firstEvent = sourceWord.events[0];
+    const secondEvent = sourceWord.events[1];
+    if (firstEvent.kind === 'separator' || secondEvent.kind === 'separator') {
+      throw new Error('Expected playable fixture events');
+    }
+    sourceWord.events[0] = { ...firstEvent, duration: 2 };
+    sourceWord.events[1] = { ...secondEvent, track: 'accompaniment' };
+    document.song.lines[0].words[0] = sourceWord;
+    const original = structuredClone(document);
+
+    const result = expectSuccess(
+      editSongStructure(state(document), {
+        kind: 'split-block',
+        splitIndex: 4,
+        firstEventCount: 1,
+      }),
+    );
+    const [first, second] = result.state.document.song.lines[0].words;
+
+    expect(first.text).toBe('Stra-');
+    expect(second.text).toBe('ße,');
+    expect(first.events).toEqual([sourceWord.events[0]]);
+    expect(second.events).toEqual(sourceWord.events.slice(1));
+    expect([...first.events, ...second.events]).toEqual(sourceWord.events);
+    expect(first.extra).toEqual(sourceWord.extra);
+    expect(second.extra).toEqual({});
+    expect(result.state.selection).toEqual({ lineIndex: 0, wordIndex: 1 });
+    expect(document).toEqual(original);
+  });
+
+  it('refuses ambiguous or fidelity-risking syllable splits without mutation', () => {
+    const unknown = documentFixture();
+    const unknownOriginal = structuredClone(unknown);
+    expect(
+      editSongStructure(state(unknown), {
+        kind: 'split-block',
+        splitIndex: 3,
+        firstEventCount: 1,
+      }),
+    ).toEqual({ ok: false, reason: 'source-has-unknown-legacy-fragments' });
+    expect(unknown).toEqual(unknownOriginal);
+
+    const oneEvent = documentFixture();
+    oneEvent.song.lines[0].words[0] = {
+      text: 'Hallo',
+      ...replaceWithLegacyNotation('1'),
+      extra: {},
+    };
+    expect(
+      editSongStructure(state(oneEvent), {
+        kind: 'split-block',
+        splitIndex: 2,
+        firstEventCount: 1,
+      }),
+    ).toEqual({ ok: false, reason: 'insufficient-split-events' });
+
+    oneEvent.song.lines[0].words[0].toneCount = 2;
+    expect(
+      editSongStructure(state(oneEvent), {
+        kind: 'split-block',
+        splitIndex: 2,
+        firstEventCount: 1,
+      }),
+    ).toEqual({ ok: false, reason: 'unsupported-melody-split' });
+  });
+
   it('inserts, duplicates and deletes word and melody blocks without mutating the source', () => {
     const source = documentFixture();
     const initial = state(source);
