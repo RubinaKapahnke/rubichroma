@@ -127,7 +127,7 @@ test('switches the inspector directly and dismisses it outside or with Escape', 
   await expect(blockActions).toHaveJSProperty('open', false);
   await blockToggle.click();
   await page.keyboard.press('Escape');
-  await expect(blockActions).toHaveJSProperty('open', false);
+  await expect(page.getByTestId('word-editor')).toBeHidden();
 });
 
 test('keeps help preference, product labels and song storage separate', async ({ page }) => {
@@ -295,6 +295,7 @@ test('edits title, word and raw notation and restores them after reload', async 
   await title.fill('Reload Song äöü');
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('word-0-0').fill('Märchen');
+  await page.getByText('Textnotation und Kompatibilität', { exact: true }).click();
   await page.getByTestId('notation-0-0').fill('(13) 5′-x(');
   // Autosave is debounced by 350 ms; cross that boundary before asserting persistence.
   await page.waitForTimeout(700);
