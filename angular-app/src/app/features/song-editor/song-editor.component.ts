@@ -96,6 +96,16 @@ export class SongEditorComponent {
   readonly actionNotice = signal<string | null>(null);
   readonly pendingRestore = signal<LocalBackupPreview | null>(null);
   readonly libraryOpen = signal(false);
+  readonly libraryQuery = signal('');
+  readonly renamingSongId = signal<string | null>(null);
+  readonly renameTitle = signal('');
+  readonly libraryNotice = signal<string | null>(null);
+  readonly filteredLibrarySongs = computed(() => {
+    const query = this.libraryQuery().trim().toLocaleLowerCase('de-DE');
+    return query
+      ? this.store.songs().filter((song) => song.title.toLocaleLowerCase('de-DE').includes(query))
+      : this.store.songs();
+  });
   readonly kalimbaKeys = computed(() => {
     const keys = this.store.document()?.keys ?? [];
     return keys.flatMap((key, index): KalimbaKeyView[] => {
@@ -292,8 +302,10 @@ export class SongEditorComponent {
     await this.router.navigateByUrl('/player');
   }
 
-  openLibrary(): void {
+  async openLibrary(): Promise<void> {
     this.finishEditing();
+    await this.persist();
+    if (this.store.status() === 'error') return;
     this.libraryOpen.set(true);
     setTimeout(() =>
       document.querySelector<HTMLButtonElement>('[data-testid="create-song"]')?.focus(),
@@ -302,6 +314,8 @@ export class SongEditorComponent {
 
   closeLibrary(): void {
     this.libraryOpen.set(false);
+    this.libraryQuery.set('');
+    this.cancelRename();
     setTimeout(() =>
       document.querySelector<HTMLButtonElement>('[data-testid="open-library"]')?.focus(),
     );
@@ -330,6 +344,52 @@ export class SongEditorComponent {
       this.focusEditorTitle();
     } catch {
       // The store exposes the switch error without replacing the current document.
+    }
+  }
+
+  updateLibraryQuery(event: Event): void {
+    this.libraryQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  startRename(songId: string, title: string): void {
+    this.renamingSongId.set(songId);
+    this.renameTitle.set(title);
+    this.libraryNotice.set(null);
+    setTimeout(() =>
+      document.querySelector<HTMLInputElement>(`[data-testid="rename-song-${songId}"]`)?.focus(),
+    );
+  }
+
+  updateRenameTitle(event: Event): void {
+    this.renameTitle.set((event.target as HTMLInputElement).value);
+  }
+
+  cancelRename(): void {
+    this.renamingSongId.set(null);
+    this.renameTitle.set('');
+  }
+
+  async confirmRename(songId: string): Promise<void> {
+    const title = this.renameTitle().trim();
+    if (!title) {
+      this.libraryNotice.set('Bitte einen Liedtitel eingeben.');
+      return;
+    }
+    try {
+      await this.store.renameSong(songId, title);
+      this.cancelRename();
+      this.libraryNotice.set('Lied umbenannt.');
+    } catch {
+      // The store exposes the persistence error and keeps the previous title.
+    }
+  }
+
+  async duplicateSong(songId: string): Promise<void> {
+    try {
+      await this.store.duplicateSong(songId);
+      this.libraryNotice.set('Unabhängige Kopie angelegt.');
+    } catch {
+      // The store exposes the persistence error and leaves the original untouched.
     }
   }
 

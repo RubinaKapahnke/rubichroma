@@ -186,40 +186,103 @@
               </button>
             </header>
 
-            <button
-              mat-flat-button
-              type="button"
-              class="create-song-action"
-              data-testid="create-song"
-              (click)="createNewSong()"
-            >
-              Neues Lied
-            </button>
+            <div class="song-library-toolbar">
+              <label class="song-library-search">
+                <span>Nach Liedtitel suchen</span>
+                <input
+                  type="search"
+                  data-testid="library-search"
+                  [value]="libraryQuery()"
+                  (input)="updateLibraryQuery($event)"
+                />
+              </label>
+              <span class="library-sort">Sortierung: zuletzt bearbeitet</span>
+              <button
+                mat-flat-button
+                type="button"
+                class="create-song-action"
+                data-testid="create-song"
+                (click)="createNewSong()"
+              >
+                Neues Lied
+              </button>
+            </div>
+
+            @if (libraryNotice(); as notice) {
+              <p class="library-notice" role="status" aria-live="polite">{{ notice }}</p>
+            }
 
             <div class="song-library-list" aria-label="Gespeicherte Lieder">
-              @for (song of store.songs(); track song.id) {
+              @for (song of filteredLibrarySongs(); track song.id) {
                 <article
                   class="song-library-entry"
                   [class.is-current]="song.id === store.activeSongId()"
                   [attr.data-testid]="'library-song-' + song.id"
                 >
-                  <div>
-                    <strong>{{ song.title || 'Lied ohne Titel' }}</strong>
+                  <div class="song-library-identity">
+                    @if (renamingSongId() === song.id) {
+                      <label>
+                        <span class="visually-hidden">Neuer Liedtitel</span>
+                        <input
+                          type="text"
+                          [attr.data-testid]="'rename-song-' + song.id"
+                          [value]="renameTitle()"
+                          (input)="updateRenameTitle($event)"
+                          (keydown.enter)="confirmRename(song.id)"
+                          (keydown.escape)="cancelRename()"
+                        />
+                      </label>
+                    } @else {
+                      <strong>{{ song.title || 'Lied ohne Titel' }}</strong>
+                    }
                     <span>Zuletzt bearbeitet {{ formatLibraryDate(song.updatedAt) }}</span>
                   </div>
-                  @if (song.id === store.activeSongId()) {
-                    <span class="current-song-badge">Geöffnet</span>
-                  } @else {
-                    <button
-                      type="button"
-                      class="secondary-action"
-                      [attr.aria-label]="song.title + ' öffnen'"
-                      (click)="openLibrarySong(song.id)"
-                    >
-                      Öffnen
-                    </button>
-                  }
+                  <div class="song-library-entry-actions">
+                    @if (song.id === store.activeSongId()) {
+                      <span class="current-song-badge">Geöffnet</span>
+                    } @else {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.title + ' öffnen'"
+                        (click)="openLibrarySong(song.id)"
+                      >
+                        Öffnen
+                      </button>
+                    }
+                    @if (renamingSongId() === song.id) {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        (click)="confirmRename(song.id)"
+                      >
+                        Speichern
+                      </button>
+                      <button type="button" class="secondary-action" (click)="cancelRename()">
+                        Abbrechen
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.title + ' umbenennen'"
+                        (click)="startRename(song.id, song.title)"
+                      >
+                        Umbenennen
+                      </button>
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.title + ' duplizieren'"
+                        (click)="duplicateSong(song.id)"
+                      >
+                        Duplizieren
+                      </button>
+                    }
+                  </div>
                 </article>
+              } @empty {
+                <p class="library-empty-state">Kein Lied mit diesem Titel gefunden.</p>
               }
             </div>
           </section>

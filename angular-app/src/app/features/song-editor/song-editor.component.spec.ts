@@ -11,8 +11,26 @@ describe('SongEditorComponent hydration', () => {
   it('replaces the FormArray input reference and renders the imported snapshot immediately', async () => {
     const documentState = signal<SongDocument | null>(null);
     const hydrationVersionState = signal(0);
+    const songsState = signal([
+      {
+        id: 'song-one',
+        title: 'Erstes Lied',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+      {
+        id: 'song-two',
+        title: 'Zweites Lied',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    const renameSong = vi.fn(() => Promise.resolve());
+    const duplicateSong = vi.fn(() => Promise.resolve());
     const store = {
       document: documentState.asReadonly(),
+      activeSongId: signal('song-one'),
+      songs: songsState.asReadonly(),
       hydrationVersion: hydrationVersionState.asReadonly(),
       hasDocument: computed(() => documentState() !== null),
       status: signal('saved'),
@@ -22,6 +40,8 @@ describe('SongEditorComponent hydration', () => {
       initialize: () => Promise.resolve(),
       updateEditorValue: () => null,
       saveEditorValue: () => Promise.resolve(),
+      renameSong,
+      duplicateSong,
     };
     const theme = {
       preference: signal('system'),
@@ -103,6 +123,19 @@ describe('SongEditorComponent hydration', () => {
       { lineIndex: 0, wordIndex: 1 },
     ]);
     expect(fixture.componentInstance.selection()).toEqual({ lineIndex: 0, wordIndex: 0 });
+
+    await fixture.componentInstance.openLibrary();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.song-library-entry')).toHaveLength(2);
+    fixture.componentInstance.libraryQuery.set('zweites');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.song-library-entry')).toHaveLength(1);
+    fixture.componentInstance.startRename('song-two', 'Zweites Lied');
+    fixture.componentInstance.renameTitle.set('Neu benannt');
+    await fixture.componentInstance.confirmRename('song-two');
+    await fixture.componentInstance.duplicateSong('song-one');
+    expect(renameSong).toHaveBeenCalledWith('song-two', 'Neu benannt');
+    expect(duplicateSong).toHaveBeenCalledWith('song-one');
   });
 
   it('latches multi-selection until it is explicitly ended', async () => {

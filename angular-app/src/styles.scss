@@ -407,6 +407,47 @@ app-song-editor .create-song-action {
   justify-self: start;
 }
 
+app-song-editor .song-library-toolbar {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+app-song-editor .song-library-search {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--rc-color-text-muted);
+  font-size: 0.78rem;
+}
+
+app-song-editor .song-library-search input,
+app-song-editor .song-library-identity input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--rc-control-min-size);
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+  font: inherit;
+}
+
+app-song-editor .library-sort {
+  align-self: center;
+  color: var(--rc-color-text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+app-song-editor .library-notice,
+app-song-editor .library-empty-state {
+  margin: 0;
+  color: var(--rc-color-text-muted);
+}
+
 app-song-editor .song-library-list {
   display: grid;
   gap: 0.55rem;
@@ -419,10 +460,11 @@ app-song-editor .song-library-entry {
   border-radius: var(--rc-radius-control);
   background: var(--rc-color-surface-subtle);
 
-  > div {
+  .song-library-identity {
     display: grid;
     min-width: 0;
     gap: 0.2rem;
+    flex: 1 1 auto;
   }
 
   strong {
@@ -434,6 +476,14 @@ app-song-editor .song-library-entry {
     color: var(--rc-color-text-muted);
     font-size: 0.78rem;
   }
+}
+
+app-song-editor .song-library-entry-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 0.4rem;
 }
 
 app-song-editor .song-library-entry.is-current {
@@ -470,8 +520,23 @@ app-song-editor .current-song-badge {
   }
 
   app-song-editor .song-library-header .secondary-action,
-  app-song-editor .song-library-entry .secondary-action {
+  app-song-editor .song-library-entry-actions .secondary-action {
     width: 100%;
+  }
+
+  app-song-editor .song-library-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  app-song-editor .library-sort {
+    white-space: normal;
+  }
+
+  app-song-editor .song-library-entry-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   app-song-editor .topbar .brand-lockup {

@@ -458,6 +458,41 @@ export class SongEditorStore {
     }
   }
 
+  async renameSong(songId: string, title: string): Promise<void> {
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      const stored = await this.repository.renameSong(songId, title);
+      this.persistedDocuments.set(songId, stored.document);
+      if (this.activeSongIdState() === songId) {
+        this.documentState.set(stored.document);
+        this.clearStructureHistory();
+        this.hydrationVersionState.update((version) => version + 1);
+      }
+      await this.refreshSongs();
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Lied konnte nicht umbenannt werden: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
+  async duplicateSong(songId: string): Promise<void> {
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      const stored = await this.repository.duplicateSong(songId);
+      this.persistedDocuments.set(stored.id, stored.document);
+      await this.refreshSongs();
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Lied konnte nicht dupliziert werden: ${messageOf(error)}`);
+      throw error;
+    }
+  }
+
   private async refreshSongs(): Promise<void> {
     this.songsState.set(await this.repository.listSongs());
   }
