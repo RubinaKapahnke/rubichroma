@@ -169,6 +169,7 @@ test('performs block and line structure actions, transfers only events and resto
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
 
   await page.getByTestId('word-card-0-0').click();
@@ -260,6 +261,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 

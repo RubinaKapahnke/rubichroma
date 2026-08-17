@@ -2,9 +2,14 @@ import { DestroyRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
-import { buildPlayerTimeline, PlayerTimelineEvent } from '../../domain/player-timeline';
+import {
+  buildPlayerTimeline,
+  PlayerTimelineEvent,
+  PlayerTrackId,
+} from '../../domain/player-timeline';
 import {
   PLAYER_TRANSPORT_BACKEND,
+  isMetronomeAccent,
   PlayerTransportBackend,
   PlayerTransportService,
 } from './player-transport.service';
@@ -19,6 +24,8 @@ class FakeBackend implements PlayerTransportBackend {
   endCallback: (() => void) | null = null;
   starts = 0;
   pauses = 0;
+  metronome = false;
+  trackEnabled: Record<PlayerTrackId, boolean> = { melody: true, accompaniment: true };
 
   reset(): void {
     this.ticks = 0;
@@ -54,6 +61,12 @@ class FakeBackend implements PlayerTransportBackend {
     this.loop = enabled;
   }
   setVolume(): void {}
+  setTrackEnabled(track: PlayerTrackId, enabled: boolean): void {
+    this.trackEnabled[track] = enabled;
+  }
+  setMetronomeEnabled(enabled: boolean): void {
+    this.metronome = enabled;
+  }
   dispose(): void {}
 }
 
@@ -116,5 +129,36 @@ describe('PlayerTransportService', () => {
     backend.endCallback?.();
     expect(service.positionBeat()).toBe(4);
     expect(service.ended()).toBe(true);
+  });
+
+  it('changes a free bar range without rescheduling events and keeps mixer and metronome independent', () => {
+    const timeline = buildPlayerTimeline(DEFAULT_DOCUMENT);
+    service.configure(timeline, null);
+    const scheduled = backend.scheduled;
+
+    service.setRange({ startBeat: 2, endBeat: 6 });
+    service.setLoop(true);
+    service.setTrackEnabled('accompaniment', false);
+    service.setMetronomeEnabled(true);
+
+    expect(service.rangeStartBeat()).toBe(2);
+    expect(service.rangeEndBeat()).toBe(6);
+    expect(backend.scheduled).toBe(scheduled);
+    expect(backend.trackEnabled).toEqual({ melody: true, accompaniment: false });
+    expect(backend.metronome).toBe(true);
+  });
+
+  it('accents exactly the first beat of every four-beat bar', () => {
+    expect(Array.from({ length: 9 }, (_, beat) => isMetronomeAccent(beat))).toEqual([
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+    ]);
   });
 });

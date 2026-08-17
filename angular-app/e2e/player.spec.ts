@@ -7,6 +7,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'issue-45-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SONG_FIXTURE);
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
@@ -20,8 +21,15 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.getByTestId('flow-panel')).toBeVisible();
   await expect(page.getByTestId('tab-panel')).toHaveCount(0);
   await expect(page.locator('.kalimba-tine')).toHaveCount(17);
+  await expect(page.getByTestId('score-sheet')).toBeVisible();
+  await expect(page.locator('.score-entry')).toHaveCount(6);
+  await expect(page.locator('.score-event.bar-start')).toHaveCount(3);
+  await expect(page.locator('.score-event-bar')).toHaveText(['Takt 1', 'Takt 2', 'Takt 3']);
+  await expect(page.getByTestId('tempo-unit-bpm')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('preview-2')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('loop-enabled')).toBeChecked();
   await expect(page.getByTestId('loop-summary')).toContainText('Schlag 1 bis 6');
+  await expectLaneGeometry(page, 2);
 
   const position = page.getByTestId('position');
   await position.fill('1.1');
@@ -30,6 +38,8 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.locator('.flow-event[data-start="6"]')).toHaveCount(0);
 
   await page.getByTestId('play-toggle').click();
+  await expect(page.getByTestId('play-toggle')).toContainText('Pause');
+  await page.getByTestId('view-flow').click();
   await expect(page.getByTestId('play-toggle')).toContainText('Pause');
   const beforeJank = await position.evaluate((input: HTMLInputElement) => +input.value);
   await blockMainThread(page, 650);
@@ -54,8 +64,14 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
     1,
   );
 
+  await page.getByTestId('tempo-unit-percent').click();
+  await expect(page.getByTestId('tempo-unit-percent')).toHaveAttribute('aria-pressed', 'true');
   await page.getByTestId('speed').fill('50');
-  await expect(page.getByTestId('speed')).toHaveValue('50');
+  await expect(page.getByTestId('tempo-value')).toHaveText('50 %');
+  await page.getByTestId('tempo-unit-bpm').click();
+  await expect(page.getByTestId('tempo-value')).toHaveText('48 BPM');
+  await page.getByTestId('tempo-unit-percent').click();
+  await expect(page.getByTestId('tempo-value')).toHaveText('50 %');
   await position.fill('5.8');
   await page.getByTestId('play-toggle').click();
   await blockMainThread(page, 650);
@@ -65,6 +81,27 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await page.getByTestId('play-toggle').click();
   await page.getByTestId('stop').click();
   await expect(position).toHaveValue('0');
+
+  await page.getByTestId('preview-4').click();
+  await expect(page.getByTestId('preview-4')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('metronome-enabled').check();
+  await page.getByTestId('mixer-drawer').getByText('Mixer').click();
+  await page.getByTestId('track-accompaniment').getByRole('checkbox').uncheck();
+  await expect(page.locator('.flow-event.accompaniment')).toHaveCount(0);
+
+  const scoreEntries = page.locator('.score-entry');
+  await scoreEntries.first().click();
+  await expect(position).toHaveValue('0');
+  await scoreEntries.nth(3).click();
+  await expect(position).toHaveValue('6');
+
+  await page.getByTestId('loop-end-bar').selectOption('3');
+  await page.getByTestId('loop-start-bar').selectOption('2');
+  await expect(page.getByTestId('loop-summary')).toContainText('Takt 2–3');
+
+  const lastScoreEntry = scoreEntries.last();
+  await lastScoreEntry.click();
+  await expect(position).toHaveValue('9');
 
   await page.reload();
   await expect(page.getByTestId('player-title')).toHaveText('Prüflied ÄÖÜ – drei Zeilen');
@@ -98,12 +135,15 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   await expect(page.getByTestId('lyric-window')).toBeVisible();
   await expect(page.locator('.lyric-line[data-line="1"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expectLaneGeometry(page, 2);
 
   const lyrics = await page.getByTestId('lyric-window').boundingBox();
   const flow = await page.getByTestId('flow-panel').boundingBox();
   expect(lyrics).not.toBeNull();
   expect(flow).not.toBeNull();
-  expect(lyrics!.y + lyrics!.height).toBeLessThanOrEqual(flow!.y + 1);
+  const overlapsFlow =
+    lyrics!.y < flow!.y + flow!.height && lyrics!.y + lyrics!.height > flow!.y;
+  expect(overlapsFlow).toBe(false);
 
   await page.getByTestId('position').fill('1.1');
   await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
@@ -111,6 +151,36 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   await expect(page.getByTestId('tab-panel')).toBeVisible();
   await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await page.setViewportSize({ width: 720, height: 844 });
+  await page.getByTestId('view-flow').click();
+  await expect(page.getByTestId('flow-panel')).toBeVisible();
+  await expectLaneGeometry(page, 2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('uses the shared transport for empty lyric passages and surface keyboard controls', async ({
+  page,
+}) => {
+  await page.goto('/player');
+  await expect(page.getByTestId('player-title')).toHaveText('Neuer Kalimba-Song');
+
+  const position = page.getByTestId('position');
+  await position.fill('4.1');
+  await expect(page.locator('.lyric-syllable[aria-current="true"]')).toHaveCount(0);
+  await expect(page.locator('.score-entry')).toHaveCount(2);
+
+  await page.getByTestId('flow-panel').click({ position: { x: 8, y: 8 } });
+  await expect(page.getByTestId('play-toggle')).toContainText('Pause');
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('play-toggle')).toContainText('Start');
+
+  await position.fill('0.1');
+  await expect(page.locator('.kalimba-key.active-key')).toHaveCount(1);
+  await expect(page.locator('.kalimba-key.next-key')).toHaveCount(1);
+  await position.fill('0.55');
+  await expect(page.locator('.kalimba-key.active-key')).toHaveCount(0);
+  await expect(page.locator('.kalimba-key.next-key')).toHaveCount(1);
 });
 
 async function blockMainThread(page: import('@playwright/test').Page, milliseconds: number) {
@@ -120,6 +190,31 @@ async function blockMainThread(page: import('@playwright/test').Page, millisecon
       // Deliberately block visual frames. Tone.Transport remains the authoritative clock.
     }
   }, milliseconds);
+}
+
+async function expectLaneGeometry(page: import('@playwright/test').Page, tolerance: number) {
+  const result = await page.evaluate(() => {
+    const centers = (selector: string) =>
+      [...document.querySelectorAll<HTMLElement>(selector)].map((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left + rect.width / 2;
+      });
+    const lanes = centers('[data-testid^="flow-lane-"]');
+    const keys = centers('[data-testid^="flow-key-"]');
+    const strike = document.querySelector<HTMLElement>('.strike-line')?.getBoundingClientRect();
+    const trackArea = document.querySelector<HTMLElement>('.flow-track-area')?.getBoundingClientRect();
+    return {
+      laneCount: lanes.length,
+      keyCount: keys.length,
+      maxDelta: Math.max(...lanes.map((lane, index) => Math.abs(lane - keys[index]))),
+      strikeWidth: strike?.width ?? 0,
+      trackWidth: trackArea?.width ?? 0,
+    };
+  });
+  expect(result.laneCount).toBe(17);
+  expect(result.keyCount).toBe(17);
+  expect(result.maxDelta).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(result.strikeWidth - result.trackWidth)).toBeLessThanOrEqual(tolerance);
 }
 
 async function readUnknownFields(page: import('@playwright/test').Page): Promise<{

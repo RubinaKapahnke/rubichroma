@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DOCUMENT } from './default-document';
-import { buildPlayerTimeline, contiguousPlayerRange } from './player-timeline';
+import {
+  activeTimelineLaneEvent,
+  activeTimelineWord,
+  buildPlayerTimeline,
+  contiguousPlayerRange,
+  nextTimelineEvent,
+} from './player-timeline';
 import { cloneDocument } from './song-document';
 
 describe('player timeline', () => {
@@ -14,8 +20,49 @@ describe('player timeline', () => {
     expect(timeline.events.map((event) => event.startBeat)).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(timeline.events[3].pitches).toHaveLength(3);
     expect(timeline.totalBeats).toBe(7);
+    expect(timeline.bars).toEqual([
+      { number: 1, startBeat: 0, endBeat: 4 },
+      { number: 2, startBeat: 4, endBeat: 7 },
+    ]);
+    expect(timeline.events[3]).toMatchObject({ track: 'accompaniment', barNumber: 1 });
     expect(timeline.words[0]).toMatchObject({ text: 'Willkommen', startBeat: 0, endBeat: 4 });
     expect(timeline.words[1]).toMatchObject({ text: null, startBeat: 4, endBeat: 7 });
+  });
+
+  it('projects syllable continuation, punctuation and instrumental pauses without placeholder timing', () => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.lines[0].words = [
+      { ...document.song.lines[0].words[0], text: 'Twin-' },
+      { ...document.song.lines[0].words[0], text: 'kle,' },
+      { ...document.song.lines[0].words[0], text: 'won-' },
+      { ...document.song.lines[0].words[0], text: 'der.' },
+      { ...document.song.lines[0].words[1], text: '♪' },
+    ];
+
+    const timeline = buildPlayerTimeline(document);
+    expect(timeline.words[0]).toMatchObject({ text: 'Twin-', continuesWord: true, wordEnd: false });
+    expect(timeline.words[1]).toMatchObject({ text: 'kle,', continuesWord: false, wordEnd: true });
+    expect(timeline.words[2]).toMatchObject({ text: 'won-', continuesWord: true, wordEnd: false });
+    expect(timeline.words[3]).toMatchObject({ text: 'der.', continuesWord: false, wordEnd: true });
+    expect(timeline.words[4].text).toBeNull();
+    expect(activeTimelineWord(timeline, timeline.words[4].startBeat)).toBeNull();
+  });
+
+  it('ends a physical lane at its next attack and exposes a short retrigger pulse plus next melody', () => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.lines[0].words[0].events = [
+      { kind: 'chord', pitches: [{ degree: 1, octave: 0 }, { degree: 3, octave: 0 }], duration: 'quarter' },
+      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 'quarter' },
+    ];
+    document.song.lines[0].words = [document.song.lines[0].words[0]];
+    const timeline = buildPlayerTimeline(document);
+    const lane = timeline.events[0].lanes[0];
+
+    expect(timeline.events[0].laneDurationBeats[0]).toBe(1);
+    expect(activeTimelineLaneEvent(timeline, lane, 0.44)?.id).toBe(timeline.events[0].id);
+    expect(activeTimelineLaneEvent(timeline, lane, 0.46)).toBeNull();
+    expect(activeTimelineLaneEvent(timeline, lane, 1.01)?.id).toBe(timeline.events[1].id);
+    expect(nextTimelineEvent(timeline, 0)?.id).toBe(timeline.events[1].id);
   });
 
   it('keeps separators time-neutral and never turns unknown or instrumental text into placeholders', () => {

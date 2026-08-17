@@ -3,6 +3,8 @@ import { MusicEvent, Pitch } from './music-event';
 import { SongDocument } from './song-document';
 import { SongPosition } from './song-structure-editing';
 
+export type PlayerTrackId = 'melody' | 'accompaniment';
+
 export interface PlayerKey {
   readonly id: string;
   readonly lane: number;
@@ -10,6 +12,12 @@ export interface PlayerKey {
   readonly degreeLabel: string;
   readonly letter: string;
   readonly color: string;
+}
+
+export interface PlayerTimelineBar {
+  readonly number: number;
+  readonly startBeat: number;
+  readonly endBeat: number;
 }
 
 export interface PlayerTimelineEvent {
@@ -21,14 +29,27 @@ export interface PlayerTimelineEvent {
   readonly pitches: readonly Pitch[];
   readonly lanes: readonly number[];
   readonly frequencies: readonly number[];
+  readonly track: PlayerTrackId;
+  readonly barNumber: number;
+  /** Duration per physical lane, clipped by the next attack on that lane. */
+  readonly laneDurationBeats: readonly number[];
   readonly color: string;
 }
 
+/**
+ * Backwards-compatible lyric contract projected from one existing editor word.
+ * Existing documents need no migration: a word remains one timed text segment.
+ * A trailing hyphen declares continuation and stays inside this segment.
+ */
 export interface PlayerTimelineWord {
   readonly id: string;
   readonly lineIndex: number;
   readonly wordIndex: number;
   readonly text: string | null;
+  readonly eventIds: readonly string[];
+  readonly continuesWord: boolean;
+  readonly wordEnd: boolean;
+  readonly barNumber: number;
   readonly startBeat: number;
   readonly endBeat: number;
 }
@@ -45,6 +66,8 @@ export interface PlayerTimeline {
   readonly words: readonly PlayerTimelineWord[];
   readonly lines: readonly PlayerTimelineLine[];
   readonly keys: readonly PlayerKey[];
+  readonly bars: readonly PlayerTimelineBar[];
+  readonly beatsPerBar: number;
   readonly totalBeats: number;
 }
 
@@ -56,6 +79,8 @@ export interface PlayerBeatRange {
 const DEGREE_SEMITONES = [0, 0, 2, 4, 5, 7, 9, 11] as const;
 const CONCERT_C4 = 261.625565;
 const INSTRUMENTAL_TEXT = /^[\s♪♫♩♬]+$/u;
+export const PLAYER_BEATS_PER_BAR = 4;
+export const PLAYER_KEY_PULSE_BEATS = 0.45;
 
 export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
   const keys = playerKeys(document);
@@ -67,6 +92,7 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
   document.song.lines.forEach((line, lineIndex) => {
     line.words.forEach((word, wordIndex) => {
       const startBeat = beat;
+      const eventIds: string[] = [];
       word.events.forEach((event, eventIndex) => {
         if (event.kind === 'separator') return;
         const pitches = eventPitches(event);
@@ -76,8 +102,10 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
         });
         if (mappedKeys.length === 0) return;
         const durationBeats = durationInBeats(event);
+        const id = `event-${lineIndex}-${wordIndex}-${eventIndex}`;
+        eventIds.push(id);
         events.push({
-          id: `event-${lineIndex}-${wordIndex}-${eventIndex}`,
+          id,
           startBeat: beat,
           durationBeats,
           lineIndex,
@@ -85,20 +113,39 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
           pitches: mappedKeys.map((key) => key.pitch),
           lanes: mappedKeys.map((key) => key.lane),
           frequencies: mappedKeys.map((key) => frequencyOf(key.pitch)),
+          track: event.kind === 'chord' ? 'accompaniment' : 'melody',
+          barNumber: Math.floor(beat / PLAYER_BEATS_PER_BAR) + 1,
+          laneDurationBeats: mappedKeys.map(() => durationBeats),
           color: mappedKeys[0].color,
         });
         beat += durationBeats;
       });
+      const text = visibleText(word.text);
+      const continuesWord = text?.endsWith('-') ?? false;
       words.push({
         id: `word-${lineIndex}-${wordIndex}`,
         lineIndex,
         wordIndex,
-        text: visibleText(word.text),
+        text,
+        eventIds,
+        continuesWord,
+        wordEnd: !continuesWord,
+        barNumber: Math.floor(startBeat / PLAYER_BEATS_PER_BAR) + 1,
         startBeat,
         endBeat: beat,
       });
     });
   });
+
+  const clippedEvents = events.map((event) => ({
+    ...event,
+    laneDurationBeats: event.lanes.map((lane) => {
+      const nextStart = events
+        .filter((candidate) => candidate.startBeat > event.startBeat && candidate.lanes.includes(lane))
+        .sort((left, right) => left.startBeat - right.startBeat)[0]?.startBeat;
+      return Math.max(0, Math.min(event.durationBeats, (nextStart ?? Infinity) - event.startBeat));
+    }),
+  }));
 
   const lines = document.song.lines.map((_, lineIndex) => {
     const lineWords = words.filter((word) => word.lineIndex === lineIndex);
@@ -109,8 +156,24 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
       endBeat: lineWords.at(-1)?.endBeat ?? 0,
     };
   });
+  const bars = Array.from(
+    { length: Math.max(1, Math.ceil(beat / PLAYER_BEATS_PER_BAR)) },
+    (_, index) => ({
+      number: index + 1,
+      startBeat: index * PLAYER_BEATS_PER_BAR,
+      endBeat: Math.min(beat, (index + 1) * PLAYER_BEATS_PER_BAR),
+    }),
+  );
 
-  return { events, words, lines, keys, totalBeats: beat };
+  return {
+    events: clippedEvents,
+    words,
+    lines,
+    keys,
+    bars,
+    beatsPerBar: PLAYER_BEATS_PER_BAR,
+    totalBeats: beat,
+  };
 }
 
 export function contiguousPlayerRange(
@@ -165,10 +228,39 @@ export function activeTimelineWord(
   return (
     timeline.words.find(
       (word) =>
+        word.text !== null &&
         word.endBeat > word.startBeat &&
         positionBeat >= word.startBeat &&
         positionBeat < word.endBeat,
     ) ?? null
+  );
+}
+
+export function activeTimelineLaneEvent(
+  timeline: PlayerTimeline,
+  lane: number,
+  positionBeat: number,
+): PlayerTimelineEvent | null {
+  return (
+    timeline.events.find((event) => {
+      const laneIndex = event.lanes.indexOf(lane);
+      if (laneIndex < 0) return false;
+      const visibleDuration = Math.min(
+        event.laneDurationBeats[laneIndex] ?? event.durationBeats,
+        PLAYER_KEY_PULSE_BEATS,
+      );
+      return positionBeat >= event.startBeat && positionBeat < event.startBeat + visibleDuration;
+    }) ?? null
+  );
+}
+
+export function nextTimelineEvent(
+  timeline: PlayerTimeline,
+  positionBeat: number,
+  track: PlayerTrackId = 'melody',
+): PlayerTimelineEvent | null {
+  return (
+    timeline.events.find((event) => event.track === track && event.startBeat > positionBeat) ?? null
   );
 }
 
