@@ -1,9 +1,10 @@
 import { isJsonObject, JsonObject, JsonValue } from '../../domain/json-value';
 import {
   encodeLegacyNotation,
+  fidelityForEvents,
   replaceWithLegacyNotation,
 } from '../../domain/legacy-notation-codec';
-import { eventDurationInBeats } from '../../domain/music-event';
+import { eventDurationInBeats, MusicTrackId } from '../../domain/music-event';
 import { SongDocument, SongLine, SongWord } from '../../domain/song-document';
 
 export const LEGACY_STORAGE_KEY = 'kalimba-note-tool-v1';
@@ -48,6 +49,7 @@ export function parseLegacyV0(input: string | unknown): SongDocument {
         throw new LegacyValidationError(`${path}.toneCount muss eine endliche Zahl sein.`);
       }
       const eventDurations = parseEventDurations(word['eventDurations'], `${path}.eventDurations`);
+      const eventTracks = parseEventTracks(word['eventTracks'], `${path}.eventTracks`);
       const notation = requireString(word['notation'], `${path}.notation`);
       const replacement = replaceWithLegacyNotation(notation, eventDurations);
       if (eventDurations && eventDurations.length !== replacement.events.length) {
@@ -55,11 +57,20 @@ export function parseLegacyV0(input: string | unknown): SongDocument {
           `${path}.eventDurations muss genau einen Eintrag pro Musikereignis enthalten.`,
         );
       }
+      if (eventTracks && eventTracks.length !== replacement.events.length) {
+        throw new LegacyValidationError(
+          `${path}.eventTracks muss genau einen Eintrag pro Musikereignis enthalten.`,
+        );
+      }
+      eventTracks?.forEach((track, index) => {
+        if (track) replacement.events[index].track = track;
+      });
+      if (eventTracks) replacement.legacyNotation = fidelityForEvents(notation, replacement.events);
       return {
         text: requireString(word['text'], `${path}.text`),
         ...replacement,
         ...(toneCountValue === undefined ? {} : { toneCount: toneCountValue }),
-        extra: omit(word, ['text', 'notation', 'toneCount', 'eventDurations']),
+        extra: omit(word, ['text', 'notation', 'toneCount', 'eventDurations', 'eventTracks']),
       };
     });
     return { words, extra: omit(line, ['words']) };
@@ -83,6 +94,7 @@ export function exportVanillaCompatible(document: SongDocument): JsonObject {
         const eventDurations = word.events.map((event) =>
           event.kind === 'separator' ? null : eventDurationInBeats(event),
         );
+        const eventTracks = word.events.map((event) => event.track ?? null);
         return {
           ...word.extra,
           text: word.text,
@@ -90,6 +102,7 @@ export function exportVanillaCompatible(document: SongDocument): JsonObject {
           ...(eventDurations.some((duration) => duration !== null && duration !== 1)
             ? { eventDurations }
             : {}),
+          ...(eventTracks.some((track) => track !== null) ? { eventTracks } : {}),
           ...(word.toneCount === undefined ? {} : { toneCount: word.toneCount }),
         };
       }),
@@ -134,6 +147,16 @@ function parseEventDurations(value: unknown, path: string): (number | null)[] | 
       throw new LegacyValidationError(`${path}[${index}] muss eine positive Zahl oder null sein.`);
     }
     return duration;
+  });
+}
+
+function parseEventTracks(value: unknown, path: string): (MusicTrackId | null)[] | undefined {
+  if (value === undefined) return undefined;
+  return requireArray(value, path).map((track, index) => {
+    if (track === null || track === 'melody' || track === 'accompaniment') return track;
+    throw new LegacyValidationError(
+      `${path}[${index}] muss melody, accompaniment oder null sein.`,
+    );
   });
 }
 

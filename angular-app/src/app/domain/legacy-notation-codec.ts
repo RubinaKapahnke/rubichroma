@@ -2,6 +2,7 @@ import {
   cloneMusicEvents,
   eventDurationInBeats,
   MusicEvent,
+  musicEventTrack,
   normalizeDurationInBeats,
   Pitch,
 } from './music-event';
@@ -85,12 +86,13 @@ export function fingerprintEvents(events: readonly MusicEvent[]): string {
   const semanticShape = events.map((event) => {
     switch (event.kind) {
       case 'note':
-        return ['n', event.pitch.degree, event.pitch.octave, durationFingerprint(event)];
+        return ['n', event.pitch.degree, event.pitch.octave, durationFingerprint(event), musicEventTrack(event)];
       case 'chord':
         return [
           'c',
           event.pitches.map((pitch) => [pitch.degree, pitch.octave]),
           durationFingerprint(event),
+          musicEventTrack(event),
         ];
       case 'separator':
         return ['s'];

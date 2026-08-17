@@ -50,6 +50,37 @@ html {
   background: var(--rc-color-background);
 }
 
+app-word-editor .track-rows {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+app-word-editor .track-row {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+}
+
+app-word-editor .track-row.is-target { outline: 2px solid var(--rc-color-primary); }
+app-word-editor .track-row > header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+app-word-editor .track-row > header button {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: 999px;
+  color: var(--rc-color-text);
+  background: var(--rc-color-surface);
+  cursor: pointer;
+}
+app-word-editor .track-row > header button[aria-pressed='true'] {
+  color: var(--rc-color-on-primary);
+  border-color: var(--rc-color-primary);
+  background: var(--rc-color-primary);
+}
+
 html[data-theme='dark'] {
   @include mat.theme-overrides(
     (

@@ -194,9 +194,9 @@
               <button type="button" class="score-entry" [class.bar-start]="word.startBeat % playerTimeline.beatsPerBar === 0" [class.score-active]="activeWord()?.id === word.id" [class.score-played]="word.endBeat <= transport.positionBeat()" [style.--note-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-profile-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-score-word]="word.id" [attr.data-testid]="'score-' + word.id" [attr.data-start]="word.startBeat" [attr.aria-current]="activeWord()?.id === word.id ? 'true' : null" (click)="selectScoreWord(word)">
                 <span class="score-event-row">
                   @for (event of eventsForWord(word); track event.id) {
-                    <span class="score-event" [class.bar-start]="event.startBeat % playerTimeline.beatsPerBar === 0" [style.--duration-beats]="event.durationBeats" [attr.data-duration-beats]="event.durationBeats">
+                    <span class="score-event" [class.accompaniment]="event.track === 'accompaniment'" [class.bar-start]="event.startBeat % playerTimeline.beatsPerBar === 0" [style.--duration-beats]="event.durationBeats" [attr.data-duration-beats]="event.durationBeats" [attr.data-track]="event.track">
                       @if (event.startBeat % playerTimeline.beatsPerBar === 0) { <i class="score-event-bar">Takt {{ event.barNumber }}</i> }
-                      <b>{{ eventDegreeLabels(event) }}</b><small>{{ eventLetterLabels(event) }}</small><em>{{ eventDurationLabel(event) }}</em>
+                      <i class="score-track-name">{{ event.track === 'melody' ? 'Melodie' : 'Begleitung' }}</i><b>{{ eventDegreeLabels(event) }}</b><small>{{ eventLetterLabels(event) }}</small><em>{{ eventDurationLabel(event) }}</em>
                     </span>
                   }
                 </span>

@@ -1270,6 +1270,7 @@ button {
   place-items: center;
 
   &.bar-start { border-left: 0.14rem solid var(--rc-color-text-muted); }
+  &.accompaniment { border-bottom: 0.16rem double var(--note-color); }
   b { font-size: 0.58rem; line-height: 1.1; }
   small { font-size: 0.48rem; line-height: 1.1; }
   em {
@@ -1278,6 +1279,13 @@ button {
     font-style: normal;
     line-height: 1.1;
   }
+}
+
+.score-track-name {
+  color: var(--rc-color-text-muted);
+  font-size: 0.38rem;
+  font-style: normal;
+  line-height: 1;
 }
 
 .score-event-bar {

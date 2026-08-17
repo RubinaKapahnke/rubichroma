@@ -9,7 +9,9 @@ import {
 import {
   cloneMusicEvents,
   eventDurationInBeats,
+  hasParallelTineCollision,
   MusicEvent,
+  MusicTrackId,
   Pitch,
 } from '../../domain/music-event';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
@@ -41,7 +43,10 @@ export type SaveStatus = 'loading' | 'saved' | 'saving' | 'error';
 
 export type MusicEventRemovalResult =
   | { ok: true; selection: SongPosition }
-  | { ok: false; reason: 'invalid-selection' | 'unknown-legacy-fragments' };
+  | {
+      ok: false;
+      reason: 'invalid-selection' | 'unknown-legacy-fragments' | 'tine-collision';
+    };
 
 @Injectable({ providedIn: 'root' })
 export class SongEditorStore {
@@ -118,6 +123,42 @@ export class SongEditorStore {
     this.applyStructureSnapshot(result.document);
     void this.persistSnapshot(result.document);
     return result;
+  }
+
+  addMusicEvent(
+    selection: SongPosition,
+    event: MusicEvent,
+    track: MusicTrackId,
+  ): MusicEventRemovalResult {
+    const current = this.documentState();
+    const currentWord = current?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
+    if (!current || !currentWord) return { ok: false, reason: 'invalid-selection' };
+    if (decodeLegacyNotation(currentWord.legacyNotation.raw).hasUnknownFragments) {
+      return { ok: false, reason: 'unknown-legacy-fragments' };
+    }
+
+    const existingEvents = cloneMusicEvents(currentWord.events).map((existing) =>
+      currentWord.events.some((candidate) => candidate.track !== undefined)
+        ? existing
+        : { ...existing, track: 'melody' as const },
+    );
+    const nextEvent = { ...cloneMusicEvents([event])[0], track } as MusicEvent;
+    if (hasParallelTineCollision([...existingEvents, nextEvent])) {
+      return { ok: false, reason: 'tine-collision' };
+    }
+
+    const document = cloneDocument(current);
+    const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
+    const nextEvents = [...existingEvents, nextEvent];
+    const notation = encodeLegacyNotation(nextEvents);
+    target.events = nextEvents;
+    target.legacyNotation = fidelityForEvents(notation, nextEvents);
+    this.structureHistory.record({ document: current, selection });
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
+    this.applyStructureSnapshot(document);
+    void this.persistSnapshot(document);
+    return { ok: true, selection: { ...selection } };
   }
 
   removeMusicEvent(selection: SongPosition, eventIndex: number): MusicEventRemovalResult {
@@ -332,7 +373,11 @@ function reconcileEventDurations(
     const previousIndex = remaining.findIndex((candidate) => sameEventShape(candidate, event));
     const previous = previousIndex < 0 ? undefined : remaining.splice(previousIndex, 1)[0];
     if (!previous || previous.kind === 'separator' || event.kind === 'separator') return event;
-    return { ...event, duration: eventDurationInBeats(previous) };
+    return {
+      ...event,
+      duration: eventDurationInBeats(previous),
+      ...(previous.track === undefined ? {} : { track: previous.track }),
+    };
   });
 }
 

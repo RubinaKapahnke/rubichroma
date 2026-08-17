@@ -218,6 +218,41 @@ describe('SongEditorStore structure persistence', () => {
     expect(store.document()?.song.lines[0].words[0].events[0]).toMatchObject({ duration: 2 });
     await expectSaved(store);
   });
+
+  it('adds an explicit accompaniment event through central history and blocks same-tine attacks', async () => {
+    await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const original = structuredClone(store.document()!);
+
+    expect(
+      store.addMusicEvent(
+        selection,
+        { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1 },
+        'accompaniment',
+      ),
+    ).toEqual({ ok: false, reason: 'tine-collision' });
+    expect(store.document()).toEqual(original);
+
+    expect(
+      store.addMusicEvent(
+        selection,
+        { kind: 'note', pitch: { degree: 7, octave: 0 }, duration: 1 },
+        'accompaniment',
+      ),
+    ).toEqual({ ok: true, selection });
+    expect(store.document()?.song.lines[0].words[0].events.at(-1)).toMatchObject({
+      kind: 'note',
+      track: 'accompaniment',
+    });
+    await expectSaved(store);
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(original);
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()?.song.lines[0].words[0].events.at(-1)).toMatchObject({
+      track: 'accompaniment',
+    });
+    await expectSaved(store);
+  });
 });
 
 async function expectSaved(store: SongEditorStore): Promise<void> {

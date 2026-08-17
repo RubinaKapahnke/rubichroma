@@ -22,6 +22,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router } from '@angular/router';
 import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
+import { MusicEvent, MusicTrackId } from '../../domain/music-event';
 import { SongDocument } from '../../domain/song-document';
 import {
   createMusicSelectionClipboard,
@@ -350,6 +351,27 @@ export class SongEditorComponent {
 
     this.setSingleSelection(result.selection, this.store.document() ?? undefined);
     this.actionNotice.set('Musikereignis entfernt');
+    this.focusSelection(result.selection);
+  }
+
+  addMusicEvent(request: { event: MusicEvent; track: MusicTrackId }): void {
+    const selection = this.selection();
+    if (!selection) return;
+    const result = this.store.addMusicEvent(selection, request.event, request.track);
+    if (!result.ok) {
+      this.actionNotice.set(
+        result.reason === 'tine-collision'
+          ? 'Diese Zunge wird zum selben Anschlag bereits in der anderen Spur gespielt.'
+          : result.reason === 'unknown-legacy-fragments'
+            ? 'Unbekannte Legacy-Fragmente verhindern das sichere Einfügen.'
+            : 'Das Musikereignis konnte nicht eingefügt werden.',
+      );
+      return;
+    }
+    this.setSingleSelection(result.selection, this.store.document() ?? undefined);
+    this.actionNotice.set(
+      request.track === 'melody' ? 'Melodieereignis eingefügt' : 'Begleitereignis eingefügt',
+    );
     this.focusSelection(result.selection);
   }
 

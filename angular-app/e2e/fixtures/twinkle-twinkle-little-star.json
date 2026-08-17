@@ -5,7 +5,7 @@
     "lines": [
       {
         "words": [
-          { "text": "Twinkle,", "notation": "1 1", "eventDurations": [1, 1] },
+          { "text": "Twinkle,", "notation": "1 1 (35)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
           { "text": "twinkle,", "notation": "5 5", "eventDurations": [1, 1] },
           { "text": "little", "notation": "6 6", "eventDurations": [1, 1] },
           { "text": "star", "notation": "5", "eventDurations": [2] }
@@ -13,7 +13,7 @@
       },
       {
         "words": [
-          { "text": "How", "notation": "4 4", "eventDurations": [1, 1] },
+          { "text": "How", "notation": "4 4 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
           { "text": "I", "notation": "3 3", "eventDurations": [1, 1] },
           { "text": "wonder", "notation": "2 2", "eventDurations": [1, 1] },
           { "text": "what you are", "notation": "1", "eventDurations": [2] }
@@ -21,7 +21,7 @@
       },
       {
         "words": [
-          { "text": "Up", "notation": "5 5", "eventDurations": [1, 1] },
+          { "text": "Up", "notation": "5 5 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
           { "text": "above", "notation": "4 4", "eventDurations": [1, 1] },
           { "text": "the world", "notation": "3 3", "eventDurations": [1, 1] },
           { "text": "so high", "notation": "2", "eventDurations": [2] }
@@ -29,7 +29,7 @@
       },
       {
         "words": [
-          { "text": "Like", "notation": "5 5", "eventDurations": [1, 1] },
+          { "text": "Like", "notation": "5 5 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
           { "text": "a diamond", "notation": "4 4", "eventDurations": [1, 1] },
           { "text": "in the", "notation": "3 3", "eventDurations": [1, 1] },
           { "text": "sky", "notation": "2", "eventDurations": [2] }
@@ -37,7 +37,7 @@
       },
       {
         "words": [
-          { "text": "Twinkle,", "notation": "1 1", "eventDurations": [1, 1] },
+          { "text": "Twinkle,", "notation": "1 1 (35)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
           { "text": "twinkle,", "notation": "5 5", "eventDurations": [1, 1] },
           { "text": "little", "notation": "6 6", "eventDurations": [1, 1] },
           { "text": "star", "notation": "5", "eventDurations": [2] }
@@ -45,7 +45,7 @@
       },
       {
         "words": [
-          { "text": "How", "notation": "4 4", "eventDurations": [1, 1] },
+          { "text": "How", "notation": "4 4 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
           { "text": "I", "notation": "3 3", "eventDurations": [1, 1] },
           { "text": "wonder", "notation": "2 2", "eventDurations": [1, 1] },
           { "text": "what you are", "notation": "1", "eventDurations": [2] }

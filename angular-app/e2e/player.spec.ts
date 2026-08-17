@@ -26,9 +26,9 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.locator('.kalimba-tine')).toHaveCount(17);
   await expect(page.getByTestId('score-sheet')).toBeVisible();
   await expect(page.locator('.score-entry')).toHaveCount(24);
-  await expect(page.locator('.score-event')).toHaveCount(42);
-  await expect(page.locator('.score-event.bar-start')).toHaveCount(12);
-  await expect(page.locator('.score-event-bar')).toHaveCount(12);
+  await expect(page.locator('.score-event')).toHaveCount(48);
+  await expect(page.locator('.score-event.bar-start')).toHaveCount(18);
+  await expect(page.locator('.score-event-bar')).toHaveCount(18);
   await expect(page.locator('.score-event-bar').first()).toHaveText('Takt 1');
   await expect(page.locator('.score-event-bar').last()).toHaveText('Takt 12');
   await expect(page.getByTestId('tempo-unit-bpm')).toHaveAttribute('aria-pressed', 'true');
