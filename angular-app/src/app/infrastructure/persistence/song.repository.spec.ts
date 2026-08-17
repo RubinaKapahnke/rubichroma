@@ -6,7 +6,7 @@ import { encodeLegacyNotation, fidelityForEvents } from '../../domain/legacy-not
 import { MusicEvent } from '../../domain/music-event';
 import { createTrackedWordFields, projectSongWordEvents } from '../../domain/song-document';
 import { parseLegacyV0, stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
-import { KalimbaDatabase } from './kalimba.database';
+import { CURRENT_SONG_META_KEY, KalimbaDatabase } from './kalimba.database';
 import { SongRepository } from './song.repository';
 
 Dexie.dependencies.indexedDB = indexedDB;
@@ -114,6 +114,54 @@ describe('SongRepository', () => {
     expect((await repo.load())?.song.title).toBe('Die Schöne – Grüße');
   });
 
+  it('keeps saves bound to their stable song id across a current-song switch', async () => {
+    const repo = repository();
+    const first = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    const firstRecord = (await repo.database.songs.get(firstId))!;
+    const second = structuredClone(firstRecord);
+    second.id = 'song-secondary';
+    second.document.song.title = 'Second song';
+    second.revision = 1;
+    await repo.database.songs.put(second);
+
+    await repo.openSong(second.id);
+    const lateFirstSave = structuredClone(first);
+    lateFirstSave.song.title = 'Late save for first song';
+    await repo.save(lateFirstSave, firstId);
+
+    expect(await repo.currentSongId()).toBe(second.id);
+    expect((await repo.load(second.id))?.song.title).toBe('Second song');
+    expect((await repo.load(firstId))?.song.title).toBe('Late save for first song');
+  });
+
+  it('keeps the previous current song when switching fails inside the transaction', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated switch failure');
+    });
+    const first = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    const second = structuredClone((await repo.database.songs.get(firstId))!);
+    second.id = 'song-switch-target';
+    second.document.song.title = 'Switch target';
+    await repo.database.songs.put(second);
+
+    fail = true;
+    await expect(repo.openSong(second.id)).rejects.toThrow('simulated switch failure');
+
+    expect(await repo.currentSongId()).toBe(firstId);
+    expect(await repo.load()).toEqual(first);
+  });
+
   it('exports and restores the exact song record and related metadata atomically', async () => {
     const repo = repository();
     const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
@@ -180,10 +228,14 @@ describe('SongRepository', () => {
 
     const database = new KalimbaDatabase(name);
     databases.push(database);
-    const stored = await database.songs.get('current');
+    const currentId = (await database.meta.get(CURRENT_SONG_META_KEY))?.value;
+    const stored = currentId ? await database.songs.get(currentId) : undefined;
     const marker = await database.meta.get('legacy-v0-imported');
 
     expect(stored?.revision).toBe(4);
+    expect(stored?.id).toMatch(/^song-/);
+    expect(stored?.id).not.toBe('current');
+    expect(stored?.createdAt).toBe('2025-01-01T00:00:00.000Z');
     expect(stored?.updatedAt).toBe('2025-01-01T00:00:00.000Z');
     expect(marker?.value).toBe('marker');
     expect('notation' in (stored?.document.song.lines[0].words[0] ?? {})).toBe(false);
@@ -232,7 +284,8 @@ describe('SongRepository', () => {
 
     const firstOpen = new KalimbaDatabase(name);
     databases.push(firstOpen);
-    const firstStored = await firstOpen.songs.get('current');
+    const currentId = (await firstOpen.meta.get(CURRENT_SONG_META_KEY))?.value;
+    const firstStored = currentId ? await firstOpen.songs.get(currentId) : undefined;
     const migratedWord = firstStored!.document.song.lines[0].words[0];
     expect(firstStored).toMatchObject({ revision: 8, updatedAt: '2026-08-17T10:00:00.000Z' });
     expect(migratedWord.melodyEvents).toHaveLength(6);
@@ -248,7 +301,11 @@ describe('SongRepository', () => {
     firstOpen.close();
 
     const secondOpen = new KalimbaDatabase(name);
-    const secondStored = await secondOpen.songs.get('current');
+    const reopenedCurrentId = (await secondOpen.meta.get(CURRENT_SONG_META_KEY))?.value;
+    const secondStored = reopenedCurrentId
+      ? await secondOpen.songs.get(reopenedCurrentId)
+      : undefined;
+    expect(reopenedCurrentId).toBe(currentId);
     expect(secondStored).toEqual(firstStored);
     expect(secondStored!.document.song.lines[0].words[0].accompanimentEvents).toHaveLength(1);
     secondOpen.close();
@@ -278,6 +335,33 @@ describe('SongRepository', () => {
     verifier.version(1).stores({ songs: 'id', meta: 'key' });
     const record = await verifier.table('songs').get('current');
     expect(record.document.song.lines[0].words[0].notation).toBe(42);
+    verifier.close();
+    await Dexie.delete(name);
+  });
+
+  it('fails closed when a v3 database has songs but no unambiguous current record', async () => {
+    const name = `upgrade-ambiguous-${crypto.randomUUID()}`;
+    const v3 = new Dexie(name);
+    v3.version(3).stores({ songs: 'id', meta: 'key' });
+    await v3.table('songs').put({
+      id: 'unexpected-song-id',
+      document: parseLegacyV0(COMPLETE_LEGACY),
+      revision: 3,
+      updatedAt: '2026-08-17T11:00:00.000Z',
+    });
+    v3.close();
+
+    const failedUpgrade = new KalimbaDatabase(name);
+    await expect(failedUpgrade.open()).rejects.toThrow(
+      'Dexie-v3-Ablage enthält Lieder ohne eindeutige aktuelle Auswahl.',
+    );
+    failedUpgrade.close();
+
+    const verifier = new Dexie(name);
+    verifier.version(3).stores({ songs: 'id', meta: 'key' });
+    expect((await verifier.table('songs').toArray()).map((song) => song.id)).toEqual([
+      'unexpected-song-id',
+    ]);
     verifier.close();
     await Dexie.delete(name);
   });

@@ -6,9 +6,10 @@ import {
 } from '../../domain/song-document';
 
 export interface StoredSong {
-  id: 'current';
+  id: string;
   document: SongDocument;
   revision: number;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -17,8 +18,10 @@ export interface StoredMeta {
   value: string;
 }
 
+export const CURRENT_SONG_META_KEY = 'current-song-id';
+
 export class KalimbaDatabase extends Dexie {
-  songs!: Table<StoredSong, 'current'>;
+  songs!: Table<StoredSong, string>;
   meta!: Table<StoredMeta, string>;
 
   constructor(name = 'kalimba-angular-v1') {
@@ -33,7 +36,7 @@ export class KalimbaDatabase extends Dexie {
         meta: 'key',
       })
       .upgrade(async (transaction) => {
-        const songs = transaction.table<StoredSong, 'current'>('songs');
+        const songs = transaction.table<LegacyStoredSong, string>('songs');
         const records = await songs.toArray();
         for (const record of records) {
           const migratedDocument = migrateStoredDocument(record.document);
@@ -49,7 +52,7 @@ export class KalimbaDatabase extends Dexie {
         meta: 'key',
       })
       .upgrade(async (transaction) => {
-        const songs = transaction.table<StoredSong, 'current'>('songs');
+        const songs = transaction.table<LegacyStoredSong, string>('songs');
         const records = await songs.toArray();
         for (const record of records) {
           const migratedDocument = migrateStoredDocument(record.document);
@@ -58,7 +61,55 @@ export class KalimbaDatabase extends Dexie {
           }
         }
       });
+    this.version(4)
+      .stores({
+        songs: 'id',
+        meta: 'key',
+      })
+      .upgrade(async (transaction) => {
+        const songs = transaction.table<LegacyStoredSong, string>('songs');
+        const meta = transaction.table<StoredMeta, string>('meta');
+        const records = await songs.toArray();
+        const currentMeta = await meta.get(CURRENT_SONG_META_KEY);
+        const migratedCurrentId = records.some((record) => record.id === 'current')
+          ? createSongId()
+          : null;
+        const migrated = records.map((record): StoredSong => ({
+          ...record,
+          id: record.id === 'current' ? migratedCurrentId! : record.id,
+          document: migrateStoredDocument(record.document),
+          createdAt: record.createdAt ?? record.updatedAt,
+        }));
+        const currentSongId =
+          currentMeta?.value === 'current'
+            ? migratedCurrentId
+            : (currentMeta?.value ?? migratedCurrentId);
+        if (migrated.length > 0 && !currentSongId) {
+          throw new Error('Dexie-v3-Ablage enthält Lieder ohne eindeutige aktuelle Auswahl.');
+        }
+        if (currentSongId && !migrated.some((song) => song.id === currentSongId)) {
+          throw new Error('Dexie-v3-Ablage verweist auf ein unbekanntes aktuelles Lied.');
+        }
+
+        await songs.clear();
+        if (migrated.length > 0) await songs.bulkPut(migrated);
+        if (currentSongId) {
+          await meta.put({ key: CURRENT_SONG_META_KEY, value: currentSongId });
+        }
+      });
   }
+}
+
+interface LegacyStoredSong {
+  id: string;
+  document: SongDocument;
+  revision: number;
+  createdAt?: string;
+  updatedAt: string;
+}
+
+function createSongId(): string {
+  return `song-${crypto.randomUUID()}`;
 }
 
 function migrateStoredDocument(document: SongDocument): SongDocument {

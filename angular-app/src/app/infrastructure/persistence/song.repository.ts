@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import { parseLegacyV0 } from '../legacy/legacy-v0.adapter';
-import { KalimbaDatabase, StoredSong } from './kalimba.database';
+import { CURRENT_SONG_META_KEY, KalimbaDatabase, StoredSong } from './kalimba.database';
 import type { LocalBackupSnapshot } from './local-backup';
 
 const MIGRATION_MARKER = 'legacy-v0-imported';
@@ -18,24 +18,29 @@ export class SongRepository {
     legacyJson: string | null,
     defaultDocument: SongDocument,
   ): Promise<SongDocument> {
-    const [existingMarker, existingSong] = await Promise.all([
+    const [existingMarker, currentSongId] = await Promise.all([
       this.database.meta.get(MIGRATION_MARKER),
-      this.database.songs.get('current'),
+      this.currentSongId(),
     ]);
+    const existingSong = currentSongId ? await this.database.songs.get(currentSongId) : undefined;
     if (existingMarker && !existingSong) {
       throw new Error('Persistenz ist inkonsistent: Migrationsmarker ohne Song.');
     }
     if (existingMarker && existingSong) return cloneDocument(existingSong.document);
+    if (!currentSongId && (await this.database.songs.count()) > 0) {
+      throw new Error('Persistenz ist inkonsistent: Liedablage ohne aktuelle Auswahl.');
+    }
 
     // Parse before opening the transaction. An existing but invalid source must not silently become a default.
     const candidate =
       legacyJson === null ? cloneDocument(defaultDocument) : parseLegacyV0(legacyJson);
 
     return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
-      const [marker, current] = await Promise.all([
+      const [marker, activeMeta] = await Promise.all([
         this.database.meta.get(MIGRATION_MARKER),
-        this.database.songs.get('current'),
+        this.database.meta.get(CURRENT_SONG_META_KEY),
       ]);
+      const current = activeMeta ? await this.database.songs.get(activeMeta.value) : undefined;
       if (marker && !current)
         throw new Error('Persistenz ist inkonsistent: Migrationsmarker ohne Song.');
       if (current) {
@@ -44,31 +49,61 @@ export class SongRepository {
         return cloneDocument(current.document);
       }
 
-      const stored = createStored(candidate, 1);
+      if (await this.database.songs.count()) {
+        throw new Error('Persistenz ist inkonsistent: Liedablage ohne aktuelle Auswahl.');
+      }
+      const stored = createStored(candidate, createSongId(), 1);
       await this.database.songs.put(stored);
       await this.transactionGuard?.();
-      await this.database.meta.put({ key: MIGRATION_MARKER, value: new Date().toISOString() });
+      await this.database.meta.bulkPut([
+        { key: MIGRATION_MARKER, value: new Date().toISOString() },
+        { key: CURRENT_SONG_META_KEY, value: stored.id },
+      ]);
       return cloneDocument(stored.document);
     });
   }
 
-  async load(): Promise<SongDocument | null> {
-    const current = await this.database.songs.get('current');
+  async currentSongId(): Promise<string | null> {
+    return (await this.database.meta.get(CURRENT_SONG_META_KEY))?.value ?? null;
+  }
+
+  async load(songId?: string): Promise<SongDocument | null> {
+    const resolvedSongId = songId ?? (await this.currentSongId());
+    if (!resolvedSongId) return null;
+    const current = await this.database.songs.get(resolvedSongId);
     return current ? cloneDocument(current.document) : null;
   }
 
-  async save(document: SongDocument): Promise<SongDocument> {
-    return this.database.transaction('rw', this.database.songs, async () => {
-      const current = await this.database.songs.get('current');
-      const stored = createStored(document, (current?.revision ?? 0) + 1);
+  async save(document: SongDocument, songId?: string): Promise<SongDocument> {
+    return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
+      const resolvedSongId = songId ?? (await this.currentSongId());
+      if (!resolvedSongId) throw new Error('Kein aktuelles Lied zum Speichern ausgewählt.');
+      const current = await this.database.songs.get(resolvedSongId);
+      if (!current) throw new Error('Das zu speichernde Lied existiert nicht mehr.');
+      const stored = createStored(
+        document,
+        resolvedSongId,
+        current.revision + 1,
+        current.createdAt,
+      );
       await this.database.songs.put(stored);
       await this.transactionGuard?.();
       return cloneDocument(stored.document);
     });
   }
 
-  async replace(document: SongDocument): Promise<SongDocument> {
-    return this.save(document);
+  async replace(document: SongDocument, songId?: string): Promise<SongDocument> {
+    return this.save(document, songId);
+  }
+
+  async openSong(songId: string): Promise<SongDocument> {
+    return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
+      const song = await this.database.songs.get(songId);
+      if (!song) throw new Error('Das ausgewählte Lied wurde nicht gefunden.');
+      await this.database.meta.put({ key: CURRENT_SONG_META_KEY, value: songId });
+      await this.transactionGuard?.();
+      return cloneDocument(song.document);
+    });
   }
 
   async exportLocalBackupSnapshot(): Promise<LocalBackupSnapshot> {
@@ -82,8 +117,15 @@ export class SongRepository {
   }
 
   async restoreLocalBackupSnapshot(snapshot: LocalBackupSnapshot): Promise<SongDocument> {
-    const current = snapshot.songs.find((song) => song.id === 'current');
-    if (!current || snapshot.songs.length !== 1) {
+    const currentEntries = snapshot.metadata.filter((entry) => entry.key === CURRENT_SONG_META_KEY);
+    const currentSongId = currentEntries[0]?.value;
+    const current = snapshot.songs.find((song) => song.id === currentSongId);
+    if (
+      !current ||
+      currentEntries.length !== 1 ||
+      snapshot.songs.length === 0 ||
+      new Set(snapshot.songs.map((song) => song.id)).size !== snapshot.songs.length
+    ) {
       throw new Error('Die Sicherung enthält keine gültige lokale Liedablage.');
     }
     const songs = snapshot.songs.map((song) => ({
@@ -110,11 +152,21 @@ export class BrowserSongRepository extends SongRepository {
   }
 }
 
-function createStored(document: SongDocument, revision: number): StoredSong {
+function createStored(
+  document: SongDocument,
+  id: string,
+  revision: number,
+  createdAt = new Date().toISOString(),
+): StoredSong {
   return {
-    id: 'current',
+    id,
     document: cloneDocument(document),
     revision,
+    createdAt,
     updatedAt: new Date().toISOString(),
   };
+}
+
+function createSongId(): string {
+  return `song-${crypto.randomUUID()}`;
 }

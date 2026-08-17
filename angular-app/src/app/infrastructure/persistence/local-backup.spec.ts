@@ -3,6 +3,7 @@ import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
 import type { JsonObject } from '../../domain/json-value';
 import type { MusicEvent } from '../../domain/music-event';
 import { parseLegacyV0 } from '../legacy/legacy-v0.adapter';
+import { CURRENT_SONG_META_KEY } from './kalimba.database';
 import {
   LOCAL_BACKUP_FORMAT_VERSION,
   LOCAL_BACKUP_KIND,
@@ -52,8 +53,8 @@ describe('local backup format', () => {
     [
       'future format version',
       serializeLocalBackup(representativeSnapshot(), EXPORTED_AT).replace(
-        '"formatVersion": 1',
         '"formatVersion": 2',
+        '"formatVersion": 3',
       ),
     ],
     [
@@ -63,13 +64,55 @@ describe('local backup format', () => {
         formatVersion: LOCAL_BACKUP_FORMAT_VERSION,
         exportedAt: EXPORTED_AT,
         storage: {
-          songs: [{ id: 'current', revision: 1, updatedAt: UPDATED_AT, document: {} }],
-          metadata: [],
+          songs: [
+            {
+              id: 'song-invalid',
+              revision: 1,
+              createdAt: UPDATED_AT,
+              updatedAt: UPDATED_AT,
+              document: {},
+            },
+          ],
+          metadata: [{ key: CURRENT_SONG_META_KEY, value: 'song-invalid' }],
         },
       }),
     ],
   ])('rejects %s before producing a restore snapshot', (_name, json) => {
     expect(() => parseLocalBackup(json)).toThrow(LocalBackupValidationError);
+  });
+
+  it('migrates a version-1 current backup to a stable song id without changing the document', () => {
+    const source = representativeSnapshot().songs[0];
+    const legacyJson = JSON.stringify({
+      kind: LOCAL_BACKUP_KIND,
+      formatVersion: 1,
+      exportedAt: EXPORTED_AT,
+      storage: {
+        songs: [
+          {
+            id: 'current',
+            revision: source.revision,
+            updatedAt: source.updatedAt,
+            document: source.document,
+          },
+        ],
+        metadata: [{ key: 'legacy-v0-imported', value: 'kept' }],
+      },
+    });
+
+    const migrated = parseLocalBackup(legacyJson).snapshot;
+
+    expect(migrated.songs).toEqual([
+      {
+        ...source,
+        id: 'song-imported-current',
+        createdAt: source.updatedAt,
+      },
+    ]);
+    expect(migrated.metadata).toContainEqual({
+      key: CURRENT_SONG_META_KEY,
+      value: 'song-imported-current',
+    });
   });
 });
 
@@ -96,10 +139,28 @@ function representativeSnapshot(): LocalBackupSnapshot {
   word.legacyNotation.trackOrder = ['melody', 'accompaniment'];
   word.legacyNotation.trackMetadataExplicit = true;
   word.extra = { wordTag: ['x', 2] } as JsonObject;
+  const secondDocument = structuredClone(document);
+  secondDocument.song.title = 'Second local song';
   return {
-    songs: [{ id: 'current', revision: 7, updatedAt: UPDATED_AT, document }],
+    songs: [
+      {
+        id: 'song-primary',
+        revision: 7,
+        createdAt: '2026-08-16T08:00:00.000Z',
+        updatedAt: UPDATED_AT,
+        document,
+      },
+      {
+        id: 'song-secondary',
+        revision: 2,
+        createdAt: '2026-08-17T09:00:00.000Z',
+        updatedAt: '2026-08-17T10:00:00.000Z',
+        document: secondDocument,
+      },
+    ],
     metadata: [
       { key: 'legacy-v0-imported', value: '2026-08-17T10:00:00.000Z' },
+      { key: CURRENT_SONG_META_KEY, value: 'song-primary' },
       { key: 'future-setting', value: '{"unknown":true}' },
     ],
   };

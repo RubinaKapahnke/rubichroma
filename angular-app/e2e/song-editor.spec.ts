@@ -75,19 +75,24 @@ test('renders an imported multi-line song immediately, then supports structure u
     });
     try {
       return await new Promise<Record<string, unknown>>((resolve, reject) => {
-        const request = database.transaction('songs').objectStore('songs').get('current');
-        request.onsuccess = () => {
-          const document = request.result.document;
-          resolve({
-            root: document.extra.unknownRoot,
-            song: document.song.extra.unknownSongField,
-            line: document.song.lines[0].extra.unknownLineField,
-            word: document.song.lines[0].words[0].extra.unknownWordField,
-            melodyText: document.song.lines[0].words[2].text,
-            key: document.keys[0].unknownKeyField,
-          });
+        const transaction = database.transaction(['meta', 'songs']);
+        const currentRequest = transaction.objectStore('meta').get('current-song-id');
+        currentRequest.onsuccess = () => {
+          const request = transaction.objectStore('songs').get(currentRequest.result.value);
+          request.onsuccess = () => {
+            const document = request.result.document;
+            resolve({
+              root: document.extra.unknownRoot,
+              song: document.song.extra.unknownSongField,
+              line: document.song.lines[0].extra.unknownLineField,
+              word: document.song.lines[0].words[0].extra.unknownWordField,
+              melodyText: document.song.lines[0].words[2].text,
+              key: document.keys[0].unknownKeyField,
+            });
+          };
+          request.onerror = () => reject(request.error);
         };
-        request.onerror = () => reject(request.error);
+        currentRequest.onerror = () => reject(currentRequest.error);
       });
     } finally {
       database.close();
@@ -148,8 +153,9 @@ test('exports, previews and atomically restores a full local backup', async ({ p
   await page.getByTestId('backup-export-button').click();
   const backupBuffer = await readFile((await (await downloadPromise).path())!);
   const backup = JSON.parse(backupBuffer.toString('utf8')) as Record<string, any>;
-  expect(backup).toMatchObject({ kind: 'rubichroma-local-backup', formatVersion: 1 });
-  expect(backup['storage']['songs'][0]['id']).toBe('current');
+  expect(backup).toMatchObject({ kind: 'rubichroma-local-backup', formatVersion: 2 });
+  expect(backup['storage']['songs'][0]['id']).toMatch(/^song-/);
+  expect(backup['storage']['songs'][0]['createdAt']).toEqual(expect.any(String));
   expect(backup['storage']['songs'][0]['revision']).toBeGreaterThan(0);
   expect(
     backup['storage']['songs'][0]['document']['song']['lines'][0]['words'][0]['extra'][
@@ -163,7 +169,7 @@ test('exports, previews and atomically restores a full local backup', async ({ p
     timeout: 5_000,
   });
   const futureBackup = structuredClone(backup);
-  futureBackup['formatVersion'] = 2;
+  futureBackup['formatVersion'] = 3;
   await page.getByTestId('backup-file-input').setInputFiles({
     name: 'future-backup.json',
     mimeType: 'application/json',
@@ -662,10 +668,15 @@ test('edits title, word and raw notation and restores them after reload', async 
     });
     try {
       return await new Promise<Record<string, unknown>>((resolve, reject) => {
-        const request = database.transaction('songs').objectStore('songs').get('current');
-        request.onsuccess = () =>
-          resolve(request.result.document.song.lines[0].words[0] as Record<string, unknown>);
-        request.onerror = () => reject(request.error);
+        const transaction = database.transaction(['meta', 'songs']);
+        const currentRequest = transaction.objectStore('meta').get('current-song-id');
+        currentRequest.onsuccess = () => {
+          const request = transaction.objectStore('songs').get(currentRequest.result.value);
+          request.onsuccess = () =>
+            resolve(request.result.document.song.lines[0].words[0] as Record<string, unknown>);
+          request.onerror = () => reject(request.error);
+        };
+        currentRequest.onerror = () => reject(currentRequest.error);
       });
     } finally {
       database.close();
@@ -1278,10 +1289,15 @@ async function readStoredWord(
       });
       try {
         return await new Promise<Record<string, any>>((resolve, reject) => {
-          const request = database.transaction('songs').objectStore('songs').get('current');
-          request.onsuccess = () =>
-            resolve(request.result.document.song.lines[lineIndex].words[wordIndex]);
-          request.onerror = () => reject(request.error);
+          const transaction = database.transaction(['meta', 'songs']);
+          const currentRequest = transaction.objectStore('meta').get('current-song-id');
+          currentRequest.onsuccess = () => {
+            const request = transaction.objectStore('songs').get(currentRequest.result.value);
+            request.onsuccess = () =>
+              resolve(request.result.document.song.lines[lineIndex].words[wordIndex]);
+            request.onerror = () => reject(request.error);
+          };
+          currentRequest.onerror = () => reject(currentRequest.error);
         });
       } finally {
         database.close();
@@ -1315,9 +1331,14 @@ async function expectTwinkleState(page: Page): Promise<void> {
     });
     try {
       const document = await new Promise<Record<string, any>>((resolve, reject) => {
-        const request = database.transaction('songs').objectStore('songs').get('current');
-        request.onsuccess = () => resolve(request.result.document);
-        request.onerror = () => reject(request.error);
+        const transaction = database.transaction(['meta', 'songs']);
+        const currentRequest = transaction.objectStore('meta').get('current-song-id');
+        currentRequest.onsuccess = () => {
+          const request = transaction.objectStore('songs').get(currentRequest.result.value);
+          request.onsuccess = () => resolve(request.result.document);
+          request.onerror = () => reject(request.error);
+        };
+        currentRequest.onerror = () => reject(currentRequest.error);
       });
       return {
         keys: document['keys'].length,
@@ -1358,9 +1379,14 @@ async function readPasteState(page: import('@playwright/test').Page): Promise<{
     });
     try {
       const document = await new Promise<Record<string, any>>((resolve, reject) => {
-        const request = database.transaction('songs').objectStore('songs').get('current');
-        request.onsuccess = () => resolve(request.result.document as Record<string, any>);
-        request.onerror = () => reject(request.error);
+        const transaction = database.transaction(['meta', 'songs']);
+        const currentRequest = transaction.objectStore('meta').get('current-song-id');
+        currentRequest.onsuccess = () => {
+          const request = transaction.objectStore('songs').get(currentRequest.result.value);
+          request.onsuccess = () => resolve(request.result.document as Record<string, any>);
+          request.onerror = () => reject(request.error);
+        };
+        currentRequest.onerror = () => reject(currentRequest.error);
       });
       const targets = document['song']['lines'][1]['words'];
       return {
