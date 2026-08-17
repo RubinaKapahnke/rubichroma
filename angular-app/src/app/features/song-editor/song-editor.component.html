@@ -162,7 +162,11 @@
           </div>
         }
 
-        <div class="editor-layout" (click)="dismissInspectorOnBackground($event)">
+        <div
+          class="editor-layout"
+          [class.has-desktop-inspector]="selectedWord() && !mobileViewport()"
+          (click)="dismissInspectorOnBackground($event)"
+        >
           <app-song-sheet
             [lines]="lines()"
             [editMode]="editingEnabled()"

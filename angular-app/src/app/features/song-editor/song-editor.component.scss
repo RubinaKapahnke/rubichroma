@@ -95,7 +95,7 @@ main {
 
 .document-toolbar {
   position: sticky;
-  z-index: 12;
+  z-index: 19;
   top: 4.5rem;
   display: flex;
   align-items: center;
@@ -240,12 +240,21 @@ app-song-sheet {
   min-width: 0;
 }
 
+.editor-layout {
+  box-sizing: border-box;
+  transition: padding-right 160ms ease;
+}
+
+.editor-layout.has-desktop-inspector {
+  padding-right: calc(min(28rem, 42vw) + 1rem);
+}
+
 .desktop-inspector-drawer {
   position: fixed;
   z-index: 18;
   top: 9.75rem;
   right: max(1rem, calc((100vw - 1240px) / 2 + 1rem));
-  width: min(30rem, calc(100vw - 2rem));
+  width: min(28rem, 42vw);
   max-height: calc(100dvh - 10.75rem);
   overflow: auto;
   border: 1px solid var(--rc-color-border);
@@ -356,6 +365,10 @@ app-song-sheet {
 
   .desktop-inspector-drawer {
     display: none;
+  }
+
+  .editor-layout.has-desktop-inspector {
+    padding-right: 0;
   }
 
   .editor-sheet-frame app-word-editor {
