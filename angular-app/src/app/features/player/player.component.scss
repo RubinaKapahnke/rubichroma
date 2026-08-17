@@ -1027,6 +1027,16 @@ button {
     inset -1px 0 rgb(45 48 56 / 30%),
     0 0.28rem 0.4rem rgb(0 0 0 / 35%);
   transition: transform 120ms ease, box-shadow 120ms ease;
+
+  &::before {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 0.28rem;
+    background: var(--music-color);
+    content: '';
+  }
 }
 
 .kalimba-key:nth-child(1),
@@ -1220,6 +1230,7 @@ button {
 .score-line { display: flex; min-width: max-content; gap: 0.2rem; padding-top: 0.9rem; }
 
 .score-entry {
+  --score-color: var(--note-color);
   position: relative;
   display: grid;
   grid-template-rows: auto auto 1fr;
@@ -1228,13 +1239,18 @@ button {
   padding: 0.35rem 0.25rem;
   color: var(--rc-color-text);
   border: 1px solid var(--rc-color-border);
-  border-bottom: 0.18rem solid var(--note-color);
+  border-bottom: 0.18rem solid var(--score-color);
   border-radius: 0.42rem;
   background: var(--rc-color-surface-subtle);
   text-align: center;
 
   &.bar-start { border-left: 0.2rem solid var(--rc-color-text-muted); }
-  &.score-played:not(.score-active) { opacity: 0.48; }
+  &.score-played:not(.score-active) {
+    color: var(--rc-color-text-muted);
+
+    .score-event-row,
+    strong { opacity: 0.48; }
+  }
   &.score-active { outline: 0.18rem solid var(--rc-color-primary); outline-offset: 0.08rem; }
   strong { align-self: end; font-size: 0.7rem; }
 }
@@ -1287,8 +1303,18 @@ summary:focus-visible {
   outline-offset: 0.12rem;
 }
 
-.color-soft .kalimba-key { border-bottom-color: color-mix(in srgb, var(--note-color) 42%, #8f929b); }
-.color-off .kalimba-key { border-bottom-color: #737681; }
+.color-soft .kalimba-key {
+  --music-color: color-mix(in srgb, var(--note-color) 42%, #8f929b);
+  border-bottom-color: var(--music-color);
+}
+.color-off .kalimba-key {
+  --music-color: #737681;
+  border-bottom-color: var(--music-color);
+}
+.color-soft .score-entry {
+  --score-color: color-mix(in srgb, var(--note-color) 42%, #8f929b);
+}
+.color-off .score-entry { --score-color: #737681; }
 
 @media (max-width: 600px) {
   .flow-visual,

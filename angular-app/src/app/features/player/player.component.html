@@ -78,7 +78,7 @@
                 @for (event of visibleEvents(); track event.id) {
                   @for (lane of event.lanes; track lane) {
                     <div class="falling-event-slot" [style.--lane-index]="lane" [style.--flow-progress]="flowProgress(event)" [attr.data-event-id]="event.id" [attr.data-lane]="lane" [attr.data-start]="event.startBeat">
-                      <button type="button" class="flow-event" [class.accompaniment]="event.track === 'accompaniment'" [class.active-event]="activeEvent()?.id === event.id" [style.--note-color]="event.color" [style.height]="laneEventHeight(event, lane)" (click)="selectEvent(event)" [attr.aria-label]="eventDegreeLabel(event, lane) + ', Schlag ' + (event.startBeat + 1)">
+                      <button type="button" class="flow-event" [class.accompaniment]="event.track === 'accompaniment'" [class.active-event]="activeEvent()?.id === event.id" [style.--note-color]="event.color" [style.height]="laneEventHeight(event, lane)" [attr.data-profile-color]="event.color" (click)="selectEvent(event)" [attr.aria-label]="eventDegreeLabel(event, lane) + ', Schlag ' + (event.startBeat + 1)">
                         @if (showDegrees()) { <strong>{{ eventDegreeLabel(event, lane) }}</strong> }
                         @if (showLetters()) { <span>{{ eventLetterLabel(event, lane) }}</span> }
                       </button>
@@ -90,7 +90,7 @@
             </div>
             <div class="kalimba-bed" aria-label="17-Zungen-Kalimba" data-testid="kalimba">
               @for (key of playerTimeline.keys; track key.id) {
-                <div class="kalimba-key kalimba-tine" [class.active-key]="isLaneActive(key.lane)" [class.next-key]="isLaneUpcoming(key.lane)" [class.key-pulse]="isLaneActive(key.lane)" [style.--note-color]="key.color" [attr.data-testid]="'flow-key-' + key.lane" [attr.data-lane]="key.lane" [attr.data-pulse-token]="lanePulseToken(key.lane)">
+                <div class="kalimba-key kalimba-tine" [class.active-key]="isLaneActive(key.lane)" [class.next-key]="isLaneUpcoming(key.lane)" [class.key-pulse]="isLaneActive(key.lane)" [style.--note-color]="key.color" [attr.data-profile-color]="key.color" [attr.data-testid]="'flow-key-' + key.lane" [attr.data-lane]="key.lane" [attr.data-pulse-token]="lanePulseToken(key.lane)">
                   @if (showLetters()) { <strong>{{ key.letter }}</strong> }
                   @if (showDegrees()) {
                     <span class="kalimba-degree"><i aria-hidden="true">{{ octaveDots(key, 'up') }}</i><b>{{ keyDegree(key) }}</b><i aria-hidden="true">{{ octaveDots(key, 'down') }}</i></span>
@@ -106,7 +106,7 @@
               <div class="track-guide accompaniment-guide"><span>Begleitung</span></div>
               @for (event of visibleEvents(); track event.id) {
                 <div class="tab-event-slot" [class.accompaniment]="event.track === 'accompaniment'" [style.--tab-position]="tabPosition(event)" [attr.data-event-id]="event.id" [attr.data-start]="event.startBeat">
-                  <button type="button" class="tab-event" [class.accompaniment]="event.track === 'accompaniment'" [class.active-event]="activeEvent()?.id === event.id" [style.--note-color]="event.color" [style.width]="eventWidth(event)" (click)="selectEvent(event)">
+                  <button type="button" class="tab-event" [class.accompaniment]="event.track === 'accompaniment'" [class.active-event]="activeEvent()?.id === event.id" [style.--note-color]="event.color" [style.width]="eventWidth(event)" [attr.data-profile-color]="event.color" (click)="selectEvent(event)">
                     @if (showDegrees()) { <strong>{{ eventDegreeLabels(event) }}</strong> }
                     @if (showLetters()) { <span>{{ eventLetterLabels(event) }}</span> }
                   </button>
@@ -116,7 +116,7 @@
             </div>
             <div class="kalimba-bed" aria-label="17-Zungen-Kalimba">
               @for (key of playerTimeline.keys; track key.id) {
-                <div class="kalimba-key kalimba-tine" [class.active-key]="isLaneActive(key.lane)" [class.next-key]="isLaneUpcoming(key.lane)" [class.key-pulse]="isLaneActive(key.lane)" [style.--note-color]="key.color" [attr.data-testid]="'tab-key-' + key.lane" [attr.data-lane]="key.lane" [attr.data-pulse-token]="lanePulseToken(key.lane)">
+                <div class="kalimba-key kalimba-tine" [class.active-key]="isLaneActive(key.lane)" [class.next-key]="isLaneUpcoming(key.lane)" [class.key-pulse]="isLaneActive(key.lane)" [style.--note-color]="key.color" [attr.data-profile-color]="key.color" [attr.data-testid]="'tab-key-' + key.lane" [attr.data-lane]="key.lane" [attr.data-pulse-token]="lanePulseToken(key.lane)">
                   @if (showLetters()) { <strong>{{ key.letter }}</strong> }
                   @if (showDegrees()) { <span class="kalimba-degree"><i aria-hidden="true">{{ octaveDots(key, 'up') }}</i><b>{{ keyDegree(key) }}</b><i aria-hidden="true">{{ octaveDots(key, 'down') }}</i></span> }
                 </div>
@@ -191,7 +191,7 @@
         @for (line of playerTimeline.lines; track line.lineIndex) {
           <div class="score-line" [attr.data-testid]="'score-line-' + line.lineIndex">
             @for (word of line.words; track word.id) {
-              <button type="button" class="score-entry" [class.bar-start]="word.startBeat % playerTimeline.beatsPerBar === 0" [class.score-active]="activeWord()?.id === word.id" [class.score-played]="word.endBeat <= transport.positionBeat()" [style.--note-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-score-word]="word.id" [attr.data-testid]="'score-' + word.id" [attr.data-start]="word.startBeat" [attr.aria-current]="activeWord()?.id === word.id ? 'true' : null" (click)="selectScoreWord(word)">
+              <button type="button" class="score-entry" [class.bar-start]="word.startBeat % playerTimeline.beatsPerBar === 0" [class.score-active]="activeWord()?.id === word.id" [class.score-played]="word.endBeat <= transport.positionBeat()" [style.--note-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-profile-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-score-word]="word.id" [attr.data-testid]="'score-' + word.id" [attr.data-start]="word.startBeat" [attr.aria-current]="activeWord()?.id === word.id ? 'true' : null" (click)="selectScoreWord(word)">
                 <span class="score-event-row">
                   @for (event of eventsForWord(word); track event.id) {
                     <span class="score-event" [class.bar-start]="event.startBeat % playerTimeline.beatsPerBar === 0">

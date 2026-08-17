@@ -174,6 +174,57 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('renders the canonical profile colors unchanged across editor and player surfaces', async ({
+  page,
+}) => {
+  const targetColors = ['#2E7975', '#3CB8A6', '#A8DDBF', '#D41C33', '#F78853'];
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(TWINKLE_FIXTURE);
+  await page.getByTestId('word-card-0-0').click();
+
+  for (const color of targetColors) {
+    const key = page.locator(`.key-button[data-profile-color="${color}"]`);
+    await expect(key).toHaveCount(1);
+    expect(await key.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      hexToRgb(color),
+    );
+  }
+  const cEventStripe = page.locator('.event-color-strip [data-profile-color="#2E7975"]').first();
+  await expect(cEventStripe).toBeVisible();
+  expect(await cEventStripe.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+    hexToRgb('#2E7975'),
+  );
+  await page.getByTestId('word-card-0-1').click();
+  const gEventStripe = page.locator('.event-color-strip [data-profile-color="#D41C33"]').first();
+  await expect(gEventStripe).toBeVisible();
+  expect(await gEventStripe.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+    hexToRgb('#D41C33'),
+  );
+
+  await page.getByTestId('open-player').click();
+  await expect(page.getByTestId('color-aid')).toHaveValue('full');
+  for (const color of targetColors) {
+    const key = page.locator(`.kalimba-key[data-profile-color="${color}"]`).first();
+    await expect(key).toBeVisible();
+    expect(
+      await key.evaluate((element) => getComputedStyle(element, '::before').backgroundColor),
+    ).toBe(hexToRgb(color));
+  }
+  for (const color of ['#2E7975', '#D41C33']) {
+    const flowEvent = page.locator(`.flow-event[data-profile-color="${color}"]`).first();
+    await expect(flowEvent).toBeVisible();
+    expect(await flowEvent.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      hexToRgb(color),
+    );
+
+    const scoreEntry = page.locator(`.score-entry[data-profile-color="${color}"]`).first();
+    await expect(scoreEntry).toBeVisible();
+    expect(await scoreEntry.evaluate((element) => getComputedStyle(element).borderBottomColor)).toBe(
+      hexToRgb(color),
+    );
+  }
+});
+
 test('starts Twinkle at full duration and applies a prepared range only after loop activation', async ({
   page,
 }) => {
@@ -325,4 +376,9 @@ async function expectLaneGeometry(page: import('@playwright/test').Page, toleran
   expect(result.keyCount).toBe(17);
   expect(result.maxDelta).toBeLessThanOrEqual(tolerance);
   expect(Math.abs(result.strikeWidth - result.trackWidth)).toBeLessThanOrEqual(tolerance);
+}
+
+function hexToRgb(color: string): string {
+  const value = Number.parseInt(color.slice(1), 16);
+  return `rgb(${value >> 16}, ${(value >> 8) & 255}, ${value & 255})`;
 }
