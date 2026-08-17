@@ -53,7 +53,7 @@ jobs:
       - name: Build production app
         run: pnpm build
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Run browser tests
