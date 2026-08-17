@@ -384,7 +384,6 @@
               type="radio"
               name="insert-mode"
               value="chord"
-              [disabled]="activeTrack() !== 'accompaniment'"
               [checked]="insertMode() === 'chord'"
               (change)="setInsertMode('chord')"
             />

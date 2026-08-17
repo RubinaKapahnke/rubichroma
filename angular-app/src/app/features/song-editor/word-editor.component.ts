@@ -293,10 +293,6 @@ export class WordEditorComponent {
   }
 
   setInsertMode(mode: InsertMode): void {
-    if (mode === 'chord' && this.activeTrack() !== 'accompaniment') {
-      this.notice.set('Akkorde können nur in der Begleitung eingefügt werden.');
-      return;
-    }
     this.insertMode.set(mode);
     this.chordDraft.set([]);
     this.notice.set(null);
@@ -304,7 +300,6 @@ export class WordEditorComponent {
 
   setActiveTrack(track: MusicTrackId): void {
     this.activeTrack.set(track);
-    if (track === 'melody') this.insertMode.set('single');
     this.chordDraft.set([]);
     this.notice.set(null);
   }
