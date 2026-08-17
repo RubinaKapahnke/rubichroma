@@ -40,6 +40,7 @@ export class SongEditorStore {
   private readonly hydrationVersionState = signal(0);
   private readonly canUndoState = signal(false);
   private readonly structureHistory = new SongStructureHistory();
+  private initialization?: Promise<void>;
 
   readonly document = this.documentState.asReadonly();
   readonly status = this.statusState.asReadonly();
@@ -49,6 +50,11 @@ export class SongEditorStore {
   readonly hasDocument = computed(() => this.documentState() !== null);
 
   async initialize(): Promise<void> {
+    this.initialization ??= this.loadInitialDocument();
+    return this.initialization;
+  }
+
+  private async loadInitialDocument(): Promise<void> {
     this.statusState.set('loading');
     this.errorState.set(null);
     try {

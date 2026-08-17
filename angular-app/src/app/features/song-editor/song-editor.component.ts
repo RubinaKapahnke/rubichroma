@@ -13,6 +13,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { Router } from '@angular/router';
 import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { SongDocument } from '../../domain/song-document';
@@ -27,6 +28,7 @@ import {
 } from '../../domain/song-selection-editing';
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
 import { ThemeService } from '../../infrastructure/theme.service';
+import { PlayerLaunchService } from '../player/player-launch.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
 import { EditorValue, SongEditorStore } from './song-editor.store';
 import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component';
@@ -51,6 +53,8 @@ import { KalimbaKeyView, WordEditorComponent } from './word-editor.component';
 export class SongEditorComponent {
   readonly store = inject(SongEditorStore);
   readonly theme = inject(ThemeService);
+  private readonly router = inject(Router);
+  private readonly playerLaunch = inject(PlayerLaunchService);
   readonly title = new FormControl('', { nonNullable: true });
   readonly lines = signal<FormArray<LineForm>>(new FormArray<LineForm>([]));
   readonly selectionState = signal<SongSelectionState>({
@@ -125,6 +129,12 @@ export class SongEditorComponent {
     } catch (error) {
       this.store.setError(error);
     }
+  }
+
+  async openPlayer(): Promise<void> {
+    await this.persist();
+    this.playerLaunch.prepare(this.store.document(), this.selectedPositions());
+    await this.router.navigateByUrl('/player');
   }
 
   changeTheme(event: Event): void {

@@ -4,6 +4,7 @@
 @use '@fontsource/sora/600.css' as sora600;
 @use '@fontsource/sora/700.css' as sora700;
 @use './styles/tokens';
+@use './app/features/player/player.component';
 
 html {
   @include mat.theme(
@@ -150,6 +151,10 @@ input {
   flex: 1;
 }
 
+app-song-editor .player-action {
+  margin-inline-start: auto;
+}
+
 @media (max-width: 600px) {
   .theme-control select {
     min-width: 5.75rem;
@@ -174,5 +179,10 @@ input {
 
   .selection-spacer {
     display: none;
+  }
+
+  app-song-editor .player-action {
+    width: 100%;
+    margin-inline-start: 0;
   }
 }
