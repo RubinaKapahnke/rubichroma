@@ -10,11 +10,32 @@ import {
 } from './song-sheet.component';
 
 describe('SongSheetComponent desktop selection gestures', () => {
+  it('renders a calm full-content view without editing controls', async () => {
+    await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(SongSheetComponent);
+    fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('selection', null);
+    fixture.componentRef.setInput('selectedPositions', []);
+    fixture.componentRef.setInput('touchSelectionActive', false);
+    const selections: WordSelectionGesture[] = [];
+    fixture.componentInstance.wordSelect.subscribe((gesture) => selections.push(gesture));
+    fixture.detectChanges();
+
+    const firstCard = fixture.nativeElement.querySelector('.word-card') as HTMLButtonElement;
+    expect(firstCard.disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="add-song-block"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="line-drag-handle-0"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="word-preview-0-0"]')).toBeNull();
+    firstCard.click();
+    expect(selections).toEqual([]);
+  });
+
   it('maps Shift and Ctrl/Command clicks without losing the clicked position', async () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture: ComponentFixture<SongSheetComponent> =
       TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -48,6 +69,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     const fixture: ComponentFixture<SongSheetComponent> =
       TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -93,6 +115,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -111,6 +134,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -131,6 +155,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -142,7 +167,9 @@ describe('SongSheetComponent desktop selection gestures', () => {
     fixture.componentInstance.wordSelect.subscribe((gesture) => selections.push(gesture));
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('[data-testid="word-preview-0-0"]') as HTMLElement).click();
+    (
+      fixture.nativeElement.querySelector('[data-testid="word-preview-0-0"]') as HTMLElement
+    ).click();
     (fixture.nativeElement.querySelector('[data-testid="line-preview-0"]') as HTMLElement).click();
 
     expect(words).toEqual([{ lineIndex: 0, wordIndex: 0 }]);
@@ -156,6 +183,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines.push(structuredClone(document.song.lines[0]));
     fixture.componentRef.setInput('lines', createSongLinesForm(document));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);
@@ -204,6 +232,7 @@ describe('SongSheetComponent desktop selection gestures', () => {
     await TestBed.configureTestingModule({ imports: [SongSheetComponent] }).compileComponents();
     const fixture = TestBed.createComponent(SongSheetComponent);
     fixture.componentRef.setInput('lines', createSongLinesForm(DEFAULT_DOCUMENT));
+    fixture.componentRef.setInput('editMode', true);
     fixture.componentRef.setInput('selection', null);
     fixture.componentRef.setInput('selectedPositions', []);
     fixture.componentRef.setInput('touchSelectionActive', false);

@@ -1,60 +1,63 @@
-<div class="touch-selection-help" id="touch-selection-help">
-  <span>Gedrückt halten startet die Mehrfachauswahl.</span>
-  @if (!touchSelectionActive()) {
-    <button
-      type="button"
-      data-testid="start-multi-selection"
-      (click)="multiSelectionRequested.emit()"
-    >
-      Mehrfach auswählen
-    </button>
+@if (editMode()) {
+  <div class="touch-selection-help" id="touch-selection-help">
+    <span>Gedrückt halten startet die Mehrfachauswahl.</span>
+    @if (!touchSelectionActive()) {
+      <button
+        type="button"
+        data-testid="start-multi-selection"
+        (click)="multiSelectionRequested.emit()"
+      >
+        Mehrfach auswählen
+      </button>
+    } @else {
+      <strong>Weitere Blöcke antippen.</strong>
+    }
+  </div>
+  @if (structureHelpVisible()) {
+    <section class="sheet-intro" aria-labelledby="song-structure-title" data-testid="sheet-intro">
+      <div>
+        <strong id="song-structure-title">Lied aus Blöcken aufbauen</strong>
+        <p>
+          Beispiel: „Hallo“ ist ein Textblock, ♪ ein Melodieblock. Tippe einen Block zum Bearbeiten
+          an oder lege direkt einen neuen an.
+        </p>
+      </div>
+      <button
+        class="dismiss-help-button"
+        type="button"
+        data-testid="dismiss-structure-help"
+        aria-label="Einstiegshilfe ausblenden"
+        title="Einstiegshilfe ausblenden"
+        (click)="dismissStructureHelp()"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </section>
   } @else {
-    <strong>Weitere Blöcke antippen.</strong>
-  }
-</div>
-@if (structureHelpVisible()) {
-  <section class="sheet-intro" aria-labelledby="song-structure-title" data-testid="sheet-intro">
-    <div>
-      <strong id="song-structure-title">Lied aus Blöcken aufbauen</strong>
-      <p>
-        Beispiel: „Hallo“ ist ein Textblock, ♪ ein Melodieblock. Tippe einen Block zum Bearbeiten an
-        oder lege direkt einen neuen an.
-      </p>
-    </div>
     <button
-      class="dismiss-help-button"
+      class="show-help-button"
       type="button"
-      data-testid="dismiss-structure-help"
-      aria-label="Einstiegshilfe ausblenden"
-      title="Einstiegshilfe ausblenden"
-      (click)="dismissStructureHelp()"
+      data-testid="show-structure-help"
+      (click)="showStructureHelp()"
     >
-      <span aria-hidden="true">×</span>
+      Einstiegshilfe anzeigen
     </button>
-  </section>
-} @else {
+  }
   <button
-    class="show-help-button"
+    class="add-block-button"
     type="button"
-    data-testid="show-structure-help"
-    (click)="showStructureHelp()"
+    data-testid="add-song-block"
+    (click)="blockAddRequested.emit()"
   >
-    Einstiegshilfe anzeigen
+    + Block am Liedende hinzufügen
   </button>
 }
-<button
-  class="add-block-button"
-  type="button"
-  data-testid="add-song-block"
-  (click)="blockAddRequested.emit()"
->
-  + Block am Liedende hinzufügen
-</button>
 <div
   class="song-lines"
+  [class.is-editing]="editMode()"
   data-testid="line-drop-list"
-  aria-label="Bearbeitbare Liedblöcke"
-  aria-describedby="touch-selection-help"
+  [attr.aria-label]="editMode() ? 'Bearbeitbare Liedblöcke' : 'Liedblöcke'"
+  [attr.aria-describedby]="editMode() ? 'touch-selection-help' : null"
 >
   @for (line of lines().controls; track $index; let lineIndex = $index) {
     <section
@@ -67,50 +70,71 @@
       (drop)="dropLineNative($event)"
     >
       <div class="line-heading">
-        <span class="line-number">{{ lineIndex + 1 }}</span>
-        <div class="line-primary-actions">
-          <span
-            class="line-icon-action drag-handle line-drag-handle"
-            role="button"
-            tabindex="0"
-            draggable="true"
-            [attr.data-testid]="'line-drag-handle-' + lineIndex"
-            [attr.aria-label]="
-              'Zeile ' + (lineIndex + 1) + ' verschieben; Pfeil hoch oder runter'
-            "
-            title="Zeile ziehen · Pfeil hoch/runter"
-            (dragstart)="startLineDrag($event, lineIndex)"
-            (dragend)="clearDragState()"
-            (keydown)="moveLineWithKeyboard($event, lineIndex)"
-            >↕</span>
-          <button
-            class="line-icon-action"
-            type="button"
-            [attr.data-testid]="'line-preview-' + lineIndex"
-            [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' anhören'"
-            title="Zeile anhören"
-            (click)="previewLine($event, lineIndex)"
-          >
-            <span aria-hidden="true">▶</span>
-          </button>
-          <button
-            class="add-line-button"
-            type="button"
-            [attr.data-testid]="'line-add-' + lineIndex"
-            [attr.aria-label]="'Zeile nach Zeile ' + (lineIndex + 1) + ' einfügen'"
-            title="Zeile danach einfügen"
-            (click)="runStructureAction({ kind: 'insert-line', lineIndex })"
-          >
-            <span aria-hidden="true">+</span>
-          </button>
-          <button class="line-icon-action" type="button" [attr.data-testid]="'line-duplicate-' + lineIndex" [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' duplizieren'" title="Zeile duplizieren" (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"><span aria-hidden="true">⧉</span></button>
-          <button class="line-icon-action destructive" type="button" [attr.data-testid]="'line-delete-' + lineIndex" [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' löschen'" title="Zeile löschen" [disabled]="lines().length === 1" (click)="runStructureAction({ kind: 'delete-line', lineIndex })"><span aria-hidden="true">×</span></button>
-        </div>
+        <span class="line-number" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">{{
+          lineIndex + 1
+        }}</span>
+        @if (editMode()) {
+          <div class="line-primary-actions">
+            <span
+              class="line-icon-action drag-handle line-drag-handle"
+              role="button"
+              tabindex="0"
+              draggable="true"
+              [attr.data-testid]="'line-drag-handle-' + lineIndex"
+              [attr.aria-label]="
+                'Zeile ' + (lineIndex + 1) + ' verschieben; Pfeil hoch oder runter'
+              "
+              title="Zeile ziehen · Pfeil hoch/runter"
+              (dragstart)="startLineDrag($event, lineIndex)"
+              (dragend)="clearDragState()"
+              (keydown)="moveLineWithKeyboard($event, lineIndex)"
+              >↕</span
+            >
+            <button
+              class="line-icon-action"
+              type="button"
+              [attr.data-testid]="'line-preview-' + lineIndex"
+              [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' anhören'"
+              title="Zeile anhören"
+              (click)="previewLine($event, lineIndex)"
+            >
+              <span aria-hidden="true">▶</span>
+            </button>
+            <button
+              class="add-line-button"
+              type="button"
+              [attr.data-testid]="'line-add-' + lineIndex"
+              [attr.aria-label]="'Zeile nach Zeile ' + (lineIndex + 1) + ' einfügen'"
+              title="Zeile danach einfügen"
+              (click)="runStructureAction({ kind: 'insert-line', lineIndex })"
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+            <button
+              class="line-icon-action"
+              type="button"
+              [attr.data-testid]="'line-duplicate-' + lineIndex"
+              [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' duplizieren'"
+              title="Zeile duplizieren"
+              (click)="runStructureAction({ kind: 'duplicate-line', lineIndex })"
+            >
+              <span aria-hidden="true">⧉</span>
+            </button>
+            <button
+              class="line-icon-action destructive"
+              type="button"
+              [attr.data-testid]="'line-delete-' + lineIndex"
+              [attr.aria-label]="'Zeile ' + (lineIndex + 1) + ' löschen'"
+              title="Zeile löschen"
+              [disabled]="lines().length === 1"
+              (click)="runStructureAction({ kind: 'delete-line', lineIndex })"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+        }
       </div>
-      <div
-        class="words"
-        [id]="'word-drop-list-' + lineIndex"
-      >
+      <div class="words" [id]="'word-drop-list-' + lineIndex">
         @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
           <div
             class="word-card-shell"
@@ -119,35 +143,38 @@
             (dragover)="markBlockDrop($event, lineIndex, wordIndex)"
             (drop)="dropBlockNative($event)"
           >
-            <span
-              class="word-drag-handle drag-handle"
-              role="button"
-              tabindex="0"
-              draggable="true"
-              [attr.data-testid]="'word-drag-handle-' + lineIndex + '-' + wordIndex"
-              [attr.aria-label]="
-                wordLabel(word, lineIndex, wordIndex) +
-                ' verschieben; Alt plus Pfeiltasten'
-              "
-              title="Block ziehen · Alt+Pfeiltasten"
-              (dragstart)="startBlockDrag($event, lineIndex, wordIndex)"
-              (dragend)="clearDragState()"
-              (keydown)="moveBlockWithKeyboard($event, lineIndex, wordIndex)"
-              >⠿</span>
+            @if (editMode()) {
+              <span
+                class="word-drag-handle drag-handle"
+                role="button"
+                tabindex="0"
+                draggable="true"
+                [attr.data-testid]="'word-drag-handle-' + lineIndex + '-' + wordIndex"
+                [attr.aria-label]="
+                  wordLabel(word, lineIndex, wordIndex) + ' verschieben; Alt plus Pfeiltasten'
+                "
+                title="Block ziehen · Alt+Pfeiltasten"
+                (dragstart)="startBlockDrag($event, lineIndex, wordIndex)"
+                (dragend)="clearDragState()"
+                (keydown)="moveBlockWithKeyboard($event, lineIndex, wordIndex)"
+                >⠿</span
+              >
+            }
             <button
               class="word-card"
               type="button"
+              [disabled]="!editMode()"
               [class.is-selected]="isSelected(lineIndex, wordIndex)"
               [class.is-active]="isActive(lineIndex, wordIndex)"
               [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
-              [attr.aria-pressed]="isSelected(lineIndex, wordIndex)"
+              [attr.aria-pressed]="editMode() ? isSelected(lineIndex, wordIndex) : null"
               [attr.aria-label]="
                 wordLabel(word, lineIndex, wordIndex) +
                 ', Zeile ' +
                 (lineIndex + 1) +
                 ', Block ' +
                 (wordIndex + 1) +
-                ', bearbeiten'
+                (editMode() ? ', bearbeiten' : '')
               "
               (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
               (pointermove)="trackLongPress($event)"
@@ -173,17 +200,19 @@
                 {{ wordLabel(word, lineIndex, wordIndex) }}
               </strong>
             </button>
-            <button
-              class="word-preview-action"
-              type="button"
-              [attr.data-testid]="'word-preview-' + lineIndex + '-' + wordIndex"
-              [attr.aria-label]="wordLabel(word, lineIndex, wordIndex) + ' anhören'"
-              title="Block anhören"
-              [disabled]="!hasPlayableEvents(word)"
-              (click)="previewWord($event, lineIndex, wordIndex)"
-            >
-              <span aria-hidden="true">▶</span>
-            </button>
+            @if (editMode()) {
+              <button
+                class="word-preview-action"
+                type="button"
+                [attr.data-testid]="'word-preview-' + lineIndex + '-' + wordIndex"
+                [attr.aria-label]="wordLabel(word, lineIndex, wordIndex) + ' anhören'"
+                title="Block anhören"
+                [disabled]="!hasPlayableEvents(word)"
+                (click)="previewWord($event, lineIndex, wordIndex)"
+              >
+                <span aria-hidden="true">▶</span>
+              </button>
+            }
           </div>
         }
       </div>

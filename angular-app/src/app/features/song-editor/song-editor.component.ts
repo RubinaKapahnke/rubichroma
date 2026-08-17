@@ -16,8 +16,6 @@ import { CdkPortal, PortalModule } from '@angular/cdk/portal';
 import { FormArray, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router } from '@angular/router';
 import { debounceTime, Subscription } from 'rxjs';
@@ -44,6 +42,7 @@ import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component
 import { KalimbaKeyView, WordEditorComponent } from './word-editor.component';
 
 export type EditorInteractionMode = 'idle' | 'editing' | 'multi-select';
+export type EditorDocumentMode = 'view' | 'edit';
 
 @Component({
   selector: 'app-song-editor',
@@ -55,8 +54,6 @@ export type EditorInteractionMode = 'idle' | 'editing' | 'multi-select';
     ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatToolbarModule,
     SongSheetComponent,
     WordEditorComponent,
@@ -89,6 +86,8 @@ export class SongEditorComponent {
     );
   });
   readonly interactionMode = signal<EditorInteractionMode>('idle');
+  readonly documentMode = signal<EditorDocumentMode>('view');
+  readonly editingEnabled = computed(() => this.documentMode() === 'edit');
   readonly touchSelectionActive = computed(() => this.interactionMode() === 'multi-select');
   readonly mobileViewport = signal(false);
   readonly musicClipboard = signal<MusicSelectionClipboard | null>(null);
@@ -230,20 +229,38 @@ export class SongEditorComponent {
     this.theme.setPreference((event.target as HTMLSelectElement).value);
   }
 
+  startEditing(): void {
+    this.documentMode.set('edit');
+    setTimeout(() =>
+      document.querySelector<HTMLInputElement>('[data-testid="song-title"]')?.focus(),
+    );
+  }
+
+  finishEditing(): void {
+    this.clearSelection();
+    this.documentMode.set('view');
+    setTimeout(() =>
+      document.querySelector<HTMLButtonElement>('[data-testid="edit-mode-toggle"]')?.focus(),
+    );
+  }
+
   changeSelection(selection: WordSelection | null): void {
     if (!selection) {
       this.clearSelection();
       return;
     }
+    if (!this.editingEnabled()) return;
     this.interactionMode.set('editing');
     this.setSingleSelection(selection);
   }
 
   startMultiSelection(): void {
+    if (!this.editingEnabled()) return;
     this.interactionMode.set('multi-select');
   }
 
   addSongBlock(): void {
+    if (!this.editingEnabled()) return;
     const document = this.store.document();
     if (!document || document.song.lines.length === 0) return;
     const lineIndex = document.song.lines.length - 1;
@@ -256,6 +273,7 @@ export class SongEditorComponent {
   }
 
   handleWordSelection(gesture: WordSelectionGesture): void {
+    if (!this.editingEnabled()) return;
     const document = this.store.document();
     if (!document) return;
     const currentMode = this.interactionMode();
@@ -505,7 +523,7 @@ export class SongEditorComponent {
   }
 
   selectedWord(): WordForm | null {
-    if (this.interactionMode() !== 'editing') return null;
+    if (!this.editingEnabled() || this.interactionMode() !== 'editing') return null;
     const selection = this.selection();
     return selection
       ? (this.lines().at(selection.lineIndex)?.controls.words.at(selection.wordIndex) ?? null)

@@ -50,70 +50,126 @@
   [attr.inert]="interactionMode() === 'editing' && mobileViewport() ? '' : null"
   [attr.aria-hidden]="interactionMode() === 'editing' && mobileViewport() ? 'true' : null"
 >
-  <section class="hero">
-    <p class="kicker" lang="en">Color Your Music</p>
-    <h1>Musik wird sichtbar – in deinen Farben.</h1>
-    <p>
-      Bearbeite Liedtext und Kalimba-Notation in einer klaren, persönlichen Arbeitsfläche.
-      Vorhandene Legacy-Notation bleibt verlustfrei erhalten; Änderungen werden sofort in
-      Musikereignisse übersetzt und automatisch gespeichert.
-    </p>
-  </section>
-
   @if (store.error(); as error) {
     <div class="error" role="alert" data-testid="error-message">{{ error }}</div>
   }
 
   @if (store.hasDocument()) {
-    <mat-card class="editor-card">
-      <mat-card-header>
-        <mat-card-title>Song</mat-card-title>
-        <mat-card-subtitle
-          >{{ lines().length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
-        >
-      </mat-card-header>
-      <mat-card-content>
-        <div class="structure-toolbar">
-          <div class="history-actions" role="group" aria-label="Änderungsverlauf">
-            <button
-              class="history-action"
-              type="button"
-              data-testid="undo-structure"
-              aria-label="Rückgängig"
-              aria-keyshortcuts="Control+Z Meta+Z"
-              title="Rückgängig (Strg+Z)"
-              [disabled]="!store.canUndo()"
-              (click)="undoStructure()"
-            >
-              <span aria-hidden="true">↶</span>
-            </button>
-            <button
-              class="history-action"
-              type="button"
-              data-testid="redo-structure"
-              aria-label="Wiederholen"
-              aria-keyshortcuts="Control+Y Meta+Shift+Z"
-              title="Wiederholen (Strg+Y)"
-              [disabled]="!store.canRedo()"
-              (click)="redoStructure()"
-            >
-              <span aria-hidden="true">↷</span>
-            </button>
-          </div>
-          @if (actionNotice(); as message) {
-            <span role="status" aria-live="polite" data-testid="structure-status">{{
-              message
-            }}</span>
-          }
+    <mat-card class="editor-card" [class.is-editing]="editingEnabled()">
+      <mat-card-header class="document-toolbar">
+        <div class="document-identity">
+          <label class="visually-hidden" for="song-title">Liedtitel</label>
+          <input
+            id="song-title"
+            class="document-title"
+            data-testid="song-title"
+            [formControl]="title"
+            [attr.readonly]="editingEnabled() ? null : ''"
+            placeholder="Liedtitel"
+            autocomplete="off"
+          />
+          <span class="document-meta">{{ lines().length }} Zeilen · Liedtext und Musik</span>
         </div>
-        <mat-form-field appearance="outline" class="title-field">
-          <mat-label>Titel</mat-label>
-          <input matInput data-testid="song-title" [formControl]="title" autocomplete="off" />
-        </mat-form-field>
 
-        <div class="editor-layout" (click)="dismissInspectorOnBackground($event)">
+        <div class="document-actions" aria-label="Dokumentaktionen">
+          <button
+            mat-flat-button
+            type="button"
+            class="player-action"
+            data-testid="open-player"
+            (click)="openPlayer()"
+          >
+            Im Player öffnen
+          </button>
+          @if (editingEnabled()) {
+            <button
+              mat-stroked-button
+              type="button"
+              data-testid="edit-mode-toggle"
+              aria-pressed="true"
+              (click)="finishEditing()"
+            >
+              Bearbeitung beenden
+            </button>
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              data-testid="edit-mode-toggle"
+              aria-pressed="false"
+              (click)="startEditing()"
+            >
+              Bearbeiten
+            </button>
+          }
+          <details class="document-more-actions">
+            <summary aria-label="Weitere Dokumentaktionen">Mehr</summary>
+            <div class="document-more-panel">
+              <input
+                #fileInput
+                hidden
+                type="file"
+                accept="application/json,.json"
+                (change)="importFile($event)"
+              />
+              <button type="button" data-testid="import-button" (click)="fileInput.click()">
+                Sicherung laden
+              </button>
+              <button type="button" data-testid="export-button" (click)="exportFile()">
+                Song sichern
+              </button>
+            </div>
+          </details>
+        </div>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (editingEnabled()) {
+          <div class="edit-mode-bar" data-testid="edit-mode-status">
+            <div class="history-actions" role="group" aria-label="Änderungsverlauf">
+              <button
+                class="history-action"
+                type="button"
+                data-testid="undo-structure"
+                aria-label="Rückgängig"
+                aria-keyshortcuts="Control+Z Meta+Z"
+                title="Rückgängig (Strg+Z)"
+                [disabled]="!store.canUndo()"
+                (click)="undoStructure()"
+              >
+                <span aria-hidden="true">↶</span>
+              </button>
+              <button
+                class="history-action"
+                type="button"
+                data-testid="redo-structure"
+                aria-label="Wiederholen"
+                aria-keyshortcuts="Control+Y Meta+Shift+Z"
+                title="Wiederholen (Strg+Y)"
+                [disabled]="!store.canRedo()"
+                (click)="redoStructure()"
+              >
+                <span aria-hidden="true">↷</span>
+              </button>
+            </div>
+            <strong>Bearbeiten-Modus</strong>
+            <span>Block auswählen, um Text und Töne zu bearbeiten.</span>
+            @if (actionNotice(); as message) {
+              <span role="status" aria-live="polite" data-testid="structure-status">{{
+                message
+              }}</span>
+            }
+          </div>
+        }
+
+        <div
+          class="editor-layout"
+          [class.has-desktop-inspector]="selectedWord() && !mobileViewport()"
+          (click)="dismissInspectorOnBackground($event)"
+        >
           <app-song-sheet
             [lines]="lines()"
+            [editMode]="editingEnabled()"
             [selection]="selection()"
             [selectedPositions]="selectedPositions()"
             [melodyPositions]="melodyPositions()"
@@ -128,44 +184,12 @@
           />
 
           @if (selectedWord() && !mobileViewport()) {
-            <ng-container [ngTemplateOutlet]="wordEditorContent" />
-          } @else {
-            <aside class="editor-placeholder">
-              <strong>Block auswählen</strong>
-              <span>Wähle ein Wort oder einen Melodieblock, um Text und Töne zu bearbeiten.</span>
+            <aside class="desktop-inspector-drawer" aria-label="Ausgewählten Block bearbeiten">
+              <ng-container [ngTemplateOutlet]="wordEditorContent" />
             </aside>
           }
         </div>
       </mat-card-content>
-      <mat-card-actions align="end">
-        <input
-          #fileInput
-          hidden
-          type="file"
-          accept="application/json,.json"
-          (change)="importFile($event)"
-        />
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="import-button"
-          (click)="fileInput.click()"
-        >
-          Sicherung laden
-        </button>
-        <button mat-flat-button type="button" data-testid="export-button" (click)="exportFile()">
-          Song sichern
-        </button>
-        <button
-          mat-flat-button
-          type="button"
-          class="player-action"
-          data-testid="open-player"
-          (click)="openPlayer()"
-        >
-          Im Player öffnen
-        </button>
-      </mat-card-actions>
     </mat-card>
   } @else if (store.status() === 'loading') {
     <div class="loading" aria-live="polite">Song wird vorbereitet …</div>
