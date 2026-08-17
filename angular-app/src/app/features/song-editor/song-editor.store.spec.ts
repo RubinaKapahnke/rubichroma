@@ -59,6 +59,34 @@ describe('SongEditorStore structure persistence', () => {
     expect(reloaded).toEqual(persisted);
   });
 
+  it('previews and restores a full local backup without touching legacy storage', async () => {
+    const legacyJson = JSON.stringify(COMPLETE_LEGACY);
+    localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
+    await store.initialize();
+    const backupJson = await store.exportLocalBackupJson();
+    const preview = store.inspectLocalBackup(backupJson);
+    const backedUpDocument = structuredClone(preview.snapshot.songs[0].document);
+
+    expect(() => store.inspectLocalBackup('{invalid')).toThrow();
+    expect(store.document()).toEqual(backedUpDocument);
+    expect(
+      store.applyStructureAction({ kind: 'duplicate-block' }, { lineIndex: 0, wordIndex: 0 }).ok,
+    ).toBe(true);
+    await expectSaved(store);
+    expect(store.document()?.song.lines[0].words).toHaveLength(5);
+    const hydrationBeforeRestore = store.hydrationVersion();
+
+    await store.restoreLocalBackup(preview);
+
+    expect(store.document()).toEqual(backedUpDocument);
+    expect(store.hydrationVersion()).toBe(hydrationBeforeRestore + 1);
+    expect(store.canUndo()).toBe(false);
+    expect(store.canRedo()).toBe(false);
+    expect(store.status()).toBe('saved');
+    expect(await repository.exportLocalBackupSnapshot()).toEqual(preview.snapshot);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
+  });
+
   it('undoes and redoes multiple structure actions and persists the final snapshot', async () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
     await store.initialize();

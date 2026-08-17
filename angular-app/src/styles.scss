@@ -309,6 +309,57 @@ app-song-editor .player-action {
   margin-inline-start: auto;
 }
 
+app-song-editor .document-action-separator {
+  height: 1px;
+  margin-block: 0.2rem;
+  background: var(--rc-color-border);
+}
+
+app-song-editor .restore-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-panel);
+  background: var(--rc-color-primary-container);
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+}
+
+app-song-editor .restore-preview-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+
+  button {
+    min-height: var(--rc-control-min-size);
+    padding-inline: 0.85rem;
+    border-radius: var(--rc-radius-control);
+    cursor: pointer;
+  }
+
+  .secondary-action {
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    background: var(--rc-color-surface);
+  }
+
+  .restore-action {
+    color: var(--rc-color-on-primary);
+    border: 1px solid var(--rc-color-primary);
+    background: var(--rc-color-primary);
+    font-weight: 700;
+  }
+}
+
 @media (max-width: 600px) {
   app-song-editor .topbar {
     display: grid;
@@ -437,6 +488,12 @@ app-song-editor .player-action {
   app-song-editor .player-action {
     width: 100%;
     margin-inline-start: 0;
+  }
+
+  app-song-editor .restore-preview,
+  app-song-editor .restore-preview-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

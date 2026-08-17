@@ -120,7 +120,7 @@ test('latches ordered touch selection, keeps a compact bottom action bar and pas
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'touch-user-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 
   const sourceFirst = page.getByTestId('word-card-0-0');
   const sourceLast = page.getByTestId('word-card-0-2');

@@ -110,13 +110,37 @@
                 hidden
                 type="file"
                 accept="application/json,.json"
+                data-testid="song-file-input"
                 (change)="importFile($event)"
               />
               <button type="button" data-testid="import-button" (click)="fileInput.click()">
-                Sicherung laden
+                Song-Datei laden
               </button>
               <button type="button" data-testid="export-button" (click)="exportFile()">
-                Song sichern
+                Song-Datei exportieren
+              </button>
+              <div class="document-action-separator" role="separator"></div>
+              <input
+                #backupFileInput
+                hidden
+                type="file"
+                accept="application/json,.json"
+                data-testid="backup-file-input"
+                (change)="inspectLocalBackupFile($event)"
+              />
+              <button
+                type="button"
+                data-testid="backup-import-button"
+                (click)="backupFileInput.click()"
+              >
+                Lokale Sicherung wiederherstellen
+              </button>
+              <button
+                type="button"
+                data-testid="backup-export-button"
+                (click)="exportLocalBackupFile()"
+              >
+                Lokale Sicherung erstellen
               </button>
             </div>
           </details>
@@ -124,6 +148,46 @@
       </mat-card-header>
 
       <mat-card-content>
+        @if (pendingRestore(); as backup) {
+          <section
+            class="restore-preview"
+            role="dialog"
+            aria-labelledby="restore-preview-title"
+            aria-describedby="restore-preview-consequence"
+            data-testid="restore-preview"
+          >
+            <div>
+              <strong id="restore-preview-title">Sicherung geprüft</strong>
+              <p>
+                <b>{{ backup.title }}</b> · {{ backup.lineCount }}
+                {{ backup.lineCount === 1 ? 'Zeile' : 'Zeilen' }} · gesichert am
+                {{ formatBackupDate(backup.exportedAt) }}
+              </p>
+              <p id="restore-preview-consequence">
+                Erst mit „Wiederherstellen“ wird das aktuell geöffnete Lied ersetzt. Die historische
+                Legacy-Ablage bleibt unverändert.
+              </p>
+            </div>
+            <div class="restore-preview-actions">
+              <button
+                type="button"
+                class="secondary-action"
+                data-testid="backup-restore-cancel"
+                (click)="cancelLocalRestore()"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                class="restore-action"
+                data-testid="backup-restore-confirm"
+                (click)="confirmLocalRestore()"
+              >
+                Wiederherstellen
+              </button>
+            </div>
+          </section>
+        }
         @if (editingEnabled()) {
           <div class="edit-mode-bar" data-testid="edit-mode-status">
             <div class="history-actions" role="group" aria-label="Änderungsverlauf">

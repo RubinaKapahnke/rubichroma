@@ -58,7 +58,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('word-card-0-0')).toContainText('Willkommen');
 
-  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.locator('.song-line')).toHaveCount(3);
@@ -128,6 +128,90 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
   await expect(page.getByTestId('redo-structure')).toBeDisabled();
+});
+
+test('exports, previews and atomically restores a full local backup', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('edit-mode-toggle')).toBeVisible();
+  await page.evaluate(() =>
+    localStorage.setItem('kalimba-note-tool-v1', 'legacy-backup-byte-sentinel'),
+  );
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+
+  const downloadPromise = page.waitForEvent('download');
+  await openDocumentMenu(page);
+  await page.getByTestId('backup-export-button').click();
+  const backupBuffer = await readFile((await (await downloadPromise).path())!);
+  const backup = JSON.parse(backupBuffer.toString('utf8')) as Record<string, any>;
+  expect(backup).toMatchObject({ kind: 'rubichroma-local-backup', formatVersion: 1 });
+  expect(backup['storage']['songs'][0]['id']).toBe('current');
+  expect(backup['storage']['songs'][0]['revision']).toBeGreaterThan(0);
+  expect(
+    backup['storage']['songs'][0]['document']['song']['lines'][0]['words'][0]['extra'][
+      'unknownWordField'
+    ],
+  ).toEqual(['bleibt', 1]);
+  expect(backup['storage']['songs'][0]['document']['keys']).toHaveLength(17);
+
+  await page.getByTestId('song-title').fill('Temporärer Stand');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+  const futureBackup = structuredClone(backup);
+  futureBackup['formatVersion'] = 2;
+  await page.getByTestId('backup-file-input').setInputFiles({
+    name: 'future-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(futureBackup)),
+  });
+  await expect(page.getByTestId('restore-preview')).toHaveCount(0);
+  await expect(page.locator('.error')).toContainText('Sicherungsversion');
+  await expect(page.getByTestId('song-title')).toHaveValue('Temporärer Stand');
+  await page.reload();
+  await expect(page.getByTestId('song-title')).toHaveValue('Temporärer Stand');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId('backup-file-input').setInputFiles({
+    name: 'rubichroma-sicherung.json',
+    mimeType: 'application/json',
+    buffer: backupBuffer,
+  });
+  await expect(page.getByTestId('restore-preview')).toContainText('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.getByTestId('restore-preview')).toContainText(
+    'Erst mit „Wiederherstellen“ wird das aktuell geöffnete Lied ersetzt',
+  );
+  await expect(page.getByTestId('song-title')).toHaveValue('Temporärer Stand');
+  await expectNoPageOverflow(page);
+  await page.getByTestId('backup-restore-cancel').click();
+  await expect(page.getByTestId('restore-preview')).toHaveCount(0);
+  await expect(page.getByTestId('song-title')).toHaveValue('Temporärer Stand');
+  await page.getByTestId('backup-file-input').setInputFiles({
+    name: 'rubichroma-sicherung.json',
+    mimeType: 'application/json',
+    buffer: backupBuffer,
+  });
+  await page.getByTestId('backup-restore-confirm').click();
+  await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
+  await expect(page.locator('.song-line')).toHaveCount(3);
+
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('word-0-0').fill('Nach Restore');
+  await expect(page.locator('.save-state')).toHaveAttribute('data-status', 'saved', {
+    timeout: 5_000,
+  });
+  await page.reload();
+  await page.getByTestId('edit-mode-toggle').click();
+  await expect(page.getByTestId('word-card-0-0')).toContainText('Nach Restore');
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'legacy-backup-byte-sentinel',
+  );
+  await expectNoPageOverflow(page);
 });
 
 test('keeps frequent previews direct and destructive line actions secondary', async ({ page }) => {
@@ -212,8 +296,8 @@ test('keeps help preference, product labels and song storage separate', async ({
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'help-song-sentinel'));
 
-  await expect(page.getByTestId('import-button')).toHaveText('Sicherung laden');
-  await expect(page.getByTestId('export-button')).toHaveText('Song sichern');
+  await expect(page.getByTestId('import-button')).toHaveText('Song-Datei laden');
+  await expect(page.getByTestId('export-button')).toHaveText('Song-Datei exportieren');
   await expect(
     page.getByText(/Dein Song wird nur in diesem Browser gespeichert.*nicht in eine Cloud/),
   ).toBeVisible();
@@ -281,7 +365,7 @@ test('imports, reloads and exports the canonical Twinkle fixture with durations 
 }) => {
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   await expect(page.getByTestId('song-title')).toHaveValue('Twinkle, Twinkle, Little Star');
   await expect(page.locator('.song-line')).toHaveCount(6);
   await expectTwinkleState(page);
@@ -335,7 +419,7 @@ test('splits a word into explicitly assigned syllables through undo, reload and 
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'syllable-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   await page.getByTestId('word-card-0-0').click();
   await page.getByTestId('syllable-split').locator('summary').click();
 
@@ -420,7 +504,7 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'track-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   await page.getByTestId('word-card-0-1').click();
 
   await expect(page.getByTestId('track-row-melody').locator('.event-chip')).toHaveCount(2);
@@ -487,7 +571,7 @@ test('previews a line, block and event without changing selection or song data',
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   const originalWord = await readStoredWord(page, 0, 0);
 
   await page.getByTestId('line-preview-0').click();
@@ -645,7 +729,7 @@ test('restores a removed music event through central undo and persists the redon
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'event-undo-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
   await page.getByTestId('word-card-0-0').click();
   const originalWord = await readStoredWord(page, 0, 0);
 
@@ -720,7 +804,7 @@ test('preserves a two-beat phrase ending through undo, export, reload and player
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'duration-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(TWINKLE_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   await page.getByTestId('word-card-0-3').click();
 
   const duration = page.getByTestId('event-duration-0');
@@ -889,7 +973,7 @@ test('moves blocks and whole lines with drag-drop and keyboard without fidelity 
   await page.getByTestId('edit-mode-toggle').click();
   await page.setViewportSize({ width: 1440, height: 1400 });
   await expect(page.getByTestId('song-title')).toBeVisible();
-  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 
   await dragWithMouse(
     page,
@@ -1047,7 +1131,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   await page.getByTestId('edit-mode-toggle').click();
   await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
-  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await page.getByTestId('song-file-input').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 
   const sourceFirst = page.getByTestId('word-card-0-0');
   const sourceMiddle = page.getByTestId('word-card-0-1');

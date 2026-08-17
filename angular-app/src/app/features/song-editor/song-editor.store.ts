@@ -39,6 +39,11 @@ import {
   parseLegacyV0,
   stringifyVanillaCompatible,
 } from '../../infrastructure/legacy/legacy-v0.adapter';
+import {
+  parseLocalBackup,
+  serializeLocalBackup,
+} from '../../infrastructure/persistence/local-backup';
+import type { LocalBackupPreview } from '../../infrastructure/persistence/local-backup';
 import { BrowserSongRepository } from '../../infrastructure/persistence/song.repository';
 
 export interface EditorValue {
@@ -348,6 +353,30 @@ export class SongEditorStore {
     const current = this.documentState();
     if (!current) throw new Error('Noch kein Song geladen.');
     return stringifyVanillaCompatible(current);
+  }
+
+  inspectLocalBackup(json: string): LocalBackupPreview {
+    return parseLocalBackup(json);
+  }
+
+  async exportLocalBackupJson(): Promise<string> {
+    return serializeLocalBackup(await this.repository.exportLocalBackupSnapshot());
+  }
+
+  async restoreLocalBackup(preview: LocalBackupPreview): Promise<void> {
+    this.statusState.set('saving');
+    this.errorState.set(null);
+    try {
+      const restored = await this.repository.restoreLocalBackupSnapshot(preview.snapshot);
+      this.documentState.set(restored);
+      this.clearStructureHistory();
+      this.hydrationVersionState.update((version) => version + 1);
+      this.statusState.set('saved');
+    } catch (error) {
+      this.statusState.set('error');
+      this.errorState.set(`Wiederherstellung fehlgeschlagen: ${messageOf(error)}`);
+      throw error;
+    }
   }
 
   setError(error: unknown): void {
