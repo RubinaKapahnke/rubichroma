@@ -484,6 +484,133 @@ app-song-editor .create-song-action {
   justify-self: start;
 }
 
+app-song-editor .text-import-dialog {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-panel);
+  background: var(--rc-color-primary-container);
+
+  > header,
+  > footer,
+  .text-import-preview > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  button {
+    min-height: var(--rc-control-min-size);
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--rc-radius-control);
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .restore-action {
+    color: var(--rc-color-on-primary);
+    border: 1px solid var(--rc-color-primary);
+    background: var(--rc-color-primary);
+    font-weight: 700;
+  }
+
+  footer > div {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+app-song-editor .text-import-source {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+
+  textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.75rem;
+    resize: vertical;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+    font:
+      0.9rem/1.5 ui-monospace,
+      SFMono-Regular,
+      Consolas,
+      monospace;
+  }
+}
+
+app-song-editor .text-import-preview {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+}
+
+app-song-editor .text-import-warnings,
+app-song-editor .text-import-lines {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+  margin: 0;
+  padding-inline-start: 1.4rem;
+}
+
+app-song-editor .text-import-warnings li {
+  color: var(--rc-color-text-muted);
+
+  &.is-blocking {
+    color: var(--rc-color-error);
+  }
+
+  code {
+    display: block;
+    margin-top: 0.2rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+app-song-editor .text-import-lines li {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+
+  code {
+    overflow-wrap: anywhere;
+    color: var(--rc-color-text);
+    font-size: 0.9rem;
+  }
+
+  > span {
+    color: var(--rc-color-text-muted);
+    font-size: 0.76rem;
+  }
+
+  .text-import-lyric {
+    color: var(--rc-color-text);
+    font-size: 0.85rem;
+  }
+}
+
 app-song-editor .song-library-toolbar {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) auto auto;
@@ -620,6 +747,20 @@ app-song-editor .current-song-badge {
   app-song-editor .song-library-toolbar {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+  }
+
+  app-song-editor .text-import-dialog {
+    > header,
+    > footer,
+    .text-import-preview > header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    footer > div {
+      display: grid;
+      width: 100%;
+    }
   }
 
   app-song-editor .library-sort {

@@ -246,6 +246,113 @@ test('creates, names, opens and independently edits connected song variants', as
   );
 });
 
+test('previews and imports pasted and uploaded text notation as independent playable songs', async ({
+  page,
+}) => {
+  const lyricSource = `Mein Textimport
+Intro
+Komm mit
+1 2° (1°+1+3+5) | 7
+Teil A
+3 4`;
+  const textlessSource = `Canon-Fragment
+Intro
+(4+6+1°) | (1+3+5)
+Teil A
+1. 1 2 3 | 4
+2. 4 5 6`;
+
+  await page.goto('/');
+  await expect(page.getByTestId('edit-mode-toggle')).toBeVisible();
+  await page.evaluate(() =>
+    localStorage.setItem('kalimba-note-tool-v1', 'text-import-legacy-sentinel'),
+  );
+  const initial = await readLibraryState(page);
+  const initialActive = initial.songs.find((song) => song.id === initial.currentSongId)!;
+
+  await page.getByTestId('open-library').click();
+  await page.getByTestId('start-text-notation-import').click();
+  await page.getByTestId('text-notation-source').fill('Unsicher\n1 2\nWie die erste Zeile');
+  await expect(page.getByTestId('text-notation-preview')).toContainText('Bitte klären');
+  await expect(page.getByTestId('confirm-text-notation-import')).toBeDisabled();
+  expect(await readLibraryState(page)).toEqual(initial);
+  await page.getByTestId('cancel-text-notation-import').click();
+  expect(await readLibraryState(page)).toEqual(initial);
+
+  await page.getByTestId('start-text-notation-import').click();
+  await page.getByTestId('text-notation-source').fill(lyricSource);
+  await expect(page.getByTestId('text-notation-preview')).toContainText('Mein Textimport');
+  await expect(page.getByTestId('text-notation-preview')).toContainText(
+    'Standardannahme: 1 Schlag',
+  );
+  await expect(page.getByTestId('text-notation-counts')).toContainText('1 Akkorde');
+  await expect(page.getByTestId('text-notation-counts')).toContainText('1 Taktgrenzen');
+  expect(await readLibraryState(page)).toEqual(initial);
+  await page.getByTestId('confirm-text-notation-import').click();
+  await expect(page.getByTestId('song-title')).toHaveValue('Mein Textimport');
+
+  const firstImport = await readLibraryState(page);
+  const firstImportId = firstImport.currentSongId;
+  expect(firstImportId).not.toBe(initial.currentSongId);
+  expect(firstImport.songs).toHaveLength(initial.songs.length + 1);
+  expect(firstImport.songs.find((song) => song.id === initial.currentSongId)).toEqual(
+    initialActive,
+  );
+
+  await page.getByTestId('edit-mode-toggle').click();
+  await page.getByTestId('song-title').fill('Mein Textimport – bearbeitet');
+  await expect
+    .poll(
+      async () =>
+        (await readLibraryState(page)).songs.find((song) => song.id === firstImportId)?.title,
+    )
+    .toBe('Mein Textimport – bearbeitet');
+  await page.reload();
+  await expect(page.getByTestId('song-title')).toHaveValue('Mein Textimport – bearbeitet');
+
+  await page.getByTestId('open-library').click();
+  await page
+    .getByTestId(`library-song-${initial.currentSongId}`)
+    .getByRole('button', { name: /öffnen/i })
+    .click();
+  await expect(page.getByTestId('song-title')).toHaveValue(initialActive.title);
+  await page.getByTestId('open-library').click();
+  await page
+    .getByTestId(`library-song-${firstImportId}`)
+    .getByRole('button', { name: /öffnen/i })
+    .click();
+  await page.getByTestId('open-player').click();
+  await expect(page.getByTestId('player-title')).toHaveText('Mein Textimport – bearbeitet');
+  await page.getByTestId('back-to-editor').click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId('open-library').click();
+  await page.getByTestId('start-text-notation-import').click();
+  await page.getByTestId('text-notation-file').setInputFiles({
+    name: 'canon-fragment.md',
+    mimeType: 'text/markdown',
+    buffer: Buffer.from(textlessSource, 'utf8'),
+  });
+  await expect(page.getByTestId('text-notation-preview')).toContainText('Canon-Fragment');
+  await page.getByTestId('confirm-text-notation-import').click();
+  await expect(page.getByTestId('song-title')).toHaveValue('Canon-Fragment');
+  const secondImport = await readLibraryState(page);
+  expect(secondImport.currentSongId).not.toBe(firstImportId);
+  expect(secondImport.songs).toHaveLength(initial.songs.length + 2);
+
+  await page.reload();
+  await expect(page.getByTestId('song-title')).toHaveValue('Canon-Fragment');
+  await page.getByTestId('open-player').click();
+  await expect(page.getByTestId('player-title')).toHaveText('Canon-Fragment');
+  await page.getByTestId('back-to-editor').click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'text-import-legacy-sentinel',
+  );
+});
+
 interface LibraryState {
   currentSongId: string;
   songs: {

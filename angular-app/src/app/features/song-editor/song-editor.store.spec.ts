@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
 import { createMusicSelectionClipboard } from '../../domain/song-selection-editing';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
+import { inspectTextNotation } from '../../domain/text-notation-import';
 import { LEGACY_STORAGE_KEY, parseLegacyV0 } from '../../infrastructure/legacy/legacy-v0.adapter';
 import { KalimbaDatabase } from '../../infrastructure/persistence/kalimba.database';
 import {
@@ -80,6 +81,35 @@ describe('SongEditorStore structure persistence', () => {
     await store.openSong(firstId);
     expect(store.activeSongId()).toBe(firstId);
     expect(store.document()).toEqual(first);
+  });
+
+  it('imports text notation as a new independent active song without changing the previous song', async () => {
+    const legacyJson = JSON.stringify(COMPLETE_LEGACY);
+    localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
+    await store.initialize();
+    const previousId = store.activeSongId()!;
+    const previous = structuredClone(store.document()!);
+    const preview = inspectTextNotation(`Importiertes Lied
+Intro
+Hallo
+1 2° (1+3+5) | 4`);
+
+    await store.importTextNotation(preview);
+
+    expect(store.activeSongId()).not.toBe(previousId);
+    expect(store.document()?.song.title).toBe('Importiertes Lied');
+    expect(store.document()?.keys).toHaveLength(17);
+    expect(store.document()?.song.lines[0].words[0].text).toBe('Hallo');
+    expect(store.document()?.song.lines[0].words[0].melodyEvents).toHaveLength(5);
+    expect(await repository.load(previousId)).toEqual(previous);
+    expect(store.songs()).toHaveLength(4);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
+
+    const firstImportId = store.activeSongId()!;
+    await store.importTextNotation(preview);
+    expect(store.activeSongId()).not.toBe(firstImportId);
+    expect(store.songs()).toHaveLength(5);
+    expect((await repository.load(firstImportId))?.song.title).toBe('Importiertes Lied');
   });
 
   it('does not write or advance updatedAt when an unchanged editor value is persisted', async () => {

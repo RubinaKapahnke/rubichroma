@@ -1,6 +1,8 @@
-import { cloneJson } from '../../domain/json-value';
-import { createTrackedWordFields, SongDocument } from '../../domain/song-document';
-import { DEFAULT_DOCUMENT } from '../../domain/default-document';
+import { SongDocument } from '../../domain/song-document';
+import {
+  createDocumentFromTextNotation,
+  inspectTextNotation,
+} from '../../domain/text-notation-import';
 import { parseLegacyV0 } from '../legacy/legacy-v0.adapter';
 import canonicalTwinkleSource from './twinkle-twinkle-little-star.json';
 
@@ -16,13 +18,6 @@ export interface CanonicalSeedSong {
   document: SongDocument;
 }
 
-interface CanonRow {
-  section: string;
-  number: number;
-  notation: string;
-  sequenceIndex?: number;
-}
-
 const CANON_INTRO = ['(4+6+1°) | (1+3+5) | (4+6+1°) | (5+7+2°)'];
 const CANON_PART_A = [
   '(3°+1) 5 1° 3° (2°+2) 5 7 2° | (1°+1) 3 6 1° (7+3) 2 3 5',
@@ -32,7 +27,6 @@ const CANON_PART_A = [
   '3 4 5 (4+1) 6 5 4 | 3 2 (1+3) 2 1 2 3',
   '4 5 6 (4+1) 6 5 6 | 7 1° (7+2) 6 5 6 7 1° 2° 3°',
 ];
-const CANON_PART_A_SEQUENCE = [0, 1, 2, 3, 4, 5, 3, 4, 5, 3] as const;
 const CANON_PART_B = [
   '1° 2° (3°+3) 3 4 (3+5) 6 5 4 5',
   '1° 7 1° (6+1) | 1° 7 (4+6) | 5 4 (5+1) 4 3 4 5',
@@ -45,6 +39,19 @@ const CANON_PART_B = [
   '3° (3°+3+5+7) | 4° (3°+5) 2° (1°+1) | 7 (4+6) 7 1°',
 ];
 const CANON_ENDING = ['4 (1°+2) 7 6 1° (5+7) | (1°+1+3+5)'];
+
+export const CANONICAL_CANON_TEXT_SOURCE = [
+  'Canon in C-Dur',
+  'Intro',
+  ...CANON_INTRO,
+  'Teil A',
+  ...CANON_PART_A.map((notation, index) => `${index + 1}. ${notation}`),
+  'Zeilen 4 → 5 → 6 → 4',
+  'Teil B',
+  ...CANON_PART_B.map((notation, index) => `${index + 1}. ${notation}`),
+  'Schluss',
+  ...CANON_ENDING,
+].join('\n');
 
 export function canonicalSeedSongs(): CanonicalSeedSong[] {
   return [
@@ -64,62 +71,14 @@ export function canonicalSeedSongs(): CanonicalSeedSong[] {
 }
 
 export function createCanonicalCanonDocument(): SongDocument {
-  const rows: CanonRow[] = [
-    ...CANON_INTRO.map((notation, index) => ({ section: 'Intro', number: index + 1, notation })),
-    ...CANON_PART_A_SEQUENCE.map((sourceIndex, sequenceIndex) => ({
-      section: 'Teil A',
-      number: sourceIndex + 1,
-      sequenceIndex: sequenceIndex + 1,
-      notation: CANON_PART_A[sourceIndex],
-    })),
-    ...CANON_PART_B.map((notation, index) => ({
-      section: 'Teil B',
-      number: index + 1,
-      notation,
-    })),
-    ...CANON_ENDING.map((notation, index) => ({
-      section: 'Schluss',
-      number: index + 1,
-      notation,
-    })),
-  ];
-  return {
-    song: {
-      title: 'Canon in C-Dur',
-      lines: rows.map((row) => {
-        const notation = canonNotationToLegacy(row.notation);
-        const tracked = createTrackedWordFields(notation);
-        return {
-          words: [
-            {
-              text: '',
-              ...tracked,
-              toneCount: tracked.melodyEvents.filter((event) => event.kind !== 'separator').length,
-              extra: {
-                structure: {
-                  section: row.section,
-                  number: row.number,
-                  ...('sequenceIndex' in row ? { sequenceIndex: row.sequenceIndex } : {}),
-                },
-              },
-            },
-          ],
-          extra: {},
-        };
-      }),
-      extra: {
-        exampleSong: {
-          rhythmAssumption: 'one-beat-per-written-event',
-          repeatExpansion: 'Teil A: 1-2-3-4-5-6-4-5-6-4',
-          performanceNote: 'Schlussakkord mit beiden Daumen möglichst geschlossen',
-        },
-      },
+  const document = createDocumentFromTextNotation(inspectTextNotation(CANONICAL_CANON_TEXT_SOURCE));
+  document.song.extra = {
+    ...document.song.extra,
+    exampleSong: {
+      rhythmAssumption: 'one-beat-per-written-event',
+      repeatExpansion: 'Teil A: 1-2-3-4-5-6-4-5-6-4',
+      performanceNote: 'Schlussakkord mit beiden Daumen möglichst geschlossen',
     },
-    keys: DEFAULT_DOCUMENT.keys.map((key) => cloneJson(key)),
-    extra: {},
   };
-}
-
-function canonNotationToLegacy(notation: string): string {
-  return notation.replaceAll('+', '').replaceAll('°', '′');
+  return document;
 }

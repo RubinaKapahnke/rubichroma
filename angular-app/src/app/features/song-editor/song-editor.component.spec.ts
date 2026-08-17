@@ -33,6 +33,7 @@ describe('SongEditorComponent hydration', () => {
     const duplicateSong = vi.fn(() => Promise.resolve());
     const duplicateSongAsVariant = vi.fn(() => Promise.resolve());
     const renameVariant = vi.fn(() => Promise.resolve());
+    const importTextNotation = vi.fn(() => Promise.resolve());
     const store = {
       document: documentState.asReadonly(),
       activeSongId: signal('song-one'),
@@ -50,6 +51,8 @@ describe('SongEditorComponent hydration', () => {
       duplicateSong,
       duplicateSongAsVariant,
       renameVariant,
+      importTextNotation,
+      setError: vi.fn(),
     };
     const theme = {
       preference: signal('system'),
@@ -152,6 +155,36 @@ describe('SongEditorComponent hydration', () => {
     expect(duplicateSong).toHaveBeenCalledWith('song-one');
     expect(duplicateSongAsVariant).toHaveBeenCalledWith('song-one', 'Einfach');
     expect(renameVariant).toHaveBeenCalledWith('song-one', 'C-Stimmung');
+
+    fixture.componentInstance.startTextNotationImport();
+    fixture.componentInstance.updateTextNotationSource({
+      target: { value: 'Unsicher\nTeil A\n1 2\nWie die erste Zeile' },
+    } as unknown as Event);
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="text-notation-preview"]'),
+    ).not.toBeNull();
+    expect(
+      (
+        fixture.nativeElement.querySelector(
+          '[data-testid="confirm-text-notation-import"]',
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(importTextNotation).not.toHaveBeenCalled();
+    fixture.componentInstance.cancelTextNotationImport();
+    expect(importTextNotation).not.toHaveBeenCalled();
+
+    fixture.componentInstance.startTextNotationImport();
+    fixture.componentInstance.updateTextNotationSource({
+      target: { value: 'Importiertes Lied\nIntro\nHallo\n1 2° (1+3+5) | 4' },
+    } as unknown as Event);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('3 Einzeltöne');
+    await fixture.componentInstance.confirmTextNotationImport();
+    expect(importTextNotation).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Importiertes Lied', canImport: true }),
+    );
   });
 
   it('latches multi-selection until it is explicitly ended', async () => {
