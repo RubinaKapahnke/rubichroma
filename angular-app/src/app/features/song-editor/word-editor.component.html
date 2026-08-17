@@ -118,23 +118,45 @@
       @if (events().length) {
         <div class="event-list">
           @for (event of events(); track $index) {
-            <button
+            <div
               class="event-chip"
-              type="button"
-              [attr.data-testid]="'event-remove-' + $index"
               [attr.data-profile-colors]="eventColors(event).join(',')"
-              [attr.aria-label]="eventKindLabel(event) + ' ' + eventLabel(event) + ' entfernen'"
-              (click)="removeEvent($index)"
+              [style.--duration-beats]="eventDurationBeats(event)"
+              [attr.data-duration-beats]="eventDurationBeats(event)"
             >
-              <small>{{ eventKindLabel(event) }}</small>
-              <strong>{{ eventLabel(event) }}</strong>
+              <button
+                class="event-remove-action"
+                type="button"
+                [attr.data-testid]="'event-remove-' + $index"
+                [attr.aria-label]="eventKindLabel(event) + ' ' + eventLabel(event) + ' entfernen'"
+                (click)="removeEvent($index)"
+              >
+                <small>{{ eventKindLabel(event) }}</small>
+                <strong>{{ eventLabel(event) }}</strong>
+                <span class="event-remove-mark" aria-hidden="true">×</span>
+              </button>
               <span class="event-color-strip" aria-hidden="true">
                 @for (color of eventColors(event); track $index) {
                   <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
                 }
               </span>
-              <span class="event-remove-mark" aria-hidden="true">×</span>
-            </button>
+              @if (event.kind !== 'separator') {
+                <label class="event-duration-control">
+                  <span>Dauer</span>
+                  <select
+                    [attr.data-testid]="'event-duration-' + $index"
+                    [value]="eventDurationBeats(event)"
+                    [attr.aria-label]="'Dauer von ' + eventLabel(event)"
+                    (change)="setEventDuration($index, $any($event.target).value)"
+                  >
+                    <option value="1">1 Schlag</option>
+                    <option value="2">2 Schläge</option>
+                  </select>
+                </label>
+              } @else {
+                <span class="event-duration-label">{{ eventDurationLabel(event) }}</span>
+              }
+            </div>
           }
         </div>
       } @else {

@@ -86,6 +86,21 @@ describe('player timeline', () => {
     expect(timeline.words[0].text).toBeNull();
   });
 
+  it('projects explicit and missing event durations onto the same transport axis', () => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    const firstEvent = document.song.lines[0].words[0].events[0];
+    const secondEvent = document.song.lines[0].words[0].events[1];
+    if (firstEvent.kind !== 'separator') firstEvent.duration = 2;
+    if (secondEvent.kind !== 'separator') delete secondEvent.duration;
+
+    const timeline = buildPlayerTimeline(document);
+    expect(timeline.events.slice(0, 3).map((event) => event.startBeat)).toEqual([0, 2, 3]);
+    expect(timeline.events[0].durationBeats).toBe(2);
+    expect(timeline.events[1].durationBeats).toBe(1);
+    expect(timeline.words[0]).toMatchObject({ startBeat: 0, endBeat: 5 });
+    expect(timeline.totalBeats).toBe(8);
+  });
+
   it('carries only a contiguous editor selection into a non-empty practice range', () => {
     expect(contiguousPlayerRange(DEFAULT_DOCUMENT, [{ lineIndex: 0, wordIndex: 0 }])).toEqual({
       startBeat: 0,

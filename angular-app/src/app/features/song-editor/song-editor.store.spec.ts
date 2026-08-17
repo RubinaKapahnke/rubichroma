@@ -196,6 +196,28 @@ describe('SongEditorStore structure persistence', () => {
     expect(await repository.load()).toEqual(removed);
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
   });
+
+  it('persists a two-beat duration and restores it exactly through undo and redo', async () => {
+    await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const originalWord = structuredClone(store.document()!.song.lines[0].words[0]);
+
+    expect(store.setMusicEventDuration(selection, 0, 2)).toEqual({ ok: true, selection });
+    expect(store.document()?.song.lines[0].words[0].events[0]).toMatchObject({ duration: 2 });
+    expect(store.document()?.song.lines[0].words[0].legacyNotation.raw).toBe(
+      originalWord.legacyNotation.raw,
+    );
+    await expectSaved(store);
+    expect((await repository.load())?.song.lines[0].words[0].events[0]).toMatchObject({
+      duration: 2,
+    });
+
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()?.song.lines[0].words[0]).toEqual(originalWord);
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()?.song.lines[0].words[0].events[0]).toMatchObject({ duration: 2 });
+    await expectSaved(store);
+  });
 });
 
 async function expectSaved(store: SongEditorStore): Promise<void> {

@@ -1,5 +1,5 @@
 import { decodeLegacyNotation } from './legacy-notation-codec';
-import { MusicEvent, Pitch } from './music-event';
+import { eventDurationInBeats, MusicEvent, Pitch } from './music-event';
 import { SongDocument } from './song-document';
 import { SongPosition } from './song-structure-editing';
 
@@ -293,10 +293,7 @@ function eventPitches(event: Exclude<MusicEvent, { kind: 'separator' }>): readon
 }
 
 function durationInBeats(event: Exclude<MusicEvent, { kind: 'separator' }>): number {
-  switch (event.duration) {
-    case 'quarter':
-      return 1;
-  }
+  return eventDurationInBeats(event);
 }
 
 function frequencyOf(pitch: Pitch): number {

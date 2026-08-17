@@ -180,6 +180,7 @@
     <app-word-editor
       [textControl]="word.controls.text"
       [notationControl]="word.controls.notation"
+      [structuredEvents]="selectedMusicEvents()"
       [location]="selectionLocation()"
       [testIdSuffix]="selectionTestId()"
       [keys]="kalimbaKeys()"
@@ -191,6 +192,7 @@
       (closed)="closeWordEditor()"
       (structureAction)="applyStructureAction($event)"
       (musicEventRemovalRequested)="removeMusicEvent($event)"
+      (musicEventDurationRequested)="setMusicEventDuration($event)"
       (undoRequested)="undoStructure()"
       (redoRequested)="redoStructure()"
     />

@@ -44,6 +44,29 @@ describe('legacy-v0 adapter', () => {
     expect(song.lines[0].words[0].notation).toBe('7″ 2′ 3″ (135) - 7′');
   });
 
+  it('round-trips explicit event durations while legacy documents still default to one beat', () => {
+    const input = structuredClone(COMPLETE_LEGACY) as Record<string, any>;
+    const firstWord = input['song']['lines'][0]['words'][0] as Record<string, unknown>;
+    firstWord['eventDurations'] = [1, 1, 1, 1, null, 2];
+
+    const imported = parseLegacyV0(input);
+    expect(
+      imported.song.lines[0].words[0].events.map((event) =>
+        event.kind === 'separator' ? undefined : event.duration,
+      ),
+    ).toEqual([1, 1, 1, 1, undefined, 2]);
+    const exported = exportVanillaCompatible(imported);
+    const exportedWord = (exported['song'] as { lines: { words: Record<string, unknown>[] }[] })
+      .lines[0].words[0];
+    expect(exportedWord['notation']).toBe("1' 2′ 3″ (135)-7′");
+    expect(exportedWord['eventDurations']).toEqual([1, 1, 1, 1, null, 2]);
+
+    const legacyOnly = exportVanillaCompatible(parseLegacyV0(COMPLETE_LEGACY));
+    const legacyWord = (legacyOnly['song'] as { lines: { words: Record<string, unknown>[] }[] })
+      .lines[0].words[0];
+    expect(legacyWord).not.toHaveProperty('eventDurations');
+  });
+
   it.each([
     ['invalid JSON', '{'],
     ['invalid key count', INVALID_KEYS],
