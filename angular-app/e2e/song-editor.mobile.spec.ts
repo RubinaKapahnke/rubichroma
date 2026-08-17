@@ -149,18 +149,24 @@ async function expectNoPageOverflow(page: Page): Promise<void> {
 }
 
 async function expectInsideVisualViewport(page: Page, locator: Locator): Promise<void> {
-  const box = await locator.boundingBox();
-  const viewport = await page.evaluate(() => ({
-    left: window.visualViewport?.offsetLeft ?? 0,
-    top: window.visualViewport?.offsetTop ?? 0,
-    width: window.visualViewport?.width ?? innerWidth,
-    height: window.visualViewport?.height ?? innerHeight,
-  }));
-  expect(box).not.toBeNull();
-  expect(box!.x).toBeGreaterThanOrEqual(viewport.left - 1);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.left + viewport.width + 1);
-  expect(box!.y).toBeGreaterThanOrEqual(viewport.top - 1);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.top + viewport.height + 1);
+  await expect
+    .poll(async () => {
+      const box = await locator.boundingBox();
+      const viewport = await page.evaluate(() => ({
+        left: window.visualViewport?.offsetLeft ?? 0,
+        top: window.visualViewport?.offsetTop ?? 0,
+        width: window.visualViewport?.width ?? innerWidth,
+        height: window.visualViewport?.height ?? innerHeight,
+      }));
+      return (
+        box !== null &&
+        box.x >= viewport.left - 1 &&
+        box.x + box.width <= viewport.left + viewport.width + 1 &&
+        box.y >= viewport.top - 1 &&
+        box.y + box.height <= viewport.top + viewport.height + 1
+      );
+    })
+    .toBe(true);
 }
 
 async function expectCompactBottomToolbar(page: Page, toolbar: Locator): Promise<void> {
