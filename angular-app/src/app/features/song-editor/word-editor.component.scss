@@ -194,12 +194,51 @@ mat-form-field {
 }
 
 .event-list {
+  align-items: stretch;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
   margin-top: 0.65rem;
   min-width: 0;
   max-width: 100%;
+}
+
+.keyboard-track-status,
+.keyboard-chord-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.8rem;
+  margin-top: 0.5rem;
+  color: var(--rc-color-text-muted);
+  font-size: 0.72rem;
+}
+
+.keyboard-chord-status {
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid var(--rc-color-primary);
+  color: var(--rc-color-text);
+  background: var(--rc-color-primary-container);
+}
+
+.track-insert-marker {
+  width: 3px;
+  min-height: 3.2rem;
+  align-self: stretch;
+  border-radius: 999px;
+  background: var(--rc-color-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rc-color-focus) 18%, transparent);
+}
+
+.empty-track-target {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.track-row:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--rc-color-focus) 45%, transparent);
+  outline-offset: 2px;
 }
 
 .key-hands {

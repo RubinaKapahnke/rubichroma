@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('keeps the focused music grid and contextual shortcut help usable at 390 px', async ({
+test('keeps the focused music rows and contextual shortcut help usable at 390 px', async ({
   page,
 }) => {
   await page.goto('/');
@@ -8,19 +8,21 @@ test('keeps the focused music grid and contextual shortcut help usable at 390 px
   await page.getByTestId('word-card-0-0').tap();
 
   const editor = page.getByTestId('word-editor');
-  const grid = page.getByTestId('music-grid');
-  await grid.scrollIntoViewIfNeeded();
-  await expect(grid).toBeVisible();
-  await expect(editor.getByText('Notenwert-Kürzel:')).toBeVisible();
-  await editor.getByText('Kürzelhilfe fürs Raster').click();
-  await expect(editor.getByText(/Notenlänge wählen mit Y\/X\/C\/V\/B/)).toBeVisible();
+  const melody = page.getByTestId('track-row-melody');
+  await melody.scrollIntoViewIfNeeded();
+  await expect(melody).toBeVisible();
+  await expect(melody.locator('.keyboard-track-status')).toContainText(
+    'Aktive Spur: MelodiePosition: 1Notenwert: Viertel',
+  );
+  await expect(editor.locator('.keyboard-shortcuts-help')).not.toHaveAttribute('open', '');
+  await expect(editor.locator('.reference-key-row').first()).not.toBeVisible();
+  await editor.getByText('? Tastenkürzel').click();
+  await expect(editor.getByText(/Notenwert-Kürzel – Notenlänge wählen:/)).toBeVisible();
   await expect(editor.locator('.reference-key-row')).toHaveCount(2);
 
-  await grid.focus();
-  await grid.press('Digit1');
-  await expect(
-    page.getByTestId('music-grid-row-melody').locator('.music-grid-event'),
-  ).not.toHaveCount(0);
+  await melody.focus();
+  await page.keyboard.press('Digit1');
+  await expect(melody.locator('.event-chip')).not.toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
   );

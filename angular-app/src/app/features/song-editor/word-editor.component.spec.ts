@@ -81,6 +81,24 @@ describe('word editor syllable split', () => {
 });
 
 describe('word editor keyboard music grid', () => {
+  it('keeps the existing track rows primary and the shortcut reference closed', () => {
+    const fixture = createGridFixture([]);
+    fixture.detectChanges();
+
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.querySelector('.music-grid-cells')).toBeNull();
+    expect(host.querySelector('.keyboard-shortcuts-help')?.hasAttribute('open')).toBe(false);
+    expect(
+      host.querySelector('[data-testid="track-row-melody"] .keyboard-track-status')?.textContent,
+    ).toContain('Aktive Spur: Melodie');
+    expect(host.querySelector('.keyboard-chord-status')).toBeNull();
+
+    fixture.componentInstance.setActiveTrack('accompaniment');
+    fixture.componentInstance.handleMusicGridKeydown(keyboardEvent('KeyH', 'h', { altKey: true }));
+    fixture.detectChanges();
+    expect(host.querySelector('.keyboard-chord-status')?.textContent).toContain('Enter bestätigen');
+  });
+
   it.each([
     ['KeyZ', 'y', 4],
     ['KeyX', 'x', 2],

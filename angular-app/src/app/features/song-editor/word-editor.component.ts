@@ -304,6 +304,11 @@ export class WordEditorComponent {
     this.notice.set(null);
   }
 
+  activateTrackInput(track: MusicTrackId): void {
+    this.setActiveTrack(track);
+    this.focusTrackInput(track);
+  }
+
   gridEvents(track: MusicTrackId) {
     return projectMusicEventsToGrid(this.trackEvents(track));
   }
@@ -317,47 +322,34 @@ export class WordEditorComponent {
     return Array.from({ length }, (_, index) => index);
   }
 
-  gridTemplateColumns(): string {
-    return `repeat(${this.gridSlots().length}, minmax(1.1rem, 1fr))`;
-  }
-
   gridStatus(): string {
-    const selection = this.gridSelection();
-    const draft = this.keyboardChordDraft() ? `, Akkordentwurf ${this.draftLabel()}` : '';
-    return `${this.trackLabel(this.activeTrack())}, Rasterposition ${this.gridCursorSlot() + 1}, ${durationLabel(this.selectedDuration())}${selection ? ', Auswahl aktiv' : ''}${draft}`;
+    return `Aktive Spur ${this.trackLabel(this.activeTrack())}, Position ${this.gridCursorSlot() + 1}, Notenwert ${this.selectedDurationName()}`;
   }
 
-  isGridCursor(track: MusicTrackId, slot: number): boolean {
-    return this.activeTrack() === track && this.gridCursorSlot() === slot;
-  }
-
-  isGridSlotSelected(track: MusicTrackId, slot: number): boolean {
-    const selection = this.gridSelection();
-    if (!selection) return false;
-    const firstTrack = Math.min(
-      TRACKS.indexOf(selection.anchorTrack),
-      TRACKS.indexOf(selection.focusTrack),
-    );
-    const lastTrack = Math.max(
-      TRACKS.indexOf(selection.anchorTrack),
-      TRACKS.indexOf(selection.focusTrack),
-    );
-    const firstSlot = Math.min(selection.anchorSlot, selection.focusSlot);
-    const lastSlot = Math.max(selection.anchorSlot, selection.focusSlot);
-    const trackIndex = TRACKS.indexOf(track);
+  selectedDurationName(): string {
     return (
-      trackIndex >= firstTrack && trackIndex <= lastTrack && slot >= firstSlot && slot <= lastSlot
-    );
+      {
+        4: 'Ganze',
+        2: 'Halbe',
+        1: 'Viertel',
+        0.5: 'Achtel',
+        0.25: 'Sechzehntel',
+      } as Record<number, string>
+    )[this.selectedDuration()];
   }
 
-  focusGridSlot(event: MouseEvent, track: MusicTrackId, slot: number): void {
-    this.setActiveTrack(track);
-    this.gridCursorSlot.set(slot);
-    this.gridSelection.set(null);
-    (event.currentTarget as HTMLElement).closest<HTMLElement>('[role="grid"]')?.focus();
+  cursorEventIndex(track: MusicTrackId): number {
+    const projected = this.gridEvents(track);
+    const occupied = eventAtMusicGridSlot(this.trackEvents(track), this.gridCursorSlot());
+    if (occupied) return occupied.eventIndex;
+    return (
+      projected.find((entry) => entry.startSlot > this.gridCursorSlot())?.eventIndex ??
+      this.trackEvents(track).length
+    );
   }
 
   handleMusicGridKeydown(event: KeyboardEvent): void {
+    if (event.target !== event.currentTarget) return;
     if (event.key === 'Tab') return;
 
     const toneKey = this.toneKeyForCode(event.code);
@@ -453,6 +445,7 @@ export class WordEditorComponent {
           Math.max(0, Math.min(TRACKS.length - 1, TRACKS.indexOf(this.activeTrack()) + direction))
         ];
       this.activeTrack.set(nextTrack);
+      this.focusTrackInput(nextTrack);
     } else if (event.altKey && !event.ctrlKey && !event.metaKey) {
       this.moveToGridEvent(direction);
     } else if (event.ctrlKey || event.metaKey) {
@@ -566,6 +559,12 @@ export class WordEditorComponent {
       draft.some((candidate) => samePitch(candidate, pitch))
         ? draft.filter((candidate) => !samePitch(candidate, pitch))
         : [...draft, { ...pitch }],
+    );
+  }
+
+  private focusTrackInput(track: MusicTrackId): void {
+    queueMicrotask(() =>
+      document.querySelector<HTMLElement>(`[data-testid="track-row-${track}"]`)?.focus(),
     );
   }
 
