@@ -140,7 +140,9 @@ test('keeps help preference, product labels and song storage separate', async ({
 
   await expect(page.getByTestId('import-button')).toHaveText('Sicherung laden');
   await expect(page.getByTestId('export-button')).toHaveText('Song sichern');
-  await expect(page.getByText(/Nur in diesem Browser gespeichert/)).toBeVisible();
+  await expect(
+    page.getByText(/Dein Song wird nur in diesem Browser gespeichert.*nicht in eine Cloud/),
+  ).toBeVisible();
   await expect(page.getByTestId('line-add-0')).toHaveText(/Zeile danach/);
   await expect(page.getByTestId('line-add-0')).toHaveAttribute('title', 'Zeile danach einfügen');
   await expect(page.getByTestId('undo-structure')).toHaveAttribute('title', /Strg\+Z/);
