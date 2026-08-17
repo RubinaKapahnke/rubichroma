@@ -198,6 +198,27 @@ export class SongRepository {
     });
     return cloneDocument(current.document);
   }
+
+  async importLocalBackupAsNewSong(snapshot: LocalBackupSnapshot): Promise<StoredSong> {
+    const currentEntries = snapshot.metadata.filter((entry) => entry.key === CURRENT_SONG_META_KEY);
+    const source = snapshot.songs.find((song) => song.id === currentEntries[0]?.value);
+    if (
+      !source ||
+      currentEntries.length !== 1 ||
+      snapshot.songs.length === 0 ||
+      new Set(snapshot.songs.map((song) => song.id)).size !== snapshot.songs.length
+    ) {
+      throw new Error('Die Sicherung enthält kein gültiges aktuelles Lied.');
+    }
+
+    return this.database.transaction('rw', this.database.songs, this.database.meta, async () => {
+      const imported = createStored(source.document, createSongId(), 1);
+      await this.database.songs.add(imported);
+      await this.database.meta.put({ key: CURRENT_SONG_META_KEY, value: imported.id });
+      await this.transactionGuard?.();
+      return cloneStoredSong(imported);
+    });
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -211,14 +232,15 @@ function createStored(
   document: SongDocument,
   id: string,
   revision: number,
-  createdAt = new Date().toISOString(),
+  createdAt?: string,
 ): StoredSong {
+  const updatedAt = new Date().toISOString();
   return {
     id,
     document: cloneDocument(document),
     revision,
-    createdAt,
-    updatedAt: new Date().toISOString(),
+    createdAt: createdAt ?? updatedAt,
+    updatedAt,
   };
 }
 

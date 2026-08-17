@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
 import { encodeLegacyNotation, fidelityForEvents } from '../../domain/legacy-notation-codec';
 import { createEmptySongDocument } from '../../domain/default-document';
@@ -310,6 +310,70 @@ describe('SongRepository', () => {
     await expect(repo.restoreLocalBackupSnapshot(candidate)).rejects.toThrow(
       'simulated restore failure',
     );
+    expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
+  });
+
+  it('imports the backed-up current song repeatedly with fresh identity and exact fidelity', async () => {
+    const repo = repository();
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const originalId = (await repo.currentSongId())!;
+    const originalRecord = structuredClone((await repo.database.songs.get(originalId))!);
+    const snapshot = await repo.exportLocalBackupSnapshot();
+    const source = snapshot.songs.find((song) => song.id === originalId)!;
+    source.document.song.title = 'Importierter Sicherungssong';
+    source.document.song.lines[0].words[0].melodyEvents[0] = {
+      ...source.document.song.lines[0].words[0].melodyEvents[0],
+      duration: 2,
+      importedUnknown: { nested: ['bleibt', 2] },
+    } as unknown as MusicEvent;
+    source.document.song.lines[0].words[0].extra['backupImportUnknown'] = {
+      fidelity: true,
+    };
+
+    const first = await repo.importLocalBackupAsNewSong(snapshot);
+    const second = await repo.importLocalBackupAsNewSong(snapshot);
+
+    expect(first.id).toMatch(/^song-/);
+    expect(second.id).toMatch(/^song-/);
+    expect(new Set([originalId, first.id, second.id]).size).toBe(3);
+    expect(first.document).toEqual(source.document);
+    expect(second.document).toEqual(source.document);
+    expect(first.revision).toBe(1);
+    expect(first.createdAt).toBe(first.updatedAt);
+    expect(second.createdAt).toBe(second.updatedAt);
+    expect(await repo.currentSongId()).toBe(second.id);
+    expect(await repo.database.songs.get(originalId)).toEqual(originalRecord);
+    expect(await repo.database.songs.count()).toBe(3);
+  });
+
+  it('leaves songs and metadata unchanged when new-song backup import fails', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated backup import failure');
+    });
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const snapshot = await repo.exportLocalBackupSnapshot();
+    const before = structuredClone(snapshot);
+    fail = true;
+
+    await expect(repo.importLocalBackupAsNewSong(snapshot)).rejects.toThrow(
+      'simulated backup import failure',
+    );
+    expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
+
+    const randomUuid = vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+      throw new Error('simulated id failure');
+    });
+    await expect(repo.importLocalBackupAsNewSong(snapshot)).rejects.toThrow('simulated id failure');
+    randomUuid.mockRestore();
     expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
   });
 

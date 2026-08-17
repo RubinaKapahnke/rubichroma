@@ -153,6 +153,43 @@ describe('SongEditorStore structure persistence', () => {
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
   });
 
+  it('imports a validated backup as a new active library song and persists follow-up edits', async () => {
+    const legacyJson = JSON.stringify(COMPLETE_LEGACY);
+    localStorage.setItem(LEGACY_STORAGE_KEY, legacyJson);
+    await store.initialize();
+    const originalId = store.activeSongId()!;
+    const preview = store.inspectLocalBackup(await store.exportLocalBackupJson());
+    const expectedImport = structuredClone(preview.snapshot.songs[0].document);
+    const changedCurrent = structuredClone(store.document()!);
+    changedCurrent.song.title = 'Bisheriger aktiver Song';
+    await repository.save(changedCurrent, originalId);
+    const originalRecord = structuredClone((await database.songs.get(originalId))!);
+    const hydrationBeforeImport = store.hydrationVersion();
+
+    await store.importLocalBackupAsNewSong(preview);
+
+    const importedId = store.activeSongId()!;
+    expect(importedId).not.toBe(originalId);
+    expect(store.document()).toEqual(expectedImport);
+    expect(store.songs()).toHaveLength(2);
+    expect(store.hydrationVersion()).toBe(hydrationBeforeImport + 1);
+    expect(store.canUndo()).toBe(false);
+    expect(store.status()).toBe('saved');
+    expect(await database.songs.get(originalId)).toEqual(originalRecord);
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBe(legacyJson);
+
+    const editedImport = structuredClone(store.document()!);
+    editedImport.song.title = 'Import mit Folgeänderung';
+    await store.saveEditorValue({
+      title: editedImport.song.title,
+      lines: editedImport.song.lines.map((line) => ({
+        words: line.words.map((word) => ({ text: word.text, notation: word.legacyNotation.raw })),
+      })),
+    });
+    expect((await repository.load(importedId))?.song.title).toBe('Import mit Folgeänderung');
+    expect(await database.songs.get(originalId)).toEqual(originalRecord);
+  });
+
   it('undoes and redoes multiple structure actions and persists the final snapshot', async () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(COMPLETE_LEGACY));
     await store.initialize();
