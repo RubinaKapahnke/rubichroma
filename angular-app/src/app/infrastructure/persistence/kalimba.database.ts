@@ -1,6 +1,9 @@
 import Dexie, { Table } from 'dexie';
-import { replaceWithLegacyNotation } from '../../domain/legacy-notation-codec';
-import { SongDocument } from '../../domain/song-document';
+import {
+  createTrackedWordFields,
+  migrateSongDocumentTracks,
+  SongDocument,
+} from '../../domain/song-document';
 
 export interface StoredSong {
   id: 'current';
@@ -40,6 +43,21 @@ export class KalimbaDatabase extends Dexie {
           }
         }
       });
+    this.version(3)
+      .stores({
+        songs: 'id',
+        meta: 'key',
+      })
+      .upgrade(async (transaction) => {
+        const songs = transaction.table<StoredSong, 'current'>('songs');
+        const records = await songs.toArray();
+        for (const record of records) {
+          const migratedDocument = migrateStoredDocument(record.document);
+          if (JSON.stringify(migratedDocument) !== JSON.stringify(record.document)) {
+            await songs.put({ ...record, document: migratedDocument });
+          }
+        }
+      });
   }
 }
 
@@ -50,6 +68,8 @@ function migrateStoredDocument(document: SongDocument): SongDocument {
         words: Array<{
           notation?: unknown;
           events?: unknown;
+          melodyEvents?: unknown;
+          accompanimentEvents?: unknown;
           legacyNotation?: unknown;
         }>;
       }[];
@@ -65,16 +85,18 @@ function migrateStoredDocument(document: SongDocument): SongDocument {
       throw new Error('Dexie-v1-Song enthält keine gültigen Wörter.');
     }
     for (const word of line.words) {
-      if (Array.isArray(word.events) && isLegacyNotationFidelity(word.legacyNotation)) continue;
-      if (typeof word.notation !== 'string') {
-        throw new Error('Dexie-v1-Wort enthält keine gültige Legacy-Notation.');
+      if (!isLegacyNotationFidelity(word.legacyNotation)) {
+        if (typeof word.notation !== 'string') {
+          throw new Error('Dexie-v1-Wort enthält keine gültige Legacy-Notation.');
+        }
+        Object.assign(word, createTrackedWordFields(word.notation));
+        delete word.notation;
+        changed = true;
       }
-      Object.assign(word, replaceWithLegacyNotation(word.notation));
-      delete word.notation;
-      changed = true;
     }
   }
-  return changed ? (mutable as SongDocument) : document;
+  const migrated = migrateSongDocumentTracks(mutable);
+  return changed || JSON.stringify(migrated) !== JSON.stringify(document) ? migrated : document;
 }
 
 function isLegacyNotationFidelity(value: unknown): value is { raw: string } {

@@ -255,9 +255,9 @@ describe('SongEditorComponent hydration', () => {
       touchSelection: false,
     });
 
-    fixture.componentInstance.removeMusicEvent(1);
+    fixture.componentInstance.removeMusicEvent({ track: 'melody', eventIndex: 1 });
 
-    expect(removeMusicEvent).toHaveBeenCalledWith({ lineIndex: 0, wordIndex: 0 }, 1);
+    expect(removeMusicEvent).toHaveBeenCalledWith({ lineIndex: 0, wordIndex: 0 }, 'melody', 1);
     expect(fixture.componentInstance.selection()).toEqual({ lineIndex: 0, wordIndex: 0 });
     expect(fixture.componentInstance.actionNotice()).toBe('Musikereignis entfernt');
   });

@@ -24,7 +24,7 @@ import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { MusicEvent, MusicTrackId, Pitch } from '../../domain/music-event';
 import { buildPlayerTimeline } from '../../domain/player-timeline';
-import { SongDocument } from '../../domain/song-document';
+import { projectSongWordEvents, SongDocument } from '../../domain/song-document';
 import {
   createMusicSelectionClipboard,
   EMPTY_SONG_SELECTION,
@@ -116,10 +116,8 @@ export class SongEditorComponent {
   readonly selectedMusicEvents = computed(() => {
     const selection = this.selection();
     if (!selection) return [];
-    return (
-      this.store.document()?.song.lines[selection.lineIndex]?.words[selection.wordIndex]?.events ??
-      []
-    );
+    const word = this.store.document()?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
+    return word ? projectSongWordEvents(word) : [];
   });
   private readonly destroyRef = inject(DestroyRef);
   private readonly overlay = inject(Overlay);
@@ -363,10 +361,10 @@ export class SongEditorComponent {
     this.focusSelection(result.state.selection);
   }
 
-  removeMusicEvent(eventIndex: number): void {
+  removeMusicEvent(request: { track: MusicTrackId; eventIndex: number }): void {
     const selection = this.selection();
     if (!selection) return;
-    const result = this.store.removeMusicEvent(selection, eventIndex);
+    const result = this.store.removeMusicEvent(selection, request.track, request.eventIndex);
     if (!result.ok) {
       this.actionNotice.set(
         result.reason === 'unknown-legacy-fragments'
@@ -402,11 +400,16 @@ export class SongEditorComponent {
     this.focusSelection(result.selection);
   }
 
-  setMusicEventDuration(request: { eventIndex: number; durationBeats: number }): void {
+  setMusicEventDuration(request: {
+    track: MusicTrackId;
+    eventIndex: number;
+    durationBeats: number;
+  }): void {
     const selection = this.selection();
     if (!selection) return;
     const result = this.store.setMusicEventDuration(
       selection,
+      request.track,
       request.eventIndex,
       request.durationBeats,
     );
@@ -428,11 +431,11 @@ export class SongEditorComponent {
     void this.audioPreview.previewPitches([pitch]);
   }
 
-  previewMusicEvent(eventIndex: number): void {
+  previewMusicEvent(request: { track: MusicTrackId; eventIndex: number }): void {
     const selection = this.selection();
     const document = this.store.document();
     if (!selection || !document) return;
-    const id = `event-${selection.lineIndex}-${selection.wordIndex}-${eventIndex}`;
+    const id = `event-${selection.lineIndex}-${selection.wordIndex}-${request.track}-${request.eventIndex}`;
     void this.audioPreview.previewTimeline(
       buildPlayerTimeline(document).events.filter((event) => event.id === id),
     );
@@ -443,8 +446,7 @@ export class SongEditorComponent {
     if (!position || !document) return;
     void this.audioPreview.previewTimeline(
       buildPlayerTimeline(document).events.filter(
-        (event) =>
-          event.lineIndex === position.lineIndex && event.wordIndex === position.wordIndex,
+        (event) => event.lineIndex === position.lineIndex && event.wordIndex === position.wordIndex,
       ),
     );
   }

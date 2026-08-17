@@ -59,10 +59,20 @@ export class WordEditorComponent {
   readonly canRedo = input.required<boolean>();
   readonly closed = output<void>();
   readonly structureAction = output<SongStructureAction>();
-  readonly musicEventRemovalRequested = output<number>();
-  readonly musicEventDurationRequested = output<{ eventIndex: number; durationBeats: number }>();
+  readonly musicEventRemovalRequested = output<{
+    track: MusicTrackId;
+    eventIndex: number;
+  }>();
+  readonly musicEventDurationRequested = output<{
+    track: MusicTrackId;
+    eventIndex: number;
+    durationBeats: number;
+  }>();
   readonly musicEventAppendRequested = output<{ event: MusicEvent; track: MusicTrackId }>();
-  readonly musicEventPreviewRequested = output<number>();
+  readonly musicEventPreviewRequested = output<{
+    track: MusicTrackId;
+    eventIndex: number;
+  }>();
   readonly pitchPreviewRequested = output<Pitch>();
   readonly blockPreviewRequested = output<void>();
   readonly undoRequested = output<void>();
@@ -76,7 +86,8 @@ export class WordEditorComponent {
   readonly moreActionsOpen = signal(false);
   readonly auditionKeys = signal(false);
   readonly splitIndex = signal<number | null>(null);
-  readonly firstSplitEventCount = signal<number | null>(null);
+  readonly firstSplitMelodyCount = signal<number | null>(null);
+  readonly firstSplitAccompanimentCount = signal<number | null>(null);
   readonly visibleTextControl = new FormControl('', { nonNullable: true });
   readonly leftKeys = computed(() => this.keys().filter((key) => key.hand === 'L'));
   readonly rightKeys = computed(() => this.keys().filter((key) => key.hand === 'R'));
@@ -107,7 +118,8 @@ export class WordEditorComponent {
       this.testIdSuffix();
       this.moreActionsOpen.set(false);
       this.splitIndex.set(null);
-      this.firstSplitEventCount.set(null);
+      this.firstSplitMelodyCount.set(null);
+      this.firstSplitAccompanimentCount.set(null);
     });
   }
 
@@ -126,13 +138,8 @@ export class WordEditorComponent {
     return syllableSplitPoints(this.visibleTextControl.value);
   }
 
-  splitEventCounts(): number[] {
-    const events = this.events();
-    return Array.from({ length: Math.max(0, events.length - 1) }, (_, index) => index + 1).filter(
-      (count) =>
-        events.slice(0, count).some((event) => event.kind !== 'separator') &&
-        events.slice(count).some((event) => event.kind !== 'separator'),
-    );
+  splitEventCounts(track: MusicTrackId): number[] {
+    return Array.from({ length: this.eventsForTrack(track).length + 1 }, (_, index) => index);
   }
 
   selectedSplitIndex(): number {
@@ -143,10 +150,12 @@ export class WordEditorComponent {
       : (points[Math.floor(points.length / 2)] ?? 0);
   }
 
-  selectedFirstEventCount(): number {
-    const counts = this.splitEventCounts();
-    const selected = this.firstSplitEventCount();
-    return selected !== null && counts.includes(selected) ? selected : (counts[0] ?? 0);
+  selectedFirstEventCount(track: MusicTrackId): number {
+    const counts = this.splitEventCounts(track);
+    const selected =
+      track === 'melody' ? this.firstSplitMelodyCount() : this.firstSplitAccompanimentCount();
+    const fallback = track === 'melody' && counts.length > 1 ? 1 : 0;
+    return selected !== null && counts.includes(selected) ? selected : fallback;
   }
 
   splitPreview(): { firstText: string; secondText: string } | null {
@@ -162,7 +171,24 @@ export class WordEditorComponent {
       !this.isMelodyBlock() &&
       !this.hasUnknownFragments() &&
       this.splitPoints().length > 0 &&
-      this.splitEventCounts().length > 0
+      this.events().filter((event) => event.kind !== 'separator').length >= 2
+    );
+  }
+
+  canApplySyllableSplit(): boolean {
+    const melodyCount = this.selectedFirstEventCount('melody');
+    const accompanimentCount = this.selectedFirstEventCount('accompaniment');
+    const first = [
+      ...this.eventsForTrack('melody').slice(0, melodyCount),
+      ...this.eventsForTrack('accompaniment').slice(0, accompanimentCount),
+    ];
+    const second = [
+      ...this.eventsForTrack('melody').slice(melodyCount),
+      ...this.eventsForTrack('accompaniment').slice(accompanimentCount),
+    ];
+    return (
+      first.some(({ event }) => event.kind !== 'separator') &&
+      second.some(({ event }) => event.kind !== 'separator')
     );
   }
 
@@ -170,16 +196,21 @@ export class WordEditorComponent {
     this.splitIndex.set(Number(value));
   }
 
-  setFirstSplitEventCount(value: string): void {
-    this.firstSplitEventCount.set(Number(value));
+  setFirstSplitEventCount(track: MusicTrackId, value: string): void {
+    (track === 'melody' ? this.firstSplitMelodyCount : this.firstSplitAccompanimentCount).set(
+      Number(value),
+    );
   }
 
   splitSyllable(): void {
-    if (!this.canSplitSyllable()) return;
+    if (!this.canSplitSyllable() || !this.canApplySyllableSplit()) return;
     this.structureAction.emit({
       kind: 'split-block',
       splitIndex: this.selectedSplitIndex(),
-      firstEventCount: this.selectedFirstEventCount(),
+      firstEventCounts: {
+        melody: this.selectedFirstEventCount('melody'),
+        accompaniment: this.selectedFirstEventCount('accompaniment'),
+      },
     });
   }
 
@@ -248,16 +279,16 @@ export class WordEditorComponent {
     this.append({ kind: 'separator' });
   }
 
-  removeEvent(index: number): void {
-    this.musicEventRemovalRequested.emit(index);
+  removeEvent(track: MusicTrackId, eventIndex: number): void {
+    this.musicEventRemovalRequested.emit({ track, eventIndex });
   }
 
-  previewEvent(index: number): void {
-    this.musicEventPreviewRequested.emit(index);
+  previewEvent(track: MusicTrackId, eventIndex: number): void {
+    this.musicEventPreviewRequested.emit({ track, eventIndex });
   }
 
-  setEventDuration(eventIndex: number, duration: string): void {
-    this.musicEventDurationRequested.emit({ eventIndex, durationBeats: Number(duration) });
+  setEventDuration(track: MusicTrackId, eventIndex: number, duration: string): void {
+    this.musicEventDurationRequested.emit({ track, eventIndex, durationBeats: Number(duration) });
   }
 
   eventDurationBeats(event: MusicEvent): number {
@@ -323,10 +354,15 @@ export class WordEditorComponent {
     );
   }
 
-  eventsForTrack(track: MusicTrackId): { event: MusicEvent; index: number }[] {
+  eventsForTrack(track: MusicTrackId): { event: MusicEvent; index: number; trackIndex: number }[] {
+    let trackIndex = 0;
     return this.events().flatMap((event, index) =>
-      musicEventTrack(event) === track ? [{ event, index }] : [],
+      musicEventTrack(event) === track ? [{ event, index, trackIndex: trackIndex++ }] : [],
     );
+  }
+
+  copyActiveTrackToNextLine(): void {
+    this.runStructureAction({ kind: 'copy-events-to-next-line', track: this.activeTrack() });
   }
 
   trackLabel(track: MusicTrackId): string {

@@ -1,75 +1,161 @@
 {
+  "formatVersion": 2,
   "fixtureVersion": 1,
   "song": {
     "title": "Twinkle, Twinkle, Little Star",
     "lines": [
       {
         "words": [
-          { "text": "Twinkle,", "notation": "1 1 (35)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
-          { "text": "twinkle,", "notation": "5 5", "eventDurations": [1, 1] },
-          { "text": "little", "notation": "6 6", "eventDurations": [1, 1] },
-          { "text": "star", "notation": "5", "eventDurations": [2] }
+          {"text":"Twinkle,","melodyEvents":[{"kind":"note","pitch":{"degree":1,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":1,"octave":0},"duration":1}],"accompanimentEvents":[{"kind":"chord","pitches":[{"degree":3,"octave":0},{"degree":5,"octave":0}],"duration":2}]},
+          {"text":"twinkle,","melodyEvents":[{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"little","melodyEvents":[{"kind":"note","pitch":{"degree":6,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":6,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"star","melodyEvents":[{"kind":"note","pitch":{"degree":5,"octave":0},"duration":2}],"accompanimentEvents":[]}
         ]
       },
       {
         "words": [
-          { "text": "How", "notation": "4 4 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
-          { "text": "I", "notation": "3 3", "eventDurations": [1, 1] },
-          { "text": "wonder", "notation": "2 2", "eventDurations": [1, 1] },
-          { "text": "what you are", "notation": "1", "eventDurations": [2] }
+          {"text":"How","melodyEvents":[{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1}],"accompanimentEvents":[{"kind":"chord","pitches":[{"degree":1,"octave":0},{"degree":3,"octave":0}],"duration":2}]},
+          {"text":"I","melodyEvents":[{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"wonder","melodyEvents":[{"kind":"note","pitch":{"degree":2,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":2,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"what you are","melodyEvents":[{"kind":"note","pitch":{"degree":1,"octave":0},"duration":2}],"accompanimentEvents":[]}
         ]
       },
       {
         "words": [
-          { "text": "Up", "notation": "5 5 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
-          { "text": "above", "notation": "4 4", "eventDurations": [1, 1] },
-          { "text": "the world", "notation": "3 3", "eventDurations": [1, 1] },
-          { "text": "so high", "notation": "2", "eventDurations": [2] }
+          {"text":"Up","melodyEvents":[{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1}],"accompanimentEvents":[{"kind":"chord","pitches":[{"degree":1,"octave":0},{"degree":3,"octave":0}],"duration":2}]},
+          {"text":"above","melodyEvents":[{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"the world","melodyEvents":[{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"so high","melodyEvents":[{"kind":"note","pitch":{"degree":2,"octave":0},"duration":2}],"accompanimentEvents":[]}
         ]
       },
       {
         "words": [
-          { "text": "Like", "notation": "5 5 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
-          { "text": "a diamond", "notation": "4 4", "eventDurations": [1, 1] },
-          { "text": "in the", "notation": "3 3", "eventDurations": [1, 1] },
-          { "text": "sky", "notation": "2", "eventDurations": [2] }
+          {"text":"Like","melodyEvents":[{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1}],"accompanimentEvents":[{"kind":"chord","pitches":[{"degree":1,"octave":0},{"degree":3,"octave":0}],"duration":2}]},
+          {"text":"a diamond","melodyEvents":[{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"in the","melodyEvents":[{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"sky","melodyEvents":[{"kind":"note","pitch":{"degree":2,"octave":0},"duration":2}],"accompanimentEvents":[]}
         ]
       },
       {
         "words": [
-          { "text": "Twinkle,", "notation": "1 1 (35)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
-          { "text": "twinkle,", "notation": "5 5", "eventDurations": [1, 1] },
-          { "text": "little", "notation": "6 6", "eventDurations": [1, 1] },
-          { "text": "star", "notation": "5", "eventDurations": [2] }
+          {"text":"Twinkle,","melodyEvents":[{"kind":"note","pitch":{"degree":1,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":1,"octave":0},"duration":1}],"accompanimentEvents":[{"kind":"chord","pitches":[{"degree":3,"octave":0},{"degree":5,"octave":0}],"duration":2}]},
+          {"text":"twinkle,","melodyEvents":[{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":5,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"little","melodyEvents":[{"kind":"note","pitch":{"degree":6,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":6,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"star","melodyEvents":[{"kind":"note","pitch":{"degree":5,"octave":0},"duration":2}],"accompanimentEvents":[]}
         ]
       },
       {
         "words": [
-          { "text": "How", "notation": "4 4 (13)", "eventDurations": [1, 1, 2], "eventTracks": ["melody", "melody", "accompaniment"] },
-          { "text": "I", "notation": "3 3", "eventDurations": [1, 1] },
-          { "text": "wonder", "notation": "2 2", "eventDurations": [1, 1] },
-          { "text": "what you are", "notation": "1", "eventDurations": [2] }
+          {"text":"How","melodyEvents":[{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":4,"octave":0},"duration":1}],"accompanimentEvents":[{"kind":"chord","pitches":[{"degree":1,"octave":0},{"degree":3,"octave":0}],"duration":2}]},
+          {"text":"I","melodyEvents":[{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":3,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"wonder","melodyEvents":[{"kind":"note","pitch":{"degree":2,"octave":0},"duration":1},{"kind":"note","pitch":{"degree":2,"octave":0},"duration":1}],"accompanimentEvents":[]},
+          {"text":"what you are","melodyEvents":[{"kind":"note","pitch":{"degree":1,"octave":0},"duration":2}],"accompanimentEvents":[]}
         ]
       }
     ]
   },
   "keys": [
-    { "value": "2″", "letter": "D", "color": "#7A8CC9", "hand": "L" },
-    { "value": "7′", "letter": "B", "color": "#864B9F", "hand": "L" },
-    { "value": "5′", "letter": "G", "color": "#F78853", "hand": "L" },
-    { "value": "3′", "letter": "E", "color": "#45A953", "hand": "L" },
-    { "value": "1′", "letter": "C", "color": "#3CB8A6", "hand": "L" },
-    { "value": "6", "letter": "A", "color": "#F7BD30", "hand": "L" },
-    { "value": "4", "letter": "F", "color": "#E95784", "hand": "L" },
-    { "value": "2", "letter": "D", "color": "#342E38", "hand": "L" },
-    { "value": "1", "letter": "C", "color": "#2E7975", "hand": "R" },
-    { "value": "3", "letter": "E", "color": "#26562A", "hand": "R" },
-    { "value": "5", "letter": "G", "color": "#D41C33", "hand": "R" },
-    { "value": "7", "letter": "B", "color": "#6B1E69", "hand": "R" },
-    { "value": "2′", "letter": "D", "color": "#374469", "hand": "R" },
-    { "value": "4′", "letter": "F", "color": "#F89FB5", "hand": "R" },
-    { "value": "6′", "letter": "A", "color": "#F8D360", "hand": "R" },
-    { "value": "1″", "letter": "C", "color": "#A8DDBF", "hand": "R" },
-    { "value": "3″", "letter": "E", "color": "#81B07A", "hand": "R" }
+    {
+      "value": "2″",
+      "letter": "D",
+      "color": "#7A8CC9",
+      "hand": "L"
+    },
+    {
+      "value": "7′",
+      "letter": "B",
+      "color": "#864B9F",
+      "hand": "L"
+    },
+    {
+      "value": "5′",
+      "letter": "G",
+      "color": "#F78853",
+      "hand": "L"
+    },
+    {
+      "value": "3′",
+      "letter": "E",
+      "color": "#45A953",
+      "hand": "L"
+    },
+    {
+      "value": "1′",
+      "letter": "C",
+      "color": "#3CB8A6",
+      "hand": "L"
+    },
+    {
+      "value": "6",
+      "letter": "A",
+      "color": "#F7BD30",
+      "hand": "L"
+    },
+    {
+      "value": "4",
+      "letter": "F",
+      "color": "#E95784",
+      "hand": "L"
+    },
+    {
+      "value": "2",
+      "letter": "D",
+      "color": "#342E38",
+      "hand": "L"
+    },
+    {
+      "value": "1",
+      "letter": "C",
+      "color": "#2E7975",
+      "hand": "R"
+    },
+    {
+      "value": "3",
+      "letter": "E",
+      "color": "#26562A",
+      "hand": "R"
+    },
+    {
+      "value": "5",
+      "letter": "G",
+      "color": "#D41C33",
+      "hand": "R"
+    },
+    {
+      "value": "7",
+      "letter": "B",
+      "color": "#6B1E69",
+      "hand": "R"
+    },
+    {
+      "value": "2′",
+      "letter": "D",
+      "color": "#374469",
+      "hand": "R"
+    },
+    {
+      "value": "4′",
+      "letter": "F",
+      "color": "#F89FB5",
+      "hand": "R"
+    },
+    {
+      "value": "6′",
+      "letter": "A",
+      "color": "#F8D360",
+      "hand": "R"
+    },
+    {
+      "value": "1″",
+      "letter": "C",
+      "color": "#A8DDBF",
+      "hand": "R"
+    },
+    {
+      "value": "3″",
+      "letter": "E",
+      "color": "#81B07A",
+      "hand": "R"
+    }
   ]
 }

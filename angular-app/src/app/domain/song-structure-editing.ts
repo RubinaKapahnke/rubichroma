@@ -4,8 +4,16 @@ import {
   fidelityForEvents,
   replaceWithLegacyNotation,
 } from './legacy-notation-codec';
-import { cloneMusicEvents, MusicEvent } from './music-event';
-import { cloneDocument, SongDocument, SongLine, SongWord } from './song-document';
+import { cloneMusicEvents, MusicEvent, MusicTrackId } from './music-event';
+import {
+  cloneDocument,
+  createTrackedWordFields,
+  projectSongWordEvents,
+  songWordEventsForTrack,
+  SongDocument,
+  SongLine,
+  SongWord,
+} from './song-document';
 
 export interface SongPosition {
   lineIndex: number;
@@ -19,7 +27,11 @@ export interface SongStructureState {
 
 export type SongStructureAction =
   | { kind: 'insert-block'; blockKind: 'word' | 'melody' }
-  | { kind: 'split-block'; splitIndex: number; firstEventCount: number }
+  | {
+      kind: 'split-block';
+      splitIndex: number;
+      firstEventCounts: Record<MusicTrackId, number>;
+    }
   | { kind: 'delete-block' }
   | { kind: 'duplicate-block' }
   | {
@@ -33,7 +45,11 @@ export type SongStructureAction =
   | { kind: 'delete-line'; lineIndex: number }
   | { kind: 'duplicate-line'; lineIndex: number }
   | { kind: 'move-line'; lineIndex: number; targetLineIndex: number }
-  | { kind: 'copy-events-to-next-line'; targetWordIndex?: number };
+  | {
+      kind: 'copy-events-to-next-line';
+      track: MusicTrackId;
+      targetWordIndex?: number;
+    };
 
 export type SongStructureEditResult =
   | { ok: true; state: SongStructureState; message: string }
@@ -130,30 +146,47 @@ export function editSongStructure(
       if (decodeLegacyNotation(selectedWord.legacyNotation.raw).hasUnknownFragments) {
         return { ok: false, reason: 'source-has-unknown-legacy-fragments' };
       }
-      const firstEvents = selectedWord.events.slice(0, action.firstEventCount);
-      const secondEvents = selectedWord.events.slice(action.firstEventCount);
-      if (!hasPlayableEvent(firstEvents) || !hasPlayableEvent(secondEvents)) {
+      const firstMelodyEvents = selectedWord.melodyEvents.slice(0, action.firstEventCounts.melody);
+      const secondMelodyEvents = selectedWord.melodyEvents.slice(action.firstEventCounts.melody);
+      const firstAccompanimentEvents = selectedWord.accompanimentEvents.slice(
+        0,
+        action.firstEventCounts.accompaniment,
+      );
+      const secondAccompanimentEvents = selectedWord.accompanimentEvents.slice(
+        action.firstEventCounts.accompaniment,
+      );
+      if (
+        !validTrackSplitCount(selectedWord.melodyEvents.length, action.firstEventCounts.melody) ||
+        !validTrackSplitCount(
+          selectedWord.accompanimentEvents.length,
+          action.firstEventCounts.accompaniment,
+        ) ||
+        !hasPlayableEvent([...firstMelodyEvents, ...firstAccompanimentEvents]) ||
+        !hasPlayableEvent([...secondMelodyEvents, ...secondAccompanimentEvents])
+      ) {
         return { ok: false, reason: 'insufficient-split-events' };
       }
 
       const words = document.song.lines[selection.lineIndex].words;
       const first = words[selection.wordIndex];
-      const firstClones = cloneMusicEvents(firstEvents);
-      const secondClones = cloneMusicEvents(secondEvents);
       first.text = preview.firstText;
-      first.events = firstClones;
-      first.legacyNotation = fidelityForEvents(encodeLegacyNotation(firstClones), firstClones);
-      words.splice(selection.wordIndex + 1, 0, {
+      first.melodyEvents = cloneMusicEvents(firstMelodyEvents);
+      first.accompanimentEvents = cloneMusicEvents(firstAccompanimentEvents);
+      updateWordFidelity(first);
+      const second: SongWord = {
         text: preview.secondText,
-        events: secondClones,
-        legacyNotation: fidelityForEvents(encodeLegacyNotation(secondClones), secondClones),
+        melodyEvents: cloneMusicEvents(secondMelodyEvents),
+        accompanimentEvents: cloneMusicEvents(secondAccompanimentEvents),
+        legacyNotation: fidelityForEvents('', []),
         extra: {},
-      });
+      };
+      updateWordFidelity(second);
+      words.splice(selection.wordIndex + 1, 0, second);
       selection.wordIndex += 1;
       return success(
         document,
         selection,
-        `Silbe geteilt · ${firstEvents.length} / ${secondEvents.length} Ereignisse zugeordnet`,
+        `Silbe geteilt · ${firstMelodyEvents.length + firstAccompanimentEvents.length} / ${secondMelodyEvents.length + secondAccompanimentEvents.length} Ereignisse zugeordnet`,
       );
     }
     case 'delete-block': {
@@ -236,15 +269,20 @@ export function editSongStructure(
         action.targetWordIndex ?? Math.min(selection.wordIndex, targetLine.words.length - 1);
       const target = targetLine.words[targetWordIndex];
       if (!target) return { ok: false, reason: 'missing-target-block' };
-      const targetNotation = encodeLegacyNotation(target.events, target.legacyNotation);
+      const targetNotation = encodeLegacyNotation(
+        projectSongWordEvents(target),
+        target.legacyNotation,
+      );
       if (decodeLegacyNotation(targetNotation).hasUnknownFragments) {
         return { ok: false, reason: 'target-has-unknown-legacy-fragments' };
       }
 
       const source = document.song.lines[selection.lineIndex].words[selection.wordIndex];
-      const replacement = replaceWithLegacyNotation(encodeLegacyNotation(source.events));
-      target.events = cloneMusicEvents(replacement.events);
-      target.legacyNotation = { ...replacement.legacyNotation };
+      const sourceEvents = songWordEventsForTrack(source, action.track);
+      const replacement = replaceWithLegacyNotation(encodeLegacyNotation(sourceEvents));
+      if (action.track === 'melody') target.melodyEvents = cloneMusicEvents(replacement.events);
+      else target.accompanimentEvents = cloneMusicEvents(replacement.events);
+      updateWordFidelity(target);
       selection = { lineIndex: selection.lineIndex + 1, wordIndex: targetWordIndex };
       return success(document, selection, 'Musikereignisse in die nächste Zeile übertragen');
     }
@@ -301,7 +339,7 @@ function success(
 function createBlock(kind: 'word' | 'melody'): SongWord {
   return {
     text: kind === 'word' ? 'Neues Wort' : '',
-    ...replaceWithLegacyNotation(''),
+    ...createTrackedWordFields(''),
     ...(kind === 'melody' ? { toneCount: 4 } : {}),
     extra: {},
   };
@@ -309,8 +347,24 @@ function createBlock(kind: 'word' | 'melody'): SongWord {
 
 function createLine(): SongLine {
   return {
-    words: [{ text: 'Neue Zeile', ...replaceWithLegacyNotation(''), extra: {} }],
+    words: [{ text: 'Neue Zeile', ...createTrackedWordFields(''), extra: {} }],
     extra: {},
+  };
+}
+
+function validTrackSplitCount(length: number, count: number): boolean {
+  return Number.isInteger(count) && count >= 0 && count <= length;
+}
+
+function updateWordFidelity(word: SongWord): void {
+  const events = projectSongWordEvents(word);
+  const raw = encodeLegacyNotation(events);
+  const trackMetadataExplicit =
+    word.legacyNotation.trackMetadataExplicit || word.accompanimentEvents.length > 0;
+  word.legacyNotation = {
+    ...fidelityForEvents(raw, events),
+    trackOrder: events.map((event) => event.track ?? 'melody'),
+    ...(trackMetadataExplicit ? { trackMetadataExplicit: true } : {}),
   };
 }
 

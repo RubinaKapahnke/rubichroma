@@ -1,6 +1,6 @@
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { encodeLegacyNotation } from '../../domain/legacy-notation-codec';
-import { SongDocument } from '../../domain/song-document';
+import { projectSongWordEvents, SongDocument } from '../../domain/song-document';
 
 export type WordForm = FormGroup<{
   text: FormControl<string>;
@@ -25,7 +25,7 @@ export function createSongLinesForm(document: SongDocument): FormArray<LineForm>
                 new FormGroup({
                   text: new FormControl(word.text, { nonNullable: true }),
                   notation: new FormControl(
-                    encodeLegacyNotation(word.events, word.legacyNotation),
+                    encodeLegacyNotation(projectSongWordEvents(word), word.legacyNotation),
                     { nonNullable: true },
                   ),
                 }),

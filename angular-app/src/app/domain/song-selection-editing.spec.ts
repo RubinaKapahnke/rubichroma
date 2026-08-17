@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { decodeLegacyNotation, replaceWithLegacyNotation } from './legacy-notation-codec';
-import { cloneDocument } from './song-document';
+import { decodeLegacyNotation } from './legacy-notation-codec';
+import { cloneDocument, createTrackedWordFields } from './song-document';
 import {
   createMusicSelectionClipboard,
   EMPTY_SONG_SELECTION,
@@ -14,8 +14,8 @@ describe('song selection editing', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines.push({
       words: [
-        { text: 'Ziel A', ...replaceWithLegacyNotation('4'), extra: {} },
-        { text: 'Ziel B', ...replaceWithLegacyNotation('5'), extra: {} },
+        { text: 'Ziel A', ...createTrackedWordFields('4'), extra: {} },
+        { text: 'Ziel B', ...createTrackedWordFields('5'), extra: {} },
       ],
       extra: {},
     });
@@ -58,14 +58,17 @@ describe('song selection editing', () => {
 
   it('copies only notes and chords and pastes them positionally without changing text or extras', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.lines[0].words[0].accompanimentEvents = [
+      { kind: 'note', pitch: { degree: 7, octave: 0 }, duration: 2 },
+    ];
     document.song.lines.push({
       words: [
         {
           text: 'Ziel A',
-          ...replaceWithLegacyNotation('6 - 7'),
+          ...createTrackedWordFields('6 - 7'),
           extra: { unknownTarget: { keep: true } },
         },
-        { text: 'Ziel B', ...replaceWithLegacyNotation('(24)-'), extra: { keep: 'yes' } },
+        { text: 'Ziel B', ...createTrackedWordFields('(24)-'), extra: { keep: 'yes' } },
       ],
       extra: { unknownLine: 42 },
     });
@@ -73,10 +76,11 @@ describe('song selection editing', () => {
       { lineIndex: 0, wordIndex: 0 },
       { lineIndex: 0, wordIndex: 1 },
     ]);
-    expect(clipboard?.sequences.map((events) => events.map((event) => event.kind))).toEqual([
+    expect(clipboard?.sequences.map(({ melody }) => melody.map((event) => event.kind))).toEqual([
       ['note', 'note', 'note', 'chord'],
       ['note', 'note', 'note'],
     ]);
+    expect(clipboard?.sequences.map(({ accompaniment }) => accompaniment.length)).toEqual([1, 0]);
 
     const result = pasteMusicSelection(document, clipboard!, [
       { lineIndex: 1, wordIndex: 0 },
@@ -89,16 +93,19 @@ describe('song selection editing', () => {
     const secondTarget = result.document.song.lines[1].words[1];
     expect(firstTarget.text).toBe('Ziel A');
     expect(firstTarget.extra).toEqual({ unknownTarget: { keep: true } });
-    expect(firstTarget.events.map((event) => event.kind)).toEqual([
+    expect(firstTarget.melodyEvents.map((event) => event.kind)).toEqual([
       'note',
       'separator',
       'note',
       'note',
       'chord',
     ]);
+    expect(firstTarget.accompanimentEvents).toEqual([
+      { kind: 'note', pitch: { degree: 7, octave: 0 }, duration: 2 },
+    ]);
     expect(secondTarget.text).toBe('Ziel B');
     expect(secondTarget.extra).toEqual({ keep: 'yes' });
-    expect(secondTarget.events.map((event) => event.kind)).toEqual([
+    expect(secondTarget.melodyEvents.map((event) => event.kind)).toEqual([
       'note',
       'separator',
       'note',
@@ -112,7 +119,7 @@ describe('song selection editing', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines[0].words[1] = {
       text: 'Unbekannt',
-      ...replaceWithLegacyNotation('5′-x('),
+      ...createTrackedWordFields('5′-x('),
       extra: { mustSurvive: true },
     };
     const original = structuredClone(document);

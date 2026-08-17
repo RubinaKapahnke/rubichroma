@@ -24,7 +24,7 @@ describe('player timeline', () => {
       { number: 1, startBeat: 0, endBeat: 4 },
       { number: 2, startBeat: 4, endBeat: 7 },
     ]);
-    expect(timeline.events[3]).toMatchObject({ track: 'accompaniment', barNumber: 1 });
+    expect(timeline.events[3]).toMatchObject({ track: 'melody', barNumber: 1 });
     expect(timeline.words[0]).toMatchObject({ text: 'Willkommen', startBeat: 0, endBeat: 4 });
     expect(timeline.words[1]).toMatchObject({ text: null, startBeat: 4, endBeat: 7 });
   });
@@ -50,7 +50,7 @@ describe('player timeline', () => {
 
   it('ends a physical lane at its next attack and exposes a short retrigger pulse plus next melody', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
-    document.song.lines[0].words[0].events = [
+    document.song.lines[0].words[0].melodyEvents = [
       {
         kind: 'chord',
         pitches: [
@@ -75,7 +75,7 @@ describe('player timeline', () => {
   it('keeps separators time-neutral and never turns unknown or instrumental text into placeholders', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines[0].words[0].text = '';
-    document.song.lines[0].words[0].events = [
+    document.song.lines[0].words[0].melodyEvents = [
       { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 'quarter' },
       { kind: 'separator' },
       { kind: 'note', pitch: { degree: 2, octave: 0 }, duration: 'quarter' },
@@ -88,8 +88,8 @@ describe('player timeline', () => {
 
   it('projects explicit and missing event durations onto the same transport axis', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
-    const firstEvent = document.song.lines[0].words[0].events[0];
-    const secondEvent = document.song.lines[0].words[0].events[1];
+    const firstEvent = document.song.lines[0].words[0].melodyEvents[0];
+    const secondEvent = document.song.lines[0].words[0].melodyEvents[1];
     if (firstEvent.kind !== 'separator') firstEvent.duration = 2;
     if (secondEvent.kind !== 'separator') delete secondEvent.duration;
 
@@ -104,9 +104,11 @@ describe('player timeline', () => {
   it('projects explicitly identified melody and accompaniment in parallel within one word', () => {
     const document = cloneDocument(DEFAULT_DOCUMENT);
     document.song.lines[0].words = [document.song.lines[0].words[0]];
-    document.song.lines[0].words[0].events = [
-      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1, track: 'melody' },
-      { kind: 'note', pitch: { degree: 2, octave: 0 }, duration: 1, track: 'melody' },
+    document.song.lines[0].words[0].melodyEvents = [
+      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1 },
+      { kind: 'note', pitch: { degree: 2, octave: 0 }, duration: 1 },
+    ];
+    document.song.lines[0].words[0].accompanimentEvents = [
       {
         kind: 'chord',
         pitches: [
@@ -114,7 +116,6 @@ describe('player timeline', () => {
           { degree: 5, octave: 0 },
         ],
         duration: 2,
-        track: 'accompaniment',
       },
     ];
 

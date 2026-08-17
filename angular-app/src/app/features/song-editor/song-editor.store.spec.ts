@@ -105,11 +105,15 @@ describe('SongEditorStore structure persistence', () => {
   it('persists a syllable split and restores its exact event assignment through undo and redo', async () => {
     await store.initialize();
     const original = structuredClone(store.document()!);
-    const originalEvents = structuredClone(original.song.lines[0].words[0].events);
+    const originalEvents = structuredClone(original.song.lines[0].words[0].melodyEvents);
     const selection = { lineIndex: 0, wordIndex: 0 };
 
     const result = store.applyStructureAction(
-      { kind: 'split-block', splitIndex: 4, firstEventCount: 2 },
+      {
+        kind: 'split-block',
+        splitIndex: 4,
+        firstEventCounts: { melody: 2, accompaniment: 0 },
+      },
       selection,
     );
     expect(result.ok).toBe(true);
@@ -120,8 +124,8 @@ describe('SongEditorStore structure persistence', () => {
       'Will-',
       'kommen',
     ]);
-    expect(split.song.lines[0].words[0].events).toEqual(originalEvents.slice(0, 2));
-    expect(split.song.lines[0].words[1].events).toEqual(originalEvents.slice(2));
+    expect(split.song.lines[0].words[0].melodyEvents).toEqual(originalEvents.slice(0, 2));
+    expect(split.song.lines[0].words[1].melodyEvents).toEqual(originalEvents.slice(2));
     await expectSaved(store);
     expect(await repository.load()).toEqual(split);
 
@@ -207,13 +211,9 @@ describe('SongEditorStore structure persistence', () => {
     expect(result.ok).toBe(true);
     expect(store.canUndo()).toBe(true);
     expect(store.document()?.song.lines[0].words[1].text).toBe('♪');
-    expect(store.document()?.song.lines[0].words[1].events.map((event) => event.kind)).toEqual([
-      'note',
-      'separator',
-      'note',
-      'note',
-      'chord',
-    ]);
+    expect(
+      store.document()?.song.lines[0].words[1].melodyEvents.map((event) => event.kind),
+    ).toEqual(['note', 'separator', 'note', 'note', 'chord']);
     await expectSaved(store);
     expect(await repository.load()).toEqual(store.document());
 
@@ -221,13 +221,9 @@ describe('SongEditorStore structure persistence', () => {
     expect(store.document()).toEqual(original);
     expect(store.canRedo()).toBe(true);
     expect(store.redoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
-    expect(store.document()?.song.lines[0].words[1].events.map((event) => event.kind)).toEqual([
-      'note',
-      'separator',
-      'note',
-      'note',
-      'chord',
-    ]);
+    expect(
+      store.document()?.song.lines[0].words[1].melodyEvents.map((event) => event.kind),
+    ).toEqual(['note', 'separator', 'note', 'note', 'chord']);
     expect(store.undoStructure()).toEqual({ lineIndex: 0, wordIndex: 1 });
     expect(store.document()).toEqual(original);
     await expectSaved(store);
@@ -243,9 +239,11 @@ describe('SongEditorStore structure persistence', () => {
     const original = structuredClone(store.document()!);
     const originalWord = structuredClone(original.song.lines[0].words[0]);
 
-    expect(store.removeMusicEvent(selection, 1)).toEqual({ ok: true, selection });
+    expect(store.removeMusicEvent(selection, 'melody', 1)).toEqual({ ok: true, selection });
     const removed = structuredClone(store.document()!);
-    expect(removed.song.lines[0].words[0].events).toHaveLength(originalWord.events.length - 1);
+    expect(removed.song.lines[0].words[0].melodyEvents).toHaveLength(
+      originalWord.melodyEvents.length - 1,
+    );
     expect(removed.song.lines[0].words[0].extra).toEqual(originalWord.extra);
     expect(store.canUndo()).toBe(true);
     await expectSaved(store);
@@ -268,20 +266,27 @@ describe('SongEditorStore structure persistence', () => {
     const selection = { lineIndex: 0, wordIndex: 0 };
     const originalWord = structuredClone(store.document()!.song.lines[0].words[0]);
 
-    expect(store.setMusicEventDuration(selection, 0, 2)).toEqual({ ok: true, selection });
-    expect(store.document()?.song.lines[0].words[0].events[0]).toMatchObject({ duration: 2 });
+    expect(store.setMusicEventDuration(selection, 'melody', 0, 2)).toEqual({
+      ok: true,
+      selection,
+    });
+    expect(store.document()?.song.lines[0].words[0].melodyEvents[0]).toMatchObject({
+      duration: 2,
+    });
     expect(store.document()?.song.lines[0].words[0].legacyNotation.raw).toBe(
       originalWord.legacyNotation.raw,
     );
     await expectSaved(store);
-    expect((await repository.load())?.song.lines[0].words[0].events[0]).toMatchObject({
+    expect((await repository.load())?.song.lines[0].words[0].melodyEvents[0]).toMatchObject({
       duration: 2,
     });
 
     expect(store.undoStructure()).toEqual(selection);
     expect(store.document()?.song.lines[0].words[0]).toEqual(originalWord);
     expect(store.redoStructure()).toEqual(selection);
-    expect(store.document()?.song.lines[0].words[0].events[0]).toMatchObject({ duration: 2 });
+    expect(store.document()?.song.lines[0].words[0].melodyEvents[0]).toMatchObject({
+      duration: 2,
+    });
     await expectSaved(store);
   });
 
@@ -306,18 +311,49 @@ describe('SongEditorStore structure persistence', () => {
         'accompaniment',
       ),
     ).toEqual({ ok: true, selection });
-    expect(store.document()?.song.lines[0].words[0].events.at(-1)).toMatchObject({
+    expect(store.document()?.song.lines[0].words[0].accompanimentEvents.at(-1)).toMatchObject({
       kind: 'note',
-      track: 'accompaniment',
     });
     await expectSaved(store);
     expect(store.undoStructure()).toEqual(selection);
     expect(store.document()).toEqual(original);
     expect(store.redoStructure()).toEqual(selection);
-    expect(store.document()?.song.lines[0].words[0].events.at(-1)).toMatchObject({
-      track: 'accompaniment',
+    expect(store.document()?.song.lines[0].words[0].accompanimentEvents.at(-1)).toMatchObject({
+      kind: 'note',
     });
     await expectSaved(store);
+  });
+
+  it('changes accompaniment duration through the same history and persistence path', async () => {
+    await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    expect(
+      store.addMusicEvent(
+        selection,
+        { kind: 'note', pitch: { degree: 7, octave: 0 }, duration: 1 },
+        'accompaniment',
+      ),
+    ).toEqual({ ok: true, selection });
+    const oneBeat = structuredClone(store.document()!);
+
+    expect(store.setMusicEventDuration(selection, 'accompaniment', 0, 2)).toEqual({
+      ok: true,
+      selection,
+    });
+    expect(store.document()?.song.lines[0].words[0].accompanimentEvents[0]).toMatchObject({
+      duration: 2,
+    });
+    await expectSaved(store);
+    expect((await repository.load())?.song.lines[0].words[0].accompanimentEvents[0]).toMatchObject({
+      duration: 2,
+    });
+
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(oneBeat);
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()?.song.lines[0].words[0].accompanimentEvents[0]).toMatchObject({
+      duration: 2,
+    });
   });
 });
 

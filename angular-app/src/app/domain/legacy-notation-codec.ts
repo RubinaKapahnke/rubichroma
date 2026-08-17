@@ -3,6 +3,7 @@ import {
   eventDurationInBeats,
   MusicEvent,
   musicEventTrack,
+  MusicTrackId,
   normalizeDurationInBeats,
   Pitch,
 } from './music-event';
@@ -13,6 +14,8 @@ export interface LegacyNotationFidelity {
   raw: string;
   parserVersion: typeof LEGACY_NOTATION_PARSER_VERSION;
   eventFingerprint: string;
+  trackOrder?: MusicTrackId[];
+  trackMetadataExplicit?: boolean;
 }
 
 export interface DecodedLegacyNotation {
@@ -79,14 +82,23 @@ export function encodeLegacyNotation(
 export function cloneLegacyNotationFidelity(
   fidelity: LegacyNotationFidelity,
 ): LegacyNotationFidelity {
-  return { ...fidelity };
+  return {
+    ...fidelity,
+    ...(fidelity.trackOrder ? { trackOrder: [...fidelity.trackOrder] } : {}),
+  };
 }
 
 export function fingerprintEvents(events: readonly MusicEvent[]): string {
   const semanticShape = events.map((event) => {
     switch (event.kind) {
       case 'note':
-        return ['n', event.pitch.degree, event.pitch.octave, durationFingerprint(event), musicEventTrack(event)];
+        return [
+          'n',
+          event.pitch.degree,
+          event.pitch.octave,
+          durationFingerprint(event),
+          musicEventTrack(event),
+        ];
       case 'chord':
         return [
           'c',
