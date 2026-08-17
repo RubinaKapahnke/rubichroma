@@ -205,6 +205,8 @@ Der erste fachliche Schwerpunkt bleibt die Kalimba. Musikmodell, Timeline und Pl
 ### Wiedergabe und Übungssteuerung
 
 - Start beziehungsweise Fortsetzen beginnt an der aktuellen Position, Pause bewahrt sie.
+- Klick beziehungsweise Tippen auf eine freie, nicht-interaktive Fläche innerhalb des Players schaltet zwischen Wiedergabe und Pause um. Interaktive Bedienelemente behalten ihre eigene Funktion und lösen keinen zusätzlichen Wechsel durch Event-Bubbling aus.
+- Die Leertaste schaltet ebenfalls zwischen Wiedergabe und Pause um, sofern der Fokus nicht in einem Eingabe-, Auswahl- oder anderen die Leertaste selbst verwendenden interaktiven Element liegt. Greift der Player-Shortcut, wird das standardmäßige Scrollen verhindert.
 - Stopp setzt die Position bei aktivem Loop an dessen Anfang, sonst an den Stückanfang zurück.
 - Am regulären Stückende bleibt die Position stehen; eine klar erkennbare Aktion **Wiederholen** startet erneut. Es gibt keinen automatischen Neustart.
 - Lautstärke und aktuelle Position sind jederzeit sichtbar beziehungsweise steuerbar.
@@ -300,6 +302,7 @@ Der Player soll später erkennen können, was ein Nutzer tatsächlich spielt. Mi
 Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils soweit die zugehörige Ausbaustufe umgesetzt ist:
 
 - Ein Stück mit Tönen, Akkorden, Pausen und unterschiedlichen Dauern bleibt über Start, Pause, Fortsetzen, Tempoänderung und Stopp hör- und sichtbar synchron.
+- Freie Playerflächen toggeln per Klick beziehungsweise Tap genau einmal zwischen Wiedergabe und Pause; interaktive Controls lösen nur ihre eigene Aktion aus. Die Leertaste toggelt bei freiem Playerfokus ohne Seitenscrollen, aber nicht in Eingabe- oder Auswahlelementen.
 - Eine Änderung der Übungsgeschwindigkeit verändert weder Originaltempo noch Lieddaten und verliert die aktuelle musikalische Position nicht.
 - Ein Nutzer springt während laufender beziehungsweise pausierter Wiedergabe über Timeline und Note; der Player behält den vorherigen Wiedergabestatus bei.
 - Derselbe Bereich lässt sich über Notenauswahl und Timeline-Griffe einstellen. Mehrere Loop-Durchläufe bleiben ohne zeitliche Drift und spielen kein Ereignis außerhalb der Auswahl an.
