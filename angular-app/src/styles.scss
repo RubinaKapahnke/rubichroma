@@ -4,6 +4,7 @@
 @use '@fontsource/sora/600.css' as sora600;
 @use '@fontsource/sora/700.css' as sora700;
 @use './styles/tokens';
+@use './app/features/player/player.component';
 
 html {
   @include mat.theme(
@@ -266,6 +267,10 @@ main.has-multi-selection {
   padding-bottom: calc(var(--rc-selection-bar-height, 7.5rem) + 1rem);
 }
 
+app-song-editor .player-action {
+  margin-inline-start: auto;
+}
+
 @media (max-width: 600px) {
   app-song-editor .topbar {
     display: flex;
@@ -382,6 +387,11 @@ main.has-multi-selection {
 
   .editor-sheet-frame {
     height: min(calc(var(--rc-visual-viewport-height, 100vh) - 0.5rem), 50rem);
+  }
+
+  app-song-editor .player-action {
+    width: 100%;
+    margin-inline-start: 0;
   }
 }
 

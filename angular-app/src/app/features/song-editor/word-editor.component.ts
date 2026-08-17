@@ -12,7 +12,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
-import { appendMusicEvent, removeMusicEvent } from '../../domain/music-event-editing';
+import { appendMusicEvent } from '../../domain/music-event-editing';
 import { MusicEvent, Pitch } from '../../domain/music-event';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 
@@ -47,6 +47,7 @@ export class WordEditorComponent {
   readonly canRedo = input.required<boolean>();
   readonly closed = output<void>();
   readonly structureAction = output<SongStructureAction>();
+  readonly musicEventRemovalRequested = output<number>();
   readonly undoRequested = output<void>();
   readonly redoRequested = output<void>();
 
@@ -154,7 +155,7 @@ export class WordEditorComponent {
   }
 
   removeEvent(index: number): void {
-    this.applyEdit(removeMusicEvent(this.notationControl().value, index));
+    this.musicEventRemovalRequested.emit(index);
   }
 
   isPitchUsed(pitch: Pitch): boolean {
@@ -191,6 +192,19 @@ export class WordEditorComponent {
     }
   }
 
+  eventColors(event: MusicEvent): string[] {
+    const pitches =
+      event.kind === 'note' ? [event.pitch] : event.kind === 'chord' ? event.pitches : [];
+    return pitches.flatMap((pitch) => {
+      const key = this.keys().find((candidate) => samePitch(candidate.pitch, pitch));
+      return key ? [key.color] : [];
+    });
+  }
+
+  keyInkColor(color: string): '#171a2b' | '#ffffff' {
+    return profileInkColor(color);
+  }
+
   draftLabel(): string {
     return this.chordDraft().map(formatPitch).join(' + ') || 'Noch keine Töne gewählt';
   }
@@ -218,4 +232,17 @@ function samePitch(left: Pitch, right: Pitch): boolean {
 
 function formatPitch(pitch: Pitch): string {
   return `${pitch.degree}${pitch.octave === 0 ? '' : pitch.octave === 1 ? '′' : '″'}`;
+}
+
+export function profileInkColor(color: string): '#171a2b' | '#ffffff' {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color);
+  if (!match) return '#171a2b';
+  const channels = match.slice(1).map((channel) => Number.parseInt(channel, 16) / 255);
+  const [red, green, blue] = channels.map((channel) =>
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  const darkContrast = (luminance + 0.05) / 0.057;
+  const lightContrast = 1.05 / (luminance + 0.05);
+  return darkContrast >= lightContrast ? '#171a2b' : '#ffffff';
 }

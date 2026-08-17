@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DOCUMENT } from '../../domain/default-document';
 import { cloneDocument, SongDocument } from '../../domain/song-document';
 import { ThemeService } from '../../infrastructure/theme.service';
@@ -214,5 +214,51 @@ describe('SongEditorComponent hydration', () => {
       { lineIndex: 0, wordIndex: 1 },
     ]);
     expect(fixture.componentInstance.selectedWord()).toBeNull();
+  });
+
+  it('routes event removal through the central store with the active selection', async () => {
+    const documentState = signal<SongDocument | null>(cloneDocument(DEFAULT_DOCUMENT));
+    const hydrationVersionState = signal(1);
+    const removeMusicEvent = vi.fn(() => ({
+      ok: true as const,
+      selection: { lineIndex: 0, wordIndex: 0 },
+    }));
+    const store = {
+      document: documentState.asReadonly(),
+      hydrationVersion: hydrationVersionState.asReadonly(),
+      hasDocument: computed(() => documentState() !== null),
+      status: signal('saved'),
+      error: signal<string | null>(null),
+      canUndo: signal(false),
+      canRedo: signal(false),
+      initialize: () => Promise.resolve(),
+      updateEditorValue: () => null,
+      saveEditorValue: () => Promise.resolve(),
+      removeMusicEvent,
+    };
+    const theme = { preference: signal('system'), setPreference: () => undefined };
+
+    await TestBed.configureTestingModule({
+      imports: [SongEditorComponent],
+      providers: [
+        { provide: SongEditorStore, useValue: store },
+        { provide: ThemeService, useValue: theme },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SongEditorComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentInstance.handleWordSelection({
+      position: { lineIndex: 0, wordIndex: 0 },
+      shiftKey: false,
+      toggleKey: false,
+      touchSelection: false,
+    });
+
+    fixture.componentInstance.removeMusicEvent(1);
+
+    expect(removeMusicEvent).toHaveBeenCalledWith({ lineIndex: 0, wordIndex: 0 }, 1);
+    expect(fixture.componentInstance.selection()).toEqual({ lineIndex: 0, wordIndex: 0 });
+    expect(fixture.componentInstance.actionNotice()).toBe('Musikereignis entfernt');
   });
 });

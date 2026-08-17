@@ -136,6 +136,7 @@ test('closes line and block action menus on selection, outside click and Escape'
 
 test('keeps help preference, product labels and song storage separate', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'help-song-sentinel'));
 
   await expect(page.getByTestId('import-button')).toHaveText('Sicherung laden');
@@ -344,6 +345,45 @@ test('edits structured notes, chords and separators in the selected word', async
   await expect(page.getByTestId('notation-0-0')).toHaveValue('2 3 (135) 1 (35) -');
 });
 
+test('restores a removed music event through central undo and persists the redone deletion', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'event-undo-sentinel'));
+  await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
+  await page.getByTestId('word-card-0-0').click();
+  const originalWord = await readStoredWord(page, 0, 0);
+
+  await page.getByTestId('event-remove-0').click();
+  await expect(page.getByTestId('notation-0-0')).toHaveValue('-');
+  await expect(page.getByTestId('event-count')).toHaveText('1 Ereignis');
+  await expect(page.getByTestId('undo-structure-editor')).toBeEnabled();
+
+  await page.getByTestId('undo-structure-editor').click();
+  await expect(page.getByTestId('notation-0-0')).toHaveValue('(13)-');
+  await expect(page.getByTestId('word-card-0-0')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('word-card-0-0')).toBeFocused();
+  await expect.poll(() => readStoredWord(page, 0, 0)).toEqual(originalWord);
+
+  await page.keyboard.press('Control+Shift+z');
+  await expect(page.getByTestId('notation-0-0')).toHaveValue('-');
+  await expect(page.getByTestId('event-count')).toHaveText('1 Ereignis');
+  await expect(page.getByTestId('word-card-0-0')).toBeFocused();
+  await expect
+    .poll(async () => (await readStoredWord(page, 0, 0))['events'])
+    .toHaveLength(originalWord['events'].length - 1);
+
+  await page.reload();
+  await page.getByTestId('word-card-0-0').click();
+  await expect(page.getByTestId('notation-0-0')).toHaveValue('-');
+  const reloadedWord = await readStoredWord(page, 0, 0);
+  expect(reloadedWord['extra']).toEqual(originalWord['extra']);
+  expect(await page.evaluate(() => localStorage.getItem('kalimba-note-tool-v1'))).toBe(
+    'event-undo-sentinel',
+  );
+});
+
 test('opens and closes the focused word editor as a mobile bottom sheet', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -380,6 +420,7 @@ test('performs block and line structure actions, transfers only events and resto
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
 
   await page.getByTestId('word-card-0-0').click();
@@ -510,6 +551,7 @@ test('selects desktop ranges, copies notes and chords, pastes with undo and pers
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'user-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 

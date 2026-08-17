@@ -20,6 +20,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
+      name: 'desktop-webkit',
+      testIgnore: /.*\.mobile\.spec\.ts/,
+      use: { ...devices['Desktop Safari'] },
+    },
+    {
       name: 'smartphone-chromium-375',
       testMatch: /.*\.mobile\.spec\.ts/,
       use: {

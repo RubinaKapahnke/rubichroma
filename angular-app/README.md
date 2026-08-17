@@ -34,7 +34,11 @@ Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus de
 
 ## Aktueller Schnitt
 
-Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, Block- und Zeilenstrukturaktionen, die Übertragung von Musikereignissen in die nächste Zeile, sitzungsbezogenes Undo, Desktop-Mehrfachauswahl mit Shift und Strg/⌘, Touch-/Langdruck-Mehrfachauswahl in Liedreihenfolge sowie eine einfache positionsweise Noten-/Akkord-Zwischenablage, ein responsives mobiles Editor-Bottom-Sheet, Autosave und JSON-Import/-Export. Noch nicht enthalten sind vollständige Vanilla-Featureparität, komplexe Verteilmodi, Drag-and-drop, Silbentrennung, Audio/Tone.js, Fotoimport, Backend, NgRx oder Capacitor.
+Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, Block- und Zeilenstrukturaktionen, die Übertragung von Musikereignissen in die nächste Zeile, sitzungsbezogenes Undo/Redo, Desktop-Mehrfachauswahl mit Shift und Strg/⌘, Touch-/Langdruck-Mehrfachauswahl in Liedreihenfolge sowie eine einfache positionsweise Noten-/Akkord-Zwischenablage, ein responsives mobiles Editor-Bottom-Sheet, Autosave und JSON-Import/-Export.
+
+Der erste produktive Player-Schnitt öffnet denselben geladenen Song aus dem Editor, übernimmt eine zusammenhängende Blockauswahl als Loop-Bereich und projiziert Tone.js-Transport, synthetischen Klang, Flow, Lauf-Tab, Liedtext und die physische 17-Zungen-Kalimba aus einer gemeinsamen Timeline. Der aktuelle Phase-0-Datensatz enthält weiterhin ausschließlich Viertelnoten und -akkorde; sichtbare Trenner haben Dauer null. Echte Pausen, weitere Dauern und das vollständige Rhythmusmodell bleiben dem dafür vorgesehenen Fachscope vorbehalten.
+
+Noch nicht enthalten sind vollständige Vanilla-Featureparität, komplexe Verteilmodi, Drag-and-drop, Silbentrennung, Fotoimport, Backend, NgRx oder Capacitor.
 
 ## Ablösung der Alt-App
 

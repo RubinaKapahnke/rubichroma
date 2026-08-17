@@ -154,6 +154,15 @@
         <button mat-flat-button type="button" data-testid="export-button" (click)="exportFile()">
           Song sichern
         </button>
+        <button
+          mat-flat-button
+          type="button"
+          class="player-action"
+          data-testid="open-player"
+          (click)="openPlayer()"
+        >
+          Im Player öffnen
+        </button>
       </mat-card-actions>
     </mat-card>
   } @else if (store.status() === 'loading') {
@@ -181,6 +190,7 @@
       [canRedo]="store.canRedo()"
       (closed)="closeWordEditor()"
       (structureAction)="applyStructureAction($event)"
+      (musicEventRemovalRequested)="removeMusicEvent($event)"
       (undoRequested)="undoStructure()"
       (redoRequested)="redoStructure()"
     />

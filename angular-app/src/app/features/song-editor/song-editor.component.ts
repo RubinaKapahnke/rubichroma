@@ -19,6 +19,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { Router } from '@angular/router';
 import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { SongDocument } from '../../domain/song-document';
@@ -33,6 +34,7 @@ import {
 } from '../../domain/song-selection-editing';
 import { SongPosition, SongStructureAction } from '../../domain/song-structure-editing';
 import { ThemeService } from '../../infrastructure/theme.service';
+import { PlayerLaunchService } from '../player/player-launch.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
 import { EditorValue, SongEditorStore } from './song-editor.store';
 import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component';
@@ -63,6 +65,8 @@ export type EditorInteractionMode = 'idle' | 'editing' | 'multi-select';
 export class SongEditorComponent {
   readonly store = inject(SongEditorStore);
   readonly theme = inject(ThemeService);
+  private readonly router = inject(Router);
+  private readonly playerLaunch = inject(PlayerLaunchService);
   readonly title = new FormControl('', { nonNullable: true });
   readonly lines = signal<FormArray<LineForm>>(new FormArray<LineForm>([]));
   readonly selectionState = signal<SongSelectionState>({
@@ -138,6 +142,7 @@ export class SongEditorComponent {
       if (document && version > this.hydratedVersion) {
         this.hydratedVersion = version;
         this.hydrate(document);
+        if (this.playerLaunch.consumeEditorReturnFocus()) this.focusEditorTitle();
       }
     });
     void this.store.initialize();
@@ -201,6 +206,12 @@ export class SongEditorComponent {
     } catch (error) {
       this.store.setError(error);
     }
+  }
+
+  async openPlayer(): Promise<void> {
+    await this.persist();
+    this.playerLaunch.prepare(this.store.document(), this.selectedPositions());
+    await this.router.navigateByUrl('/player');
   }
 
   changeTheme(event: Event): void {
@@ -315,6 +326,24 @@ export class SongEditorComponent {
     this.setSingleSelection(result.state.selection, result.state.document);
     this.actionNotice.set(result.message);
     this.focusSelection(result.state.selection);
+  }
+
+  removeMusicEvent(eventIndex: number): void {
+    const selection = this.selection();
+    if (!selection) return;
+    const result = this.store.removeMusicEvent(selection, eventIndex);
+    if (!result.ok) {
+      this.actionNotice.set(
+        result.reason === 'unknown-legacy-fragments'
+          ? 'Unbekannte Legacy-Fragmente verhindern das sichere Entfernen dieses Ereignisses.'
+          : 'Das Musikereignis konnte nicht entfernt werden.',
+      );
+      return;
+    }
+
+    this.setSingleSelection(result.selection, this.store.document() ?? undefined);
+    this.actionNotice.set('Musikereignis entfernt');
+    this.focusSelection(result.selection);
   }
 
   undoStructure(): void {
@@ -452,6 +481,12 @@ export class SongEditorComponent {
         )
         ?.focus();
     });
+  }
+
+  private focusEditorTitle(): void {
+    setTimeout(() =>
+      document.querySelector<HTMLInputElement>('[data-testid="song-title"]')?.focus(),
+    );
   }
 
   private setSingleSelection(selection: SongPosition, document = this.store.document()): void {

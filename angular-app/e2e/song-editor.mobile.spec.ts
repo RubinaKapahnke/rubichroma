@@ -103,6 +103,7 @@ test('latches ordered touch selection, keeps a compact bottom action bar and pas
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByTestId('song-title')).toBeVisible();
   await page.evaluate(() => localStorage.setItem('kalimba-note-tool-v1', 'touch-user-sentinel'));
   await page.locator('input[type="file"]').setInputFiles(SYNTHETIC_IMPORT_FIXTURE);
 

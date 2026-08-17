@@ -122,12 +122,18 @@
               class="event-chip"
               type="button"
               [attr.data-testid]="'event-remove-' + $index"
+              [attr.data-profile-colors]="eventColors(event).join(',')"
               [attr.aria-label]="eventKindLabel(event) + ' ' + eventLabel(event) + ' entfernen'"
               (click)="removeEvent($index)"
             >
               <small>{{ eventKindLabel(event) }}</small>
               <strong>{{ eventLabel(event) }}</strong>
-              <span aria-hidden="true">×</span>
+              <span class="event-color-strip" aria-hidden="true">
+                @for (color of eventColors(event); track $index) {
+                  <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
+                }
+              </span>
+              <span class="event-remove-mark" aria-hidden="true">×</span>
             </button>
           }
         </div>
@@ -202,7 +208,9 @@
                     [class.is-used]="isPitchUsed(key.pitch)"
                     [class.is-draft]="isPitchInDraft(key.pitch)"
                     [style.--key-color]="key.color"
+                    [style.--key-ink]="keyInkColor(key.color)"
                     [attr.data-testid]="'key-' + key.id"
+                    [attr.data-profile-color]="key.color"
                     [attr.aria-pressed]="
                       insertMode() === 'chord' ? isPitchInDraft(key.pitch) : null
                     "
