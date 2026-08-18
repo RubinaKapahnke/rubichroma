@@ -153,7 +153,14 @@ describe('word editor keyboard music grid', () => {
     expect(fixture.componentInstance.selectedDuration()).toBe(2);
     expect(fixture.nativeElement.querySelector('.event-chip.is-selected')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="event-select-0"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="event-preview-0"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="event-duration-0"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="event-remove-0"]')).not.toBeNull();
+    expect(
+      fixture.nativeElement
+        .querySelector('.event-chip.is-selected')
+        .getAttribute('data-profile-color'),
+    ).toBe('#2E7975');
 
     fixture.componentInstance.handleKey(fixture.componentInstance.keys()[1]);
 
@@ -164,6 +171,24 @@ describe('word editor keyboard music grid', () => {
       vendorField: { keep: true },
     });
     expect(fixture.componentInstance.isEventSelected('melody', 0)).toBe(true);
+  });
+
+  it('rejects a new same-tine attack without moving the cursor or emitting a grid edit', () => {
+    const fixture = createGridFixture([
+      { kind: 'note', pitch: { degree: 5, octave: 0 }, duration: 1, track: 'melody' },
+    ]);
+    const edits: Partial<Record<MusicTrackId, readonly MusicEvent[]>>[] = [];
+    fixture.componentInstance.musicGridEditRequested.subscribe((edit) => edits.push(edit));
+    fixture.componentInstance.setActiveTrack('accompaniment');
+    const sameTine = fixture.componentInstance
+      .keys()
+      .find((key) => key.pitch.degree === 5 && key.pitch.octave === 0)!;
+
+    fixture.componentInstance.handleKey(sameTine);
+
+    expect(edits).toEqual([]);
+    expect(fixture.componentInstance.gridCursorSlot()).toBe(0);
+    expect(fixture.componentInstance.notice()).toContain('anderen Spur');
   });
 
   it('adds at a free cursor and updates a selected chord in place without mutating on Escape', () => {

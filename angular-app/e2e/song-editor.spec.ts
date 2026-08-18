@@ -608,7 +608,7 @@ test('edits parallel melody and accompaniment tracks through undo, reload and pl
   const accompaniment = page.getByTestId('track-row-accompaniment').locator('.event-chip');
   await expect(accompaniment).toHaveCount(1);
   await expect(accompaniment).toContainText('E · 3');
-  await expect(accompaniment.locator('[data-profile-color="#26562A"]')).toHaveCount(1);
+  await expect(accompaniment).toHaveAttribute('data-profile-color', '#26562A');
   await page.getByTestId('undo-structure-editor').click();
   await expect(page.getByTestId('track-row-accompaniment').locator('.event-chip')).toHaveCount(0);
   await page.getByTestId('redo-structure-editor').click();
@@ -667,6 +667,7 @@ test('previews a line, block and event without changing selection or song data',
   expect(await readStoredWord(page, 0, 0)).toEqual(originalWord);
 
   await page.getByTestId('word-card-0-0').click();
+  await page.getByTestId('event-select-0').click();
   await page.getByTestId('event-preview-0').click();
   await page.getByTestId('block-preview-editor').click();
   await expect(page.getByTestId('audition-keys')).not.toBeChecked();
@@ -678,6 +679,7 @@ test('previews a line, block and event without changing selection or song data',
   await page.getByRole('button', { name: 'Editor schließen' }).click();
   await page.getByTestId('word-card-0-0').click();
   await expect(page.getByTestId('block-preview-editor')).toBeVisible();
+  await page.getByTestId('event-select-0').click();
   await expect(page.getByTestId('event-preview-0')).toBeVisible();
   await expectNoPageOverflow(page);
 });
@@ -797,6 +799,7 @@ test('edits structured notes, chords and separators in the selected word', async
 
   await page.getByTestId('event-remove-0').click();
   await page.getByTestId('key-8-1-0').click();
+  await page.getByTestId('track-row-melody').press('Control+ArrowRight');
   await page.getByRole('radio', { name: 'Akkord', exact: true }).check();
   await page.getByTestId('key-9-3-0').click();
   await page.getByTestId('key-10-5-0').click();
@@ -805,12 +808,12 @@ test('edits structured notes, chords and separators in the selected word', async
   await page.getByRole('button', { name: 'Akkord einfügen' }).click();
   await page.getByRole('button', { name: 'Trenner einfügen' }).click();
 
-  await expect(page.getByTestId('notation-0-0')).toHaveValue('2 3 (135) 1 (35) -');
+  await expect(page.getByTestId('notation-0-0')).toHaveValue('1 2 3 (135) (35) -');
   await expect(page.getByText('Lokal gespeichert')).toBeVisible({ timeout: 5_000 });
   await page.reload();
   await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-0').click();
-  await expect(page.getByTestId('notation-0-0')).toHaveValue('2 3 (135) 1 (35) -');
+  await expect(page.getByTestId('notation-0-0')).toHaveValue('1 2 3 (135) (35) -');
 });
 
 test('restores a removed music event through central undo and persists the redone deletion', async ({
@@ -841,7 +844,7 @@ test('restores a removed music event through central undo and persists the redon
   await expect(page.getByTestId('word-card-0-0')).toBeFocused();
   await expect
     .poll(async () => (await readStoredWord(page, 0, 0))['melodyEvents'])
-    .toHaveLength(originalWord['melodyEvents'].length - 1);
+    .toEqual([{ kind: 'rest', duration: 1 }, { kind: 'separator' }]);
 
   await page.reload();
   await page.getByTestId('edit-mode-toggle').click();
@@ -898,6 +901,7 @@ test('preserves a two-beat phrase ending through undo, export, reload and player
   await page.getByTestId('song-file-input').setInputFiles(TWINKLE_IMPORT_FIXTURE);
   await page.getByTestId('word-card-0-3').click();
 
+  await page.getByTestId('event-select-0').click();
   const duration = page.getByTestId('event-duration-0');
   await expect(duration).toHaveValue('2');
   await duration.selectOption('1');

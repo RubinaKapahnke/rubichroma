@@ -227,6 +227,13 @@
                     [class.is-selected]="isEventSelected(track, entry.trackIndex)"
                     [attr.data-track]="track"
                     [attr.data-profile-colors]="eventColors(entry.event).join(',')"
+                    [attr.data-profile-color]="eventPrimaryColor(entry.event)"
+                    [attr.aria-description]="eventColorDescription(entry.event)"
+                    [style.background-color]="eventPrimaryColor(entry.event)"
+                    [style.background-image]="eventColorGradient(entry.event)"
+                    [style.color]="
+                      eventPrimaryColor(entry.event) ? eventInkColor(entry.event) : null
+                    "
                     [style.--duration-beats]="eventDurationBeats(entry.event)"
                     [attr.data-duration-beats]="eventDurationBeats(entry.event)"
                     [attr.data-start-slot]="eventStartSlot(track, entry.trackIndex)"
@@ -274,27 +281,22 @@
                     >
                       <span class="event-remove-mark" aria-hidden="true">×</span>
                     </button>
-                    <span class="event-color-strip" aria-hidden="true">
-                      @for (color of eventColors(entry.event); track $index) {
-                        <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
-                      }
-                    </span>
                     @if (entry.event.kind !== 'separator' && entry.event.kind !== 'rest') {
                       <label class="event-duration-control">
-                        <span>Dauer</span>
+                        <span>Notenlänge</span>
                         <select
                           [attr.data-testid]="'event-duration-' + entry.index"
                           [value]="eventDurationBeats(entry.event)"
-                          [attr.aria-label]="'Dauer von ' + eventLabel(entry.event)"
+                          [attr.aria-label]="'Notenlänge von ' + eventLabel(entry.event)"
                           (change)="
                             setEventDuration(track, entry.trackIndex, $any($event.target).value)
                           "
                         >
-                          <option value="0.25">¼ Schlag</option>
-                          <option value="0.5">½ Schlag</option>
-                          <option value="1">1 Schlag</option>
-                          <option value="2">2 Schläge</option>
-                          <option value="4">4 Schläge</option>
+                          <option value="4">Ganze · 4 Schläge</option>
+                          <option value="2">Halbe · 2 Schläge</option>
+                          <option value="1">Viertel · 1 Schlag</option>
+                          <option value="0.5">Achtel · 0,5 Schlag</option>
+                          <option value="0.25">Sechzehntel · 0,25 Schlag</option>
                         </select>
                       </label>
                     } @else if (entry.event.kind === 'separator') {

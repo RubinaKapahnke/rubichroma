@@ -817,7 +817,7 @@ export class SongEditorComponent {
     if (!result.ok) {
       this.actionNotice.set(
         result.reason === 'tine-collision'
-          ? 'Diese Änderung würde eine neue Doppelbelegung derselben Zunge erzeugen.'
+          ? 'Diese Zunge wird zum selben Anschlag bereits in der anderen Spur gespielt.'
           : result.reason === 'unknown-legacy-fragments'
             ? 'Unbekannte Legacy-Fragmente verhindern die sichere Rasterbearbeitung.'
             : 'Das Musikraster konnte nicht geändert werden.',

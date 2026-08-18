@@ -1085,6 +1085,9 @@ app-word-editor .event-preview-action {
   background: var(--rc-color-surface);
   cursor: pointer;
 }
+app-word-editor .event-chip.is-selected .event-preview-action {
+  display: grid;
+}
 app-word-editor .event-chip.is-selected {
   border-color: var(--rc-color-primary-text);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--rc-color-focus) 30%, transparent);
@@ -1145,6 +1148,15 @@ app-song-sheet .event-chip.is-rest {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
+}
+app-song-sheet .word-card {
+  position: relative;
+  z-index: 0;
+}
+app-song-sheet .word-card-shell {
+  width: 0;
+  overflow: clip;
+  isolation: isolate;
 }
 app-word-editor .event-remove-action {
   position: absolute;
@@ -1330,5 +1342,16 @@ app-song-sheet .empty-track {
     .word-card-shell:not(:hover, :focus-within, .is-selected)
     :is(.word-drag-handle, .word-preview-action) {
     opacity: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  app-song-sheet .word-card.word-card {
+    padding-inline: 0.25rem;
+    scroll-margin-top: calc(var(--rc-control-min-size) * 2 + 1rem);
+  }
+
+  app-song-sheet .word-preview-action.word-preview-action {
+    display: none;
   }
 }

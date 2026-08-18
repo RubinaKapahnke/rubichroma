@@ -274,18 +274,6 @@ mat-form-field {
     font-size: 1.15rem;
   }
 
-  .event-color-strip {
-    display: none;
-    height: 0.28rem;
-    overflow: hidden;
-    border-radius: 999px;
-
-    i {
-      min-width: 0.8rem;
-      flex: 1;
-    }
-  }
-
   .event-duration-control {
     display: none;
     align-items: center;
@@ -307,6 +295,14 @@ mat-form-field {
   .event-duration-label {
     color: var(--rc-color-text-muted);
     font-size: 0.65rem;
+  }
+
+  &.is-selected {
+    padding-bottom: 0.35rem;
+
+    .event-duration-control {
+      display: flex;
+    }
   }
 }
 

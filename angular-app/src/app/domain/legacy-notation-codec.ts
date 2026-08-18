@@ -76,7 +76,10 @@ export function encodeLegacyNotation(
   ) {
     return fidelity.raw;
   }
-  return events.map(serializeEvent).join(' ');
+  return events
+    .map(serializeEvent)
+    .filter((token) => token.length > 0)
+    .join(' ');
 }
 
 export function cloneLegacyNotationFidelity(

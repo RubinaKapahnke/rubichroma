@@ -57,9 +57,17 @@ describe('legacy notation codec', () => {
   it('applies an explicit two-beat duration without changing legacy notation text', () => {
     const word = replaceWithLegacyNotation('5', [2]);
 
-    expect(word.events).toEqual([
-      { kind: 'note', pitch: { degree: 5, octave: 0 }, duration: 2 },
-    ]);
+    expect(word.events).toEqual([{ kind: 'note', pitch: { degree: 5, octave: 0 }, duration: 2 }]);
     expect(encodeLegacyNotation(word.events, word.legacyNotation)).toBe('5');
+  });
+
+  it('omits canonical rests without adding whitespace around visible legacy separators', () => {
+    expect(
+      encodeLegacyNotation([
+        { kind: 'rest', duration: 1 },
+        { kind: 'separator' },
+        { kind: 'rest', duration: 0.25 },
+      ]),
+    ).toBe('-');
   });
 });

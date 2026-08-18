@@ -27,6 +27,7 @@ import {
   MusicEvent,
   musicEventTrack,
   MusicTrackId,
+  parallelTineCollisionKeys,
   Pitch,
 } from '../../domain/music-event';
 import {
@@ -187,7 +188,7 @@ export class WordEditorComponent {
   }
 
   eventCountLabel(): string {
-    const count = this.events().length;
+    const count = this.events().filter((event) => event.kind !== 'rest').length;
     return `${count} ${count === 1 ? 'Ereignis' : 'Ereignisse'}`;
   }
 
@@ -609,11 +610,29 @@ export class WordEditorComponent {
         ? this.gridCursorSlot()
         : (occupied?.startSlot ?? this.gridCursorSlot());
     const next = replaceMusicEventAtSlot(this.trackEvents(track), this.gridCursorSlot(), event);
+    if (this.introducesParallelCollision(track, next)) {
+      this.notice.set('Diese Zunge wird zum selben Anschlag bereits in der anderen Spur gespielt.');
+      return;
+    }
     this.musicGridEditRequested.emit({ [track]: next });
     this.gridCursorSlot.set(startSlot + Math.max(1, Math.round(this.selectedDuration() * 4)));
     this.gridSelection.set(null);
     this.selectedEvent.set(null);
     this.notice.set(null);
+  }
+
+  private introducesParallelCollision(
+    changedTrack: MusicTrackId,
+    changedEvents: readonly MusicEvent[],
+  ): boolean {
+    const previous = parallelTineCollisionKeys(this.events());
+    const candidate = TRACKS.flatMap((track) =>
+      (track === changedTrack ? changedEvents : this.trackEvents(track)).map((candidateEvent) => ({
+        ...candidateEvent,
+        track,
+      })),
+    ) as MusicEvent[];
+    return [...parallelTineCollisionKeys(candidate)].some((key) => !previous.has(key));
   }
 
   private deleteGridCursorOrSelection(): void {
@@ -845,6 +864,31 @@ export class WordEditorComponent {
       const key = this.keys().find((candidate) => samePitch(candidate.pitch, pitch));
       return key ? [key.color] : [];
     });
+  }
+
+  eventPrimaryColor(event: MusicEvent): string | null {
+    return this.eventColors(event)[0] ?? null;
+  }
+
+  eventColorGradient(event: MusicEvent): string | null {
+    const colors = this.eventColors(event);
+    return colors.length > 1
+      ? `linear-gradient(to right, ${colors
+          .map(
+            (color, index) =>
+              `${color} ${(index * 100) / colors.length}% ${((index + 1) * 100) / colors.length}%`,
+          )
+          .join(', ')})`
+      : null;
+  }
+
+  eventInkColor(event: MusicEvent): '#171a2b' | '#ffffff' {
+    return profileInkColor(this.eventPrimaryColor(event) ?? '#ffffff');
+  }
+
+  eventColorDescription(event: MusicEvent): string | null {
+    const colors = this.eventColors(event);
+    return colors.length ? `Profilfarbe ${colors.join(', ')}` : null;
   }
 
   keyInkColor(color: string): '#171a2b' | '#ffffff' {
