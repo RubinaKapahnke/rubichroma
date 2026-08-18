@@ -48,6 +48,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.getByTestId('lyric-0-1')).toHaveAttribute('aria-current', 'true');
   await expect(page.getByTestId('lyric-0-0')).toHaveClass(/past/);
   await expect(page.locator('.falling-event-slot[data-start="6"]')).toHaveCount(1);
+  await expectFlowProjection(page);
 
   await page.getByTestId('play-toggle').click();
   await expect(page.getByTestId('play-toggle')).toContainText('Pause');
@@ -58,6 +59,7 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect
     .poll(() => position.evaluate((input: HTMLInputElement) => +input.value))
     .toBeGreaterThan(beforeJank + 0.45);
+  await expectFlowProjection(page);
 
   const beforeViewSwitch = await position.evaluate((input: HTMLInputElement) => +input.value);
   await page.getByTestId('view-tab').click();
@@ -146,11 +148,71 @@ test('opens the imported editor song in one drift-free Flow and running-tab play
   await expect(page.locator('.song-line')).toHaveCount(6);
 });
 
+test('keeps canonical Canon events projected across the full flow field mid-song', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByTestId('open-library').click();
+  await page
+    .getByTestId('library-song-song-system-canon-c-major-v1')
+    .getByRole('button', { name: /öffnen/i })
+    .click();
+  await expect(page.getByTestId('song-title')).toHaveValue('Canon in C-Dur');
+  await page.getByTestId('open-player').click();
+
+  const position = page.getByTestId('position');
+  await position.fill('47.6');
+  await expect(page.getByTestId('flow-empty')).toHaveCount(0);
+  await expectFlowProjection(page);
+
+  await page.getByTestId('play-toggle').click();
+  const playingAt = await position.evaluate((input: HTMLInputElement) => +input.value);
+  await expect
+    .poll(() => position.evaluate((input: HTMLInputElement) => +input.value))
+    .toBeGreaterThan(playingAt + 0.15);
+  await expectFlowProjection(page);
+});
+
 async function openPracticeSettings(page: import('@playwright/test').Page): Promise<void> {
   const settings = page.getByTestId('practice-settings');
   if (!(await settings.evaluate((element) => (element as HTMLDetailsElement).open))) {
     await settings.locator(':scope > summary').click();
   }
+}
+
+async function expectFlowProjection(page: import('@playwright/test').Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const field = document.querySelector<HTMLElement>('.falling-field');
+        const track = document.querySelector<HTMLElement>('.flow-track-area');
+        const fieldRect = field?.getBoundingClientRect();
+        const trackRect = track?.getBoundingClientRect();
+        const eventRects = [...document.querySelectorAll<HTMLElement>('.flow-event')].map((event) =>
+          event.getBoundingClientRect(),
+        );
+        const visibleEvents = eventRects.filter(
+          (event) =>
+            fieldRect &&
+            event.bottom > fieldRect.top &&
+            event.top < fieldRect.bottom &&
+            event.right > fieldRect.left &&
+            event.left < fieldRect.right,
+        );
+        const eventTops = new Set(visibleEvents.map((event) => Math.round(event.top)));
+        return {
+          trackPosition: track ? getComputedStyle(track).position : '',
+          trackCoversField:
+            fieldRect && trackRect ? trackRect.height >= fieldRect.height - 2 : false,
+          hasMultipleVisibleRows: visibleEvents.length > 1 && eventTops.size > 1,
+        };
+      }),
+    )
+    .toMatchObject({
+      trackPosition: 'absolute',
+      trackCoversField: true,
+      hasMultipleVisibleRows: true,
+    });
 }
 
 test('keeps synchronized text and the 17-tine instrument usable on a narrow phone', async ({
@@ -170,6 +232,7 @@ test('keeps synchronized text and the 17-tine instrument usable on a narrow phon
   await expect(page.locator('.lyric-line[data-line="1"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expectLaneGeometry(page, 2);
+  await expectFlowProjection(page);
 
   const lyrics = await page.getByTestId('lyric-window').boundingBox();
   const flow = await page.getByTestId('flow-panel').boundingBox();
