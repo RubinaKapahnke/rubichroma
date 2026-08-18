@@ -22,7 +22,12 @@ import { debounceTime, Subscription } from 'rxjs';
 import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import { MusicEvent, MusicTrackId, Pitch } from '../../domain/music-event';
 import { buildPlayerTimeline } from '../../domain/player-timeline';
-import { projectSongWordEvents, SongDocument } from '../../domain/song-document';
+import {
+  projectSongWordEvents,
+  songTimeSignature,
+  SongDocument,
+  TimeSignature,
+} from '../../domain/song-document';
 import {
   createMusicSelectionClipboard,
   EMPTY_SONG_SELECTION,
@@ -41,7 +46,11 @@ import { AudioPreviewService } from '../player/audio-preview.service';
 import { PlayerLaunchService } from '../player/player-launch.service';
 import { createSongLinesForm, LineForm, WordForm, WordSelection } from './song-editor-form';
 import { EditorValue, SongEditorStore } from './song-editor.store';
-import { SongSheetComponent, WordSelectionGesture } from './song-sheet.component';
+import {
+  MusicPositionRequest,
+  SongSheetComponent,
+  WordSelectionGesture,
+} from './song-sheet.component';
 import { KalimbaKeyView, WordEditorComponent } from './word-editor.component';
 
 export type EditorInteractionMode = 'idle' | 'editing' | 'multi-select';
@@ -79,6 +88,8 @@ export class SongEditorComponent {
   private readonly playerLaunch = inject(PlayerLaunchService);
   private readonly audioPreview = inject(AudioPreviewService);
   readonly title = new FormControl('', { nonNullable: true });
+  readonly timeSignatureNumerator = signal(4);
+  readonly timeSignatureDenominator = signal<TimeSignature['denominator']>(4);
   readonly lines = signal<FormArray<LineForm>>(new FormArray<LineForm>([]));
   readonly selectionState = signal<SongSelectionState>({
     ...EMPTY_SONG_SELECTION,
@@ -191,6 +202,7 @@ export class SongEditorComponent {
   private readonly overlay = inject(Overlay);
   private readonly selectionPortal = viewChild<CdkPortal>('selectionPortal');
   private readonly editorPortal = viewChild<CdkPortal>('editorPortal');
+  private readonly wordEditor = viewChild(WordEditorComponent);
   private formSubscription?: Subscription;
   private hydratedVersion = 0;
   private selectionOverlayRef?: OverlayRef;
@@ -629,6 +641,11 @@ export class SongEditorComponent {
     this.setSingleSelection(selection);
   }
 
+  openMusicPosition(request: MusicPositionRequest): void {
+    this.changeSelection({ lineIndex: request.lineIndex, wordIndex: request.wordIndex });
+    queueMicrotask(() => this.wordEditor()?.activateTrackAtSlot(request.track, request.slot));
+  }
+
   startMultiSelection(): void {
     if (!this.editingEnabled()) return;
     this.interactionMode.set('multi-select');
@@ -793,6 +810,41 @@ export class SongEditorComponent {
     this.focusSelection(result.selection);
   }
 
+  replaceMusicTracks(replacements: Partial<Record<MusicTrackId, readonly MusicEvent[]>>): void {
+    const selection = this.selection();
+    if (!selection) return;
+    const result = this.store.replaceMusicTracks(selection, replacements);
+    if (!result.ok) {
+      this.actionNotice.set(
+        result.reason === 'tine-collision'
+          ? 'Diese Zunge wird zum selben Anschlag bereits in der anderen Spur gespielt.'
+          : result.reason === 'unknown-legacy-fragments'
+            ? 'Unbekannte Legacy-Fragmente verhindern die sichere Rasterbearbeitung.'
+            : 'Das Musikraster konnte nicht geändert werden.',
+      );
+      return;
+    }
+    this.setSingleSelection(result.selection, this.store.document() ?? undefined);
+    this.actionNotice.set('Musikraster geändert');
+  }
+
+  changeTimeSignature(part: 'numerator' | 'denominator', event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    const current = {
+      numerator: this.timeSignatureNumerator(),
+      denominator: this.timeSignatureDenominator(),
+    };
+    const next: TimeSignature =
+      part === 'numerator'
+        ? { ...current, numerator: Math.max(1, Math.min(32, Math.round(value))) }
+        : { ...current, denominator: value as TimeSignature['denominator'] };
+    const result = this.store.setTimeSignature(next);
+    if (result.ok) {
+      this.timeSignatureNumerator.set(next.numerator);
+      this.timeSignatureDenominator.set(next.denominator);
+    }
+  }
+
   setMusicEventDuration(request: {
     track: MusicTrackId;
     eventIndex: number;
@@ -925,6 +977,9 @@ export class SongEditorComponent {
   }
 
   private hydrate(document: SongDocument): void {
+    const timeSignature = songTimeSignature(document.song);
+    this.timeSignatureNumerator.set(timeSignature.numerator);
+    this.timeSignatureDenominator.set(timeSignature.denominator);
     this.formSubscription?.unsubscribe();
     const previousSelectionState = this.selectionState();
     this.title.setValue(document.song.title, { emitEvent: false });

@@ -149,6 +149,25 @@ main {
   font-size: 0.78rem;
 }
 
+.time-signature-control {
+  display: inline-flex;
+  width: max-content;
+  margin-inline: 0.3rem;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--rc-color-text-muted);
+  font-weight: 700;
+
+  select {
+    min-height: 2rem;
+    padding: 0.2rem 0.35rem;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+  }
+}
+
 .document-actions {
   display: flex;
   align-items: center;
@@ -242,29 +261,6 @@ app-song-sheet {
 
 .editor-layout {
   box-sizing: border-box;
-  transition: padding-right 160ms ease;
-}
-
-.editor-layout.has-desktop-inspector {
-  padding-right: calc(min(28rem, 42vw) + 1rem);
-}
-
-.desktop-inspector-drawer {
-  position: fixed;
-  z-index: 18;
-  top: 9.75rem;
-  right: max(1rem, calc((100vw - 1240px) / 2 + 1rem));
-  width: min(28rem, 42vw);
-  max-height: calc(100dvh - 10.75rem);
-  overflow: auto;
-  border: 1px solid var(--rc-color-border);
-  border-radius: var(--rc-radius-panel);
-  background: var(--rc-color-surface);
-  box-shadow: 0 1.25rem 3rem color-mix(in srgb, var(--rc-color-text) 24%, transparent);
-}
-
-.desktop-inspector-drawer app-word-editor {
-  position: static;
 }
 
 .visually-hidden {
@@ -366,14 +362,6 @@ app-song-sheet {
     > span:not([role='status']) {
       flex-basis: calc(100% - 5rem);
     }
-  }
-
-  .desktop-inspector-drawer {
-    display: none;
-  }
-
-  .editor-layout.has-desktop-inspector {
-    padding-right: 0;
   }
 
   .editor-sheet-frame app-word-editor {

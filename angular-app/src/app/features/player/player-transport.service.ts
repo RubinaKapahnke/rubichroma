@@ -20,6 +20,7 @@ export interface PlayerTransportBackend {
   stop(): void;
   setTicks(ticks: number): void;
   setBpm(bpm: number): void;
+  setBeatsPerBar(beatsPerBar: number): void;
   setLoop(enabled: boolean, range: PlayerBeatRange): void;
   setVolume(percent: number): void;
   setTrackEnabled(track: PlayerTrackId, enabled: boolean): void;
@@ -81,6 +82,7 @@ export class PlayerTransportService {
       endBeat: timeline.totalBeats,
     };
     this.backend.scheduleEvents(timeline.events);
+    this.backend.setBeatsPerBar(timeline.beatsPerBar);
     this.backend.setBpm(this.practiceBpm());
     this.backend.setVolume(this.volumePercent());
     this.backend.setTrackEnabled('melody', this.melodyEnabled());
@@ -252,6 +254,7 @@ class ToneTransportBackend implements PlayerTransportBackend {
   private volume: Volume | null = null;
   private volumePercent = 70;
   private bpm = PLAYER_ORIGINAL_BPM * 0.75;
+  private beatsPerBar = 4;
   private pendingTicks = 0;
   private loopEnabled = false;
   private loopRange: PlayerBeatRange = { startBeat: 0, endBeat: 0 };
@@ -396,6 +399,10 @@ class ToneTransportBackend implements PlayerTransportBackend {
     if (this.transport) this.transport.bpm.value = value;
   }
 
+  setBeatsPerBar(value: number): void {
+    this.beatsPerBar = Number.isFinite(value) && value > 0 ? value : 4;
+  }
+
   setLoop(enabled: boolean, range: PlayerBeatRange): void {
     this.loopEnabled = enabled;
     this.loopRange = range;
@@ -445,7 +452,12 @@ class ToneTransportBackend implements PlayerTransportBackend {
             const synth = this.laneSynths.get(lane);
             if (!synth) return;
             synth.triggerRelease(time);
-            synth.triggerAttackRelease(event.frequencies[index], ticks(duration, this.ppq), time, 0.82);
+            synth.triggerAttackRelease(
+              event.frequencies[index],
+              ticks(duration, this.ppq),
+              time,
+              0.82,
+            );
             this.laneVoiceTrack.set(lane, event.track);
           });
         },
@@ -503,8 +515,13 @@ class ToneTransportBackend implements PlayerTransportBackend {
 
   private playMetronomeBeat(time: number, beat: number): void {
     if (!this.metronomeEnabled || !this.metronomeSynth) return;
-    const accent = isMetronomeAccent(beat);
-    this.metronomeSynth.triggerAttackRelease(accent ? 1500 : 1050, '64n', time, accent ? 0.36 : 0.22);
+    const accent = isMetronomeAccent(beat, this.beatsPerBar);
+    this.metronomeSynth.triggerAttackRelease(
+      accent ? 1500 : 1050,
+      '64n',
+      time,
+      accent ? 0.36 : 0.22,
+    );
   }
 
   private stopVoices(): void {
@@ -524,8 +541,8 @@ function volumeDecibels(percent: number): number {
   return percent <= 0 ? -Infinity : 20 * Math.log10(percent / 100);
 }
 
-export function isMetronomeAccent(beat: number): boolean {
-  return Number.isInteger(beat) && beat >= 0 && beat % 4 === 0;
+export function isMetronomeAccent(beat: number, beatsPerBar = 4): boolean {
+  return Number.isInteger(beat) && beat >= 0 && beat % beatsPerBar === 0;
 }
 
 function isUsableToneTransport(

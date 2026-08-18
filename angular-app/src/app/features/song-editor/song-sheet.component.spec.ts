@@ -76,7 +76,26 @@ describe('SongSheetComponent desktop selection gestures', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="sheet-event-0-0-accompaniment-1"]')
         .textContent,
-    ).toContain('2 Schläge');
+    ).not.toContain('Schlag');
+    expect(
+      fixture.nativeElement
+        .querySelector('[data-testid="sheet-event-0-0-accompaniment-1"]')
+        .getAttribute('data-event-slots'),
+    ).toBe('8');
+    expect(
+      fixture.nativeElement.querySelector('.word-card-shell').getAttribute('data-word-slots'),
+    ).toBe('72');
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('.notation-row-label')).map(
+        (label) => (label as HTMLElement).textContent,
+      ),
+    ).toEqual(['Text', 'Melodie', 'Begleitung']);
+    expect(fixture.nativeElement.querySelector('.notation-group').textContent).not.toContain(
+      'Melodieblock',
+    );
+    expect(fixture.nativeElement.querySelector('.notation-group').textContent).toContain(
+      'Textloser Abschnitt',
+    );
   });
 
   it('maps Shift and Ctrl/Command clicks without losing the clicked position', async () => {

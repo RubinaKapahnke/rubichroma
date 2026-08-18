@@ -226,15 +226,19 @@ test('renders the canonical profile colors unchanged across editor and player su
       hexToRgb(color),
     );
   }
-  const cEventStripe = page.locator('.event-color-strip [data-profile-color="#2E7975"]').first();
-  await expect(cEventStripe).toBeVisible();
-  expect(await cEventStripe.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+  const cEventSurface = page
+    .locator('app-word-editor .event-chip[data-profile-color="#2E7975"]')
+    .first();
+  await expect(cEventSurface).toBeVisible();
+  expect(await cEventSurface.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
     hexToRgb('#2E7975'),
   );
   await page.getByTestId('word-card-0-1').click();
-  const gEventStripe = page.locator('.event-color-strip [data-profile-color="#D41C33"]').first();
-  await expect(gEventStripe).toBeVisible();
-  expect(await gEventStripe.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+  const gEventSurface = page
+    .locator('app-word-editor .event-chip[data-profile-color="#D41C33"]')
+    .first();
+  await expect(gEventSurface).toBeVisible();
+  expect(await gEventSurface.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
     hexToRgb('#D41C33'),
   );
 

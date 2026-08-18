@@ -76,7 +76,10 @@ export function encodeLegacyNotation(
   ) {
     return fidelity.raw;
   }
-  return events.map(serializeEvent).join(' ');
+  return events
+    .map(serializeEvent)
+    .filter((token) => token.length > 0)
+    .join(' ');
 }
 
 export function cloneLegacyNotationFidelity(
@@ -104,8 +107,25 @@ export function fingerprintEvents(events: readonly MusicEvent[]): string {
           'c',
           event.pitches.map((pitch) => [pitch.degree, pitch.octave]),
           durationFingerprint(event),
+          event.playback?.style ?? 'together',
+          event.playback?.stepBeats ?? null,
           musicEventTrack(event),
         ];
+      case 'glissando':
+        return [
+          'g',
+          event.startPitch.degree,
+          event.startPitch.octave,
+          event.endPitch.degree,
+          event.endPitch.octave,
+          event.direction,
+          event.pitches.map((pitch) => [pitch.degree, pitch.octave]),
+          durationFingerprint(event),
+          event.stepBeats ?? null,
+          musicEventTrack(event),
+        ];
+      case 'rest':
+        return ['r', durationFingerprint(event), musicEventTrack(event)];
       case 'separator':
         return ['s'];
     }
@@ -180,8 +200,12 @@ function serializeEvent(event: MusicEvent): string {
       return serializePitch(event.pitch);
     case 'chord':
       return `(${event.pitches.map(serializePitch).join('')})`;
+    case 'glissando':
+      return '';
     case 'separator':
       return '-';
+    case 'rest':
+      return '';
   }
 }
 

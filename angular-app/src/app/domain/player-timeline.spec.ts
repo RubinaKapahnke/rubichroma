@@ -10,6 +10,65 @@ import {
 import { cloneDocument } from './song-document';
 
 describe('player timeline', () => {
+  it.each([
+    [{ numerator: 3, denominator: 4 } as const, 3],
+    [{ numerator: 6, denominator: 8 } as const, 3],
+  ])('uses the song time signature %j for bars and player ranges', (timeSignature, expected) => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.timeSignature = timeSignature;
+    const timeline = buildPlayerTimeline(document);
+    expect(timeline.beatsPerBar).toBe(expected);
+    expect(timeline.bars[0]).toMatchObject({ startBeat: 0, endBeat: expected });
+  });
+
+  it('advances over canonical rests without producing an audible event', () => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    document.song.lines[0].words[0].melodyEvents = [
+      { kind: 'rest', duration: 0.5 },
+      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1 },
+    ];
+    const timeline = buildPlayerTimeline(document);
+    expect(timeline.events[0].startBeat).toBe(0.5);
+    expect(timeline.totalBeats).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('projects arpeggio direction and glissando order as staggered player attacks', () => {
+    const document = cloneDocument(DEFAULT_DOCUMENT);
+    const word = document.song.lines[0].words[0];
+    word.melodyEvents = [
+      {
+        kind: 'chord',
+        pitches: [
+          { degree: 1, octave: 0 },
+          { degree: 3, octave: 0 },
+          { degree: 5, octave: 0 },
+        ],
+        duration: 1,
+        playback: { style: 'arpeggio-down', stepBeats: 0.25 },
+      },
+      {
+        kind: 'glissando',
+        startPitch: { degree: 1, octave: 0 },
+        endPitch: { degree: 3, octave: 0 },
+        direction: 'ascending',
+        pitches: [
+          { degree: 1, octave: 0 },
+          { degree: 2, octave: 0 },
+          { degree: 3, octave: 0 },
+        ],
+        duration: 1,
+        stepBeats: 0.25,
+      },
+    ];
+    word.accompanimentEvents = [];
+    document.song.lines = [{ ...document.song.lines[0], words: [word] }];
+
+    const timeline = buildPlayerTimeline(document);
+    expect(timeline.events.map((event) => event.startBeat)).toEqual([0, 0.25, 0.5, 1, 1.25, 1.5]);
+    expect(timeline.events.slice(0, 3).map((event) => event.pitches[0].degree)).toEqual([5, 3, 1]);
+    expect(timeline.events.slice(3).map((event) => event.pitches[0].degree)).toEqual([1, 2, 3]);
+  });
+
   it('projects the current structured song, physical key lanes and text onto one beat axis', () => {
     const timeline = buildPlayerTimeline(DEFAULT_DOCUMENT);
 

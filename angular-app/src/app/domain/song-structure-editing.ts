@@ -134,7 +134,7 @@ export function editSongStructure(
       return success(
         document,
         selection,
-        action.blockKind === 'word' ? 'Wort hinzugefügt' : 'Melodieblock hinzugefügt',
+        action.blockKind === 'word' ? 'Wort hinzugefügt' : 'Instrumentalabschnitt hinzugefügt',
       );
     }
     case 'split-block': {

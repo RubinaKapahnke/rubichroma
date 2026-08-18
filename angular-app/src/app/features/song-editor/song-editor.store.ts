@@ -12,6 +12,7 @@ import {
   hasParallelTineCollision,
   MusicEvent,
   MusicTrackId,
+  parallelTineCollisionKeys,
   Pitch,
 } from '../../domain/music-event';
 import {
@@ -21,6 +22,7 @@ import {
   SongDocument,
   SongWord,
   splitEventsIntoTracks,
+  TimeSignature,
 } from '../../domain/song-document';
 import {
   MusicSelectionClipboard,
@@ -180,6 +182,60 @@ export class SongEditorStore {
     trackEvents(target, track).push(canonicalEvent);
     target.legacyNotation.trackOrder = [...previousTrackOrder, track];
     updateWordFidelity(target, encodeLegacyNotation(projectSongWordEvents(target)));
+    this.structureHistory.record({ document: current, selection });
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
+    this.applyStructureSnapshot(document);
+    void this.persistSnapshot(document);
+    return { ok: true, selection: { ...selection } };
+  }
+
+  replaceMusicTracks(
+    selection: SongPosition,
+    replacements: Partial<Record<MusicTrackId, readonly MusicEvent[]>>,
+  ): MusicEventRemovalResult {
+    const current = this.documentState();
+    const currentWord = current?.song.lines[selection.lineIndex]?.words[selection.wordIndex];
+    if (!current || !currentWord || Object.keys(replacements).length === 0) {
+      return { ok: false, reason: 'invalid-selection' };
+    }
+    if (decodeLegacyNotation(currentWord.legacyNotation.raw).hasUnknownFragments) {
+      return { ok: false, reason: 'unknown-legacy-fragments' };
+    }
+
+    const document = cloneDocument(current);
+    const target = document.song.lines[selection.lineIndex].words[selection.wordIndex];
+    for (const track of ['melody', 'accompaniment'] as const) {
+      const events = replacements[track];
+      if (!events) continue;
+      const canonical = cloneMusicEvents(events);
+      canonical.forEach((event) => delete event.track);
+      if (track === 'melody') target.melodyEvents = canonical;
+      else target.accompanimentEvents = canonical;
+    }
+
+    const previousCollisions = parallelTineCollisionKeys(projectSongWordEvents(currentWord));
+    const nextEvents = projectSongWordEvents(target);
+    const introducesCollision = [...parallelTineCollisionKeys(nextEvents)].some(
+      (key) => !previousCollisions.has(key),
+    );
+    if (introducesCollision) return { ok: false, reason: 'tine-collision' };
+
+    updateWordFidelity(target, encodeLegacyNotation(nextEvents));
+    this.structureHistory.record({ document: current, selection });
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
+    this.applyStructureSnapshot(document);
+    void this.persistSnapshot(document);
+    return { ok: true, selection: { ...selection } };
+  }
+
+  setTimeSignature(timeSignature: TimeSignature): MusicEventRemovalResult {
+    const current = this.documentState();
+    const selection = this.lastStructureSelection ?? (current ? firstSongPosition(current) : null);
+    if (!current || !selection) return { ok: false, reason: 'invalid-selection' };
+    const document = cloneDocument(current);
+    document.song.timeSignature = { ...timeSignature };
     this.structureHistory.record({ document: current, selection });
     this.lastStructureSelection = { ...selection };
     this.syncHistoryAvailability();

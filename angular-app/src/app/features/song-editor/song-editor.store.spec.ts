@@ -277,9 +277,13 @@ Hallo
 
   it('persists a syllable split and restores its exact event assignment through undo and redo', async () => {
     await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const timedEvents = structuredClone(store.document()!.song.lines[0].words[0].melodyEvents);
+    timedEvents.splice(1, 0, { kind: 'rest', duration: 0.5 });
+    expect(store.replaceMusicTracks(selection, { melody: timedEvents }).ok).toBe(true);
+    await expectSaved(store);
     const original = structuredClone(store.document()!);
     const originalEvents = structuredClone(original.song.lines[0].words[0].melodyEvents);
-    const selection = { lineIndex: 0, wordIndex: 0 };
 
     const result = store.applyStructureAction(
       {
@@ -495,6 +499,19 @@ Hallo
     await expectSaved(store);
   });
 
+  it('persists a time signature through central history and reload storage', async () => {
+    await store.initialize();
+    expect(store.setTimeSignature({ numerator: 6, denominator: 8 })).toMatchObject({ ok: true });
+    expect(store.document()?.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
+    await expectSaved(store);
+    expect((await repository.load())?.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
+
+    expect(store.undoStructure()).not.toBeNull();
+    expect(store.document()?.song.timeSignature).toEqual({ numerator: 4, denominator: 4 });
+    expect(store.redoStructure()).not.toBeNull();
+    expect(store.document()?.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
+  });
+
   it('adds an explicit accompaniment event through central history and blocks same-tine attacks', async () => {
     await store.initialize();
     const selection = { lineIndex: 0, wordIndex: 0 };
@@ -559,6 +576,35 @@ Hallo
     expect(store.document()?.song.lines[0].words[0].accompanimentEvents[0]).toMatchObject({
       duration: 2,
     });
+  });
+
+  it('replaces both raster tracks as one history action and preserves event unknown fields', async () => {
+    await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const original = structuredClone(store.document()!);
+    const preserved = {
+      kind: 'note' as const,
+      pitch: { degree: 2 as const, octave: 0 as const },
+      duration: 0.25,
+      customEventField: ['bleibt'],
+    };
+
+    expect(
+      store.replaceMusicTracks(selection, {
+        melody: [preserved],
+        accompaniment: [{ kind: 'chord', pitches: [{ degree: 7, octave: 0 }], duration: 2 }],
+      }),
+    ).toEqual({ ok: true, selection });
+    expect(store.document()?.song.lines[0].words[0].melodyEvents[0]).toEqual(preserved);
+    expect(store.document()?.song.lines[0].words[0].accompanimentEvents[0]).toMatchObject({
+      kind: 'chord',
+      duration: 2,
+    });
+    await expectSaved(store);
+    expect(store.undoStructure()).toEqual(selection);
+    expect(store.document()).toEqual(original);
+    expect(store.redoStructure()).toEqual(selection);
+    expect(store.document()?.song.lines[0].words[0].melodyEvents[0]).toEqual(preserved);
   });
 });
 
