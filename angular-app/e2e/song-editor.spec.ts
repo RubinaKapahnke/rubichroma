@@ -33,9 +33,9 @@ test('starts in a calm full-width view and opens editing context only on request
   await expect(title).not.toHaveAttribute('readonly');
   await expect(page.getByTestId('add-song-block')).toBeVisible();
   await page.getByTestId('word-card-0-0').click();
-  await expect(page.locator('.desktop-inspector-drawer')).toBeVisible();
+  await expect(page.getByTestId('inline-word-editor-0')).toBeVisible();
   await page.getByTestId('edit-mode-toggle').click();
-  await expect(page.locator('.desktop-inspector-drawer')).toHaveCount(0);
+  await expect(page.getByTestId('inline-word-editor-0')).toHaveCount(0);
   await expect(page.getByTestId('edit-mode-toggle')).toBeFocused();
   await expect(title).toHaveAttribute('readonly', '');
 
@@ -65,7 +65,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.locator('.song-line')).toHaveCount(3);
   await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
-  await expect(page.getByTestId('word-card-0-2')).toContainText(/♪\s*Melodieblock/);
+  await expect(page.getByTestId('word-card-0-2')).toContainText('Textloser Abschnitt');
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByText('Willkommen')).toHaveCount(0);
 
@@ -131,7 +131,7 @@ test('renders an imported multi-line song immediately, then supports structure u
   await expect(page.getByTestId('song-title')).toHaveValue('Prüflied ÄÖÜ – drei Zeilen');
   await expect(page.locator('.song-line')).toHaveCount(3);
   await expect(page.getByTestId('word-card-0-0')).toContainText('Grüße –');
-  await expect(page.getByTestId('word-card-0-2')).toContainText(/♪\s*Melodieblock/);
+  await expect(page.getByTestId('word-card-0-2')).toContainText('Textloser Abschnitt');
   await expect(page.getByTestId('word-card-2-0')).toContainText('Schluss');
   await expect(page.getByTestId('undo-structure')).toBeDisabled();
   await expect(page.getByTestId('redo-structure')).toBeDisabled();
@@ -412,7 +412,7 @@ test('keeps melody identity separate from optional text across autosave and relo
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
   await page.getByTestId('word-card-0-1').click();
-  await expect(page.getByTestId('melody-block-marker')).toHaveText(/♪.*Melodieblock/);
+  await expect(page.getByTestId('melody-block-marker')).toHaveText(/♪.*Instrumentalabschnitt/);
   await expect(page.getByTestId('word-0-1')).toHaveValue('');
   await expect(page.getByTestId('event-count')).toHaveText('4 Ereignisse');
   expect(await readStoredWord(page, 0, 1)).toMatchObject({ text: '♪', toneCount: 3 });
@@ -871,7 +871,7 @@ test('opens and closes the focused word editor as a mobile bottom sheet', async 
     await page.evaluate(() => !!document.activeElement?.closest('[data-testid="word-editor"]')),
   ).toBe(true);
   await page.getByTestId('undo-structure-editor').click();
-  await expect(page.getByTestId('word-card-0-1')).toContainText('♪');
+  await expect(page.getByTestId('word-card-0-1')).toContainText('Textloser Abschnitt');
   await expect(page.getByTestId('word-editor')).toContainText('Block 1');
   await page.getByTestId('redo-structure-editor').click();
   await expect(page.getByTestId('word-editor')).toContainText('Block 2');

@@ -152,7 +152,9 @@ export class SongSheetComponent {
 
   wordLabel(word: WordForm, lineIndex: number, wordIndex: number): string {
     const text = word.controls.text.value.trim();
-    if (this.isMelody(lineIndex, wordIndex) && (!text || text === '♪')) return 'Melodieblock';
+    if (this.isMelody(lineIndex, wordIndex) && (!text || text === '♪')) {
+      return 'Instrumentalabschnitt';
+    }
     return text || 'Leerer Textblock';
   }
 

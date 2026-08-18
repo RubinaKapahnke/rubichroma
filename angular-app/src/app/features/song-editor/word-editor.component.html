@@ -56,12 +56,12 @@
     @if (isMelodyBlock()) {
       <div class="melody-block-marker" data-testid="melody-block-marker">
         <span aria-hidden="true">♪</span>
-        <strong>Melodieblock</strong>
+        <strong>Instrumentalabschnitt</strong>
       </div>
     }
     <mat-form-field appearance="outline">
       <mat-label>{{
-        isMelodyBlock() ? 'Optionaler Text zum Melodieblock' : 'Wort oder Textstück'
+        isMelodyBlock() ? 'Optionaler Text zum Instrumentalabschnitt' : 'Wort oder Textstück'
       }}</mat-label>
       <input
         matInput
@@ -474,7 +474,7 @@
             data-testid="block-add-melody"
             (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
           >
-            + Melodieblock
+            + Instrumentalabschnitt
           </button>
         </div>
       </section>
