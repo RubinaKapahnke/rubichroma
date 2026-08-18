@@ -73,6 +73,45 @@
             autocomplete="off"
           />
           <span class="document-meta">{{ lines().length }} Zeilen · Liedtext und Musik</span>
+          @if (editingEnabled()) {
+            <span class="time-signature-control" aria-label="Taktart">
+              <label>
+                <span class="visually-hidden">Taktart Zähler</span>
+                <select
+                  data-testid="time-signature-numerator"
+                  [value]="timeSignatureNumerator()"
+                  (change)="changeTimeSignature('numerator', $event)"
+                >
+                  @for (numerator of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; track numerator) {
+                    <option
+                      [value]="numerator"
+                      [selected]="timeSignatureNumerator() === numerator"
+                    >
+                      {{ numerator }}
+                    </option>
+                  }
+                </select>
+              </label>
+              <span aria-hidden="true">/</span>
+              <label>
+                <span class="visually-hidden">Taktart Nenner</span>
+                <select
+                  data-testid="time-signature-denominator"
+                  [value]="timeSignatureDenominator()"
+                  (change)="changeTimeSignature('denominator', $event)"
+                >
+                  @for (denominator of [2, 4, 8, 16]; track denominator) {
+                    <option
+                      [value]="denominator"
+                      [selected]="timeSignatureDenominator() === denominator"
+                    >
+                      {{ denominator }}
+                    </option>
+                  }
+                </select>
+              </label>
+            </span>
+          }
         </div>
 
         <div class="document-actions" aria-label="Dokumentaktionen">
@@ -623,6 +662,7 @@
             (structureAction)="applyStructureAction($event)"
             (wordPreviewRequested)="previewBlock($event)"
             (linePreviewRequested)="previewLine($event)"
+            (musicPositionRequested)="openMusicPosition($event)"
           />
         </div>
       </mat-card-content>
@@ -646,6 +686,7 @@
       [location]="selectionLocation()"
       [testIdSuffix]="selectionTestId()"
       [keys]="kalimbaKeys()"
+      [beatsPerBar]="(timeSignatureNumerator() * 4) / timeSignatureDenominator()"
       [isMelodyBlock]="selectedWordIsMelody()"
       [canDeleteBlock]="canDeleteSelectedBlock()"
       [canCopyToNextLine]="canCopySelectedBlockToNextLine()"

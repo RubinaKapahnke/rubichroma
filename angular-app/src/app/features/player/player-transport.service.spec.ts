@@ -18,6 +18,7 @@ class FakeBackend implements PlayerTransportBackend {
   readonly ppq = 192;
   ticks = 0;
   bpm = 0;
+  beatsPerBar = 4;
   loop = false;
   scheduled: readonly PlayerTimelineEvent[] = [];
   endBeat = 0;
@@ -56,6 +57,9 @@ class FakeBackend implements PlayerTransportBackend {
   }
   setBpm(bpm: number): void {
     this.bpm = bpm;
+  }
+  setBeatsPerBar(beatsPerBar: number): void {
+    this.beatsPerBar = beatsPerBar;
   }
   setLoop(enabled: boolean): void {
     this.loop = enabled;
@@ -156,6 +160,18 @@ describe('PlayerTransportService', () => {
       false,
       true,
       false,
+      false,
+      false,
+      true,
+    ]);
+  });
+
+  it('uses the configured time signature for metronome accents', () => {
+    expect(Array.from({ length: 7 }, (_, beat) => isMetronomeAccent(beat, 3))).toEqual([
+      true,
+      false,
+      false,
+      true,
       false,
       false,
       true,

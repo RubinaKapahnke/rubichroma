@@ -277,9 +277,13 @@ Hallo
 
   it('persists a syllable split and restores its exact event assignment through undo and redo', async () => {
     await store.initialize();
+    const selection = { lineIndex: 0, wordIndex: 0 };
+    const timedEvents = structuredClone(store.document()!.song.lines[0].words[0].melodyEvents);
+    timedEvents.splice(1, 0, { kind: 'rest', duration: 0.5 });
+    expect(store.replaceMusicTracks(selection, { melody: timedEvents }).ok).toBe(true);
+    await expectSaved(store);
     const original = structuredClone(store.document()!);
     const originalEvents = structuredClone(original.song.lines[0].words[0].melodyEvents);
-    const selection = { lineIndex: 0, wordIndex: 0 };
 
     const result = store.applyStructureAction(
       {
@@ -493,6 +497,19 @@ Hallo
       duration: 2,
     });
     await expectSaved(store);
+  });
+
+  it('persists a time signature through central history and reload storage', async () => {
+    await store.initialize();
+    expect(store.setTimeSignature({ numerator: 6, denominator: 8 })).toMatchObject({ ok: true });
+    expect(store.document()?.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
+    await expectSaved(store);
+    expect((await repository.load())?.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
+
+    expect(store.undoStructure()).not.toBeNull();
+    expect(store.document()?.song.timeSignature).toEqual({ numerator: 4, denominator: 4 });
+    expect(store.redoStructure()).not.toBeNull();
+    expect(store.document()?.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
   });
 
   it('adds an explicit accompaniment event through central history and blocks same-tine attacks', async () => {

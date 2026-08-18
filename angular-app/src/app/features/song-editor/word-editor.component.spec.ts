@@ -100,11 +100,11 @@ describe('word editor keyboard music grid', () => {
   });
 
   it.each([
-    ['KeyZ', 'y', 4],
-    ['KeyX', 'x', 2],
-    ['KeyC', 'c', 1],
-    ['KeyV', 'v', 0.5],
-    ['KeyB', 'b', 0.25],
+    ['KeyC', 'c', 4],
+    ['KeyV', 'v', 2],
+    ['KeyB', 'b', 1],
+    ['KeyN', 'n', 0.5],
+    ['KeyM', 'm', 0.25],
   ])('maps the visible German Notenwert-Kürzel %s by physical code', (code, key, duration) => {
     const fixture = createGridFixture([
       { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1, track: 'melody' },
@@ -133,6 +133,82 @@ describe('word editor keyboard music grid', () => {
       duration: 1,
     });
     expect(fixture.componentInstance.gridCursorSlot()).toBe(4);
+  });
+
+  it('selects an event separately from delete and replaces its pitch in place', () => {
+    const original = {
+      kind: 'note',
+      pitch: { degree: 1, octave: 0 },
+      duration: 2,
+      track: 'melody',
+      vendorField: { keep: true },
+    } as MusicEvent;
+    const fixture = createGridFixture([original]);
+    const edits: Partial<Record<MusicTrackId, readonly MusicEvent[]>>[] = [];
+    fixture.componentInstance.musicGridEditRequested.subscribe((edit) => edits.push(edit));
+
+    fixture.componentInstance.selectEvent('melody', 0);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.gridCursorSlot()).toBe(0);
+    expect(fixture.componentInstance.selectedDuration()).toBe(2);
+    expect(fixture.nativeElement.querySelector('.event-chip.is-selected')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="event-select-0"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="event-remove-0"]')).not.toBeNull();
+
+    fixture.componentInstance.handleKey(fixture.componentInstance.keys()[1]);
+
+    expect(edits[0].melody?.[0]).toMatchObject({
+      kind: 'note',
+      pitch: fixture.componentInstance.keys()[1].pitch,
+      duration: 2,
+      vendorField: { keep: true },
+    });
+    expect(fixture.componentInstance.isEventSelected('melody', 0)).toBe(true);
+  });
+
+  it('adds at a free cursor and updates a selected chord in place without mutating on Escape', () => {
+    const chord = {
+      kind: 'chord',
+      pitches: [
+        { degree: 1, octave: 0 },
+        { degree: 2, octave: 0 },
+      ],
+      duration: 2,
+      track: 'accompaniment',
+      vendorField: 'keep',
+    } as MusicEvent;
+    const fixture = createGridFixture([
+      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1, track: 'melody' },
+      chord,
+    ]);
+    const edits: Partial<Record<MusicTrackId, readonly MusicEvent[]>>[] = [];
+    fixture.componentInstance.musicGridEditRequested.subscribe((edit) => edits.push(edit));
+
+    fixture.componentInstance.gridCursorSlot.set(4);
+    fixture.componentInstance.handleKey(fixture.componentInstance.keys()[2]);
+    expect(edits[0].melody).toHaveLength(2);
+
+    fixture.componentInstance.selectEvent('accompaniment', 0);
+    fixture.componentInstance.handleKey(fixture.componentInstance.keys()[2]);
+    fixture.componentInstance.insertChord();
+    expect(edits[1].accompaniment?.[0]).toMatchObject({
+      kind: 'chord',
+      duration: 2,
+      vendorField: 'keep',
+      pitches: [
+        { degree: 1, octave: 0 },
+        { degree: 2, octave: 0 },
+        fixture.componentInstance.keys()[2].pitch,
+      ],
+    });
+
+    fixture.componentInstance.handleKey(fixture.componentInstance.keys()[0]);
+    fixture.componentInstance.handleEditorEscape(keyboardEvent('Escape', 'Escape'));
+    expect(edits).toHaveLength(2);
+    expect(fixture.componentInstance.chordDraft()).toEqual([
+      { degree: 1, octave: 0 },
+      { degree: 2, octave: 0 },
+    ]);
   });
 
   it('keeps the accompaniment chord draft mutation-free until Enter and cancels on Escape', () => {
@@ -167,7 +243,7 @@ describe('word editor keyboard music grid', () => {
     const edits: Partial<Record<MusicTrackId, readonly MusicEvent[]>>[] = [];
     fixture.componentInstance.musicGridEditRequested.subscribe((edit) => edits.push(edit));
 
-    fixture.componentInstance.handleMusicGridKeydown(keyboardEvent('KeyB', 'b'));
+    fixture.componentInstance.handleMusicGridKeydown(keyboardEvent('KeyM', 'm'));
     expect(edits[0].melody?.[0]).toMatchObject({ duration: 0.25 });
 
     fixture.componentInstance.gridSelection.set({
@@ -177,7 +253,50 @@ describe('word editor keyboard music grid', () => {
       focusSlot: 0,
     });
     fixture.componentInstance.handleMusicGridKeydown(keyboardEvent('Delete', 'Delete'));
-    expect(edits[1]).toEqual({ melody: [], accompaniment: [] });
+    expect(
+      edits[1].melody?.map((event) => [
+        event.kind,
+        event.kind === 'separator' ? null : event.duration,
+      ]),
+    ).toEqual([
+      ['rest', 0.25],
+      ['note', 0.75],
+    ]);
+    expect(
+      edits[1].accompaniment?.map((event) => [
+        event.kind,
+        event.kind === 'separator' ? null : event.duration,
+      ]),
+    ).toEqual([
+      ['rest', 0.25],
+      ['note', 0.75],
+    ]);
+  });
+
+  it('creates semantic arpeggios and adjacent glissando sequences through the shared edit action', () => {
+    const fixture = createGridFixture([]);
+    const edits: Partial<Record<MusicTrackId, readonly MusicEvent[]>>[] = [];
+    fixture.componentInstance.musicGridEditRequested.subscribe((edit) => edits.push(edit));
+    const keys = fixture.componentInstance.keys();
+
+    fixture.componentInstance.setInsertMode('chord');
+    fixture.componentInstance.chordPlaybackStyle.set('arpeggio-down');
+    fixture.componentInstance.handleKey(keys[0]);
+    fixture.componentInstance.handleKey(keys[2]);
+    fixture.componentInstance.insertChord();
+    expect(edits.at(-1)?.melody?.[0]).toMatchObject({
+      kind: 'chord',
+      playback: { style: 'arpeggio-down', stepBeats: 0.25 },
+    });
+
+    fixture.componentInstance.setInsertMode('glissando');
+    fixture.componentInstance.handleKey(keys[3]);
+    fixture.componentInstance.handleKey(keys[6]);
+    expect(edits.at(-1)?.melody?.at(-1)).toMatchObject({
+      kind: 'glissando',
+      direction: 'ascending',
+      pitches: [keys[3].pitch, keys[4].pitch, keys[5].pitch, keys[6].pitch],
+    });
   });
 });
 

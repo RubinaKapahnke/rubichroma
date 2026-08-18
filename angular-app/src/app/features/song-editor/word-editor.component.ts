@@ -15,7 +15,7 @@ import { decodeLegacyNotation } from '../../domain/legacy-notation-codec';
 import {
   deleteMusicEventsInSlotRange,
   eventAtMusicGridSlot,
-  MUSIC_GRID_SLOTS_PER_BAR,
+  MUSIC_GRID_SLOTS_PER_BEAT,
   musicGridLength,
   projectMusicEventsToGrid,
   replaceMusicEventAtSlot,
@@ -44,21 +44,22 @@ export interface KalimbaKeyView {
   pitch: Pitch;
 }
 
-type InsertMode = 'single' | 'chord';
+type InsertMode = 'single' | 'chord' | 'glissando';
 type GridSelection = {
   anchorTrack: MusicTrackId;
   anchorSlot: number;
   focusTrack: MusicTrackId;
   focusSlot: number;
 };
+type SelectedMusicEvent = { track: MusicTrackId; eventIndex: number };
 
 const TRACKS = ['melody', 'accompaniment'] as const;
 const DURATION_BY_CODE: Readonly<Record<string, number>> = {
-  KeyZ: 4,
-  KeyX: 2,
-  KeyC: 1,
-  KeyV: 0.5,
-  KeyB: 0.25,
+  KeyC: 4,
+  KeyV: 2,
+  KeyB: 1,
+  KeyN: 0.5,
+  KeyM: 0.25,
 };
 const TONE_INDEX_BY_CODE: Readonly<Record<string, number>> = {
   KeyH: 0,
@@ -94,6 +95,7 @@ export class WordEditorComponent {
   readonly location = input.required<string>();
   readonly testIdSuffix = input.required<string>();
   readonly keys = input.required<readonly KalimbaKeyView[]>();
+  readonly beatsPerBar = input(4);
   readonly isMelodyBlock = input.required<boolean>();
   readonly canDeleteBlock = input.required<boolean>();
   readonly canCopyToNextLine = input.required<boolean>();
@@ -125,10 +127,13 @@ export class WordEditorComponent {
   readonly activeTrack = signal<MusicTrackId>('melody');
   readonly trackOptions = TRACKS;
   readonly chordDraft = signal<Pitch[]>([]);
+  readonly chordPlaybackStyle = signal<'together' | 'arpeggio-up' | 'arpeggio-down'>('together');
+  readonly glissandoStart = signal<Pitch | null>(null);
   readonly keyboardChordDraft = signal(false);
   readonly gridCursorSlot = signal(0);
   readonly gridSelection = signal<GridSelection | null>(null);
   readonly selectedDuration = signal(1);
+  readonly selectedEvent = signal<SelectedMusicEvent | null>(null);
   readonly notice = signal<string | null>(null);
   readonly moreActionsOpen = signal(false);
   readonly auditionKeys = signal(false);
@@ -171,6 +176,7 @@ export class WordEditorComponent {
       this.gridSelection.set(null);
       this.keyboardChordDraft.set(false);
       this.chordDraft.set([]);
+      this.selectedEvent.set(null);
     });
   }
 
@@ -295,17 +301,50 @@ export class WordEditorComponent {
   setInsertMode(mode: InsertMode): void {
     this.insertMode.set(mode);
     this.chordDraft.set([]);
+    this.glissandoStart.set(null);
     this.notice.set(null);
   }
 
   setActiveTrack(track: MusicTrackId): void {
+    if (this.activeTrack() !== track) this.clearEventSelection();
     this.activeTrack.set(track);
-    this.chordDraft.set([]);
     this.notice.set(null);
   }
 
   activateTrackInput(track: MusicTrackId): void {
+    this.clearEventSelection();
     this.setActiveTrack(track);
+    this.focusTrackInput(track);
+  }
+
+  activateTrackAtSlot(track: MusicTrackId, slot: number): void {
+    this.clearEventSelection();
+    this.setActiveTrack(track);
+    this.gridCursorSlot.set(Math.max(0, Math.floor(slot)));
+    this.gridSelection.set(null);
+    this.focusTrackInput(track);
+  }
+
+  selectGridPosition(
+    track: MusicTrackId,
+    event: MouseEvent,
+    eventIndex: number | null = null,
+  ): void {
+    this.setActiveTrack(track);
+    const projected =
+      eventIndex === null
+        ? null
+        : this.gridEvents(track).find((entry) => entry.eventIndex === eventIndex);
+    const target = event.currentTarget as HTMLElement;
+    const fraction = Math.max(
+      0,
+      Math.min(0.999, (event.clientX - target.getBoundingClientRect().left) / target.offsetWidth),
+    );
+    const startSlot = projected?.startSlot ?? 0;
+    const slotCount = projected?.slotCount ?? this.gridSlots().length;
+    this.gridCursorSlot.set(startSlot + Math.floor(fraction * slotCount));
+    this.gridSelection.set(null);
+    this.selectedEvent.set(null);
     this.focusTrackInput(track);
   }
 
@@ -315,7 +354,7 @@ export class WordEditorComponent {
 
   gridSlots(): number[] {
     const length = Math.max(
-      MUSIC_GRID_SLOTS_PER_BAR,
+      this.slotsPerBar(),
       ...TRACKS.map((track) => musicGridLength(this.trackEvents(track))),
       this.gridCursorSlot() + 1,
     );
@@ -346,6 +385,10 @@ export class WordEditorComponent {
       projected.find((entry) => entry.startSlot > this.gridCursorSlot())?.eventIndex ??
       this.trackEvents(track).length
     );
+  }
+
+  eventStartSlot(track: MusicTrackId, eventIndex: number): number {
+    return this.gridEvents(track).find((entry) => entry.eventIndex === eventIndex)?.startSlot ?? 0;
   }
 
   handleMusicGridKeydown(event: KeyboardEvent): void {
@@ -393,11 +436,16 @@ export class WordEditorComponent {
     }
     if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && toneKey) {
       event.preventDefault();
-      this.placeGridEvent({
-        kind: 'note',
-        pitch: toneKey.pitch,
-        duration: this.selectedDuration(),
-      });
+      const selected = this.selectedEventForTrack();
+      if (selected?.event.kind === 'note') {
+        this.replaceSelectedEvent({ ...selected.event, pitch: { ...toneKey.pitch } });
+      } else {
+        this.placeGridEvent({
+          kind: 'note',
+          pitch: toneKey.pitch,
+          duration: this.selectedDuration(),
+        });
+      }
       this.pitchPreviewRequested.emit(toneKey.pitch);
       return;
     }
@@ -427,6 +475,7 @@ export class WordEditorComponent {
 
     event.preventDefault();
     event.stopPropagation();
+    this.clearEventSelection();
     const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
     if (event.shiftKey && !this.gridSelection()) {
       this.gridSelection.set({
@@ -451,9 +500,7 @@ export class WordEditorComponent {
     } else if (event.ctrlKey || event.metaKey) {
       this.moveToGridBoundary(direction);
     } else {
-      this.gridCursorSlot.update((slot) =>
-        Math.max(0, Math.min(this.gridSlots().length - 1, slot + direction)),
-      );
+      this.gridCursorSlot.update((slot) => Math.max(0, slot + direction));
     }
     if (event.shiftKey) {
       this.gridSelection.update((selection) =>
@@ -471,7 +518,40 @@ export class WordEditorComponent {
   handleKey(key: KalimbaKeyView): void {
     if (this.auditionKeys()) this.pitchPreviewRequested.emit(key.pitch);
     if (this.insertMode() === 'single') {
-      this.append({ kind: 'note', pitch: key.pitch, duration: 1 });
+      const selected = this.selectedEventForTrack();
+      if (selected?.event.kind === 'note') {
+        this.replaceSelectedEvent({ ...selected.event, pitch: { ...key.pitch } });
+        return;
+      }
+      this.placeGridEvent({
+        kind: 'note',
+        pitch: { ...key.pitch },
+        duration: this.selectedDuration(),
+      });
+      return;
+    }
+
+    if (this.insertMode() === 'glissando') {
+      const start = this.glissandoStart();
+      if (!start) {
+        this.glissandoStart.set({ ...key.pitch });
+        this.notice.set('Startzunge gewählt. Jetzt die Endzunge wählen.');
+        return;
+      }
+      const sequence = this.glissandoSequence(start, key.pitch);
+      if (sequence.length < 2) return;
+      const event: MusicEvent = {
+        kind: 'glissando',
+        startPitch: { ...start },
+        endPitch: { ...key.pitch },
+        direction: this.keyIndex(start) <= this.keyIndex(key.pitch) ? 'ascending' : 'descending',
+        pitches: sequence,
+        duration: this.selectedDuration(),
+      };
+      const selected = this.selectedEventForTrack();
+      if (selected?.event.kind === 'glissando') this.replaceSelectedEvent(event);
+      else this.placeGridEvent(event);
+      this.glissandoStart.set(null);
       return;
     }
 
@@ -486,7 +566,21 @@ export class WordEditorComponent {
   insertChord(): void {
     const pitches = this.chordDraft();
     if (pitches.length < 2) return;
-    this.append({ kind: 'chord', pitches, duration: 1 });
+    const selected = this.selectedEventForTrack();
+    if (selected?.event.kind === 'chord') {
+      this.replaceSelectedEvent({
+        ...selected.event,
+        pitches: pitches.map((pitch) => ({ ...pitch })),
+        playback: { style: this.chordPlaybackStyle(), stepBeats: 0.25 },
+      });
+      return;
+    }
+    this.placeGridEvent({
+      kind: 'chord',
+      pitches: pitches.map((pitch) => ({ ...pitch })),
+      duration: this.selectedDuration(),
+      playback: { style: this.chordPlaybackStyle(), stepBeats: 0.25 },
+    });
     this.chordDraft.set([]);
   }
 
@@ -496,7 +590,7 @@ export class WordEditorComponent {
       this.trackEvents(this.activeTrack()),
       this.gridCursorSlot(),
     );
-    if (!occupied || occupied.event.kind === 'separator') return;
+    if (!occupied || occupied.event.kind === 'separator' || occupied.event.kind === 'rest') return;
     const replacement = { ...occupied.event, duration } as MusicEvent;
     const next = [...this.trackEvents(this.activeTrack())];
     next[occupied.eventIndex] = replacement;
@@ -510,11 +604,15 @@ export class WordEditorComponent {
     }
     const track = this.activeTrack();
     const occupied = eventAtMusicGridSlot(this.trackEvents(track), this.gridCursorSlot());
-    const startSlot = occupied?.startSlot ?? musicGridLength(this.trackEvents(track));
+    const startSlot =
+      occupied?.event.kind === 'rest'
+        ? this.gridCursorSlot()
+        : (occupied?.startSlot ?? this.gridCursorSlot());
     const next = replaceMusicEventAtSlot(this.trackEvents(track), this.gridCursorSlot(), event);
     this.musicGridEditRequested.emit({ [track]: next });
     this.gridCursorSlot.set(startSlot + Math.max(1, Math.round(this.selectedDuration() * 4)));
     this.gridSelection.set(null);
+    this.selectedEvent.set(null);
     this.notice.set(null);
   }
 
@@ -532,7 +630,7 @@ export class WordEditorComponent {
     for (const track of tracks) {
       const current = this.trackEvents(track);
       const next = deleteMusicEventsInSlotRange(current, fromSlot, toSlot);
-      if (next.length !== current.length) replacements[track] = next;
+      if (JSON.stringify(next) !== JSON.stringify(current)) replacements[track] = next;
     }
     if (Object.keys(replacements).length) this.musicGridEditRequested.emit(replacements);
     this.gridSelection.set(null);
@@ -544,7 +642,12 @@ export class WordEditorComponent {
       this.notice.set('Wähle mindestens zwei Töne für den Akkord.');
       return;
     }
-    this.placeGridEvent({ kind: 'chord', pitches, duration: this.selectedDuration() });
+    this.placeGridEvent({
+      kind: 'chord',
+      pitches,
+      duration: this.selectedDuration(),
+      playback: { style: this.chordPlaybackStyle(), stepBeats: 0.25 },
+    });
     this.cancelKeyboardChord();
   }
 
@@ -580,14 +683,16 @@ export class WordEditorComponent {
   private moveToGridBoundary(direction: number): void {
     const slot = this.gridCursorSlot();
     const length = Math.max(...TRACKS.map((track) => musicGridLength(this.trackEvents(track))));
+    const slotsPerBar = this.slotsPerBar();
     const target =
       direction > 0
-        ? Math.min(
-            length,
-            Math.floor(slot / MUSIC_GRID_SLOTS_PER_BAR + 1) * MUSIC_GRID_SLOTS_PER_BAR,
-          )
-        : Math.max(0, Math.ceil(slot / MUSIC_GRID_SLOTS_PER_BAR - 1) * MUSIC_GRID_SLOTS_PER_BAR);
+        ? Math.min(length, Math.floor(slot / slotsPerBar + 1) * slotsPerBar)
+        : Math.max(0, Math.ceil(slot / slotsPerBar - 1) * slotsPerBar);
     this.gridCursorSlot.set(target);
+  }
+
+  private slotsPerBar(): number {
+    return Math.max(1, Math.round(this.beatsPerBar() * MUSIC_GRID_SLOTS_PER_BEAT));
   }
 
   private toneKeyForCode(code: string): KalimbaKeyView | undefined {
@@ -610,7 +715,15 @@ export class WordEditorComponent {
   }
 
   removeEvent(track: MusicTrackId, eventIndex: number): void {
-    this.musicEventRemovalRequested.emit({ track, eventIndex });
+    const projected = this.gridEvents(track).find((entry) => entry.eventIndex === eventIndex);
+    if (!projected || projected.event.kind === 'rest') return;
+    const next = deleteMusicEventsInSlotRange(
+      this.trackEvents(track),
+      projected.startSlot,
+      projected.startSlot + projected.slotCount - 1,
+    );
+    this.musicGridEditRequested.emit({ [track]: next });
+    if (this.isEventSelected(track, eventIndex)) this.clearEventSelection();
   }
 
   previewEvent(track: MusicTrackId, eventIndex: number): void {
@@ -618,11 +731,61 @@ export class WordEditorComponent {
   }
 
   setEventDuration(track: MusicTrackId, eventIndex: number, duration: string): void {
-    this.musicEventDurationRequested.emit({ track, eventIndex, durationBeats: Number(duration) });
+    const next = [...this.trackEvents(track)];
+    const current = next[eventIndex];
+    if (!current || current.kind === 'separator' || current.kind === 'rest') return;
+    const durationBeats = Number(duration);
+    next[eventIndex] = { ...current, duration: durationBeats } as MusicEvent;
+    this.selectedDuration.set(durationBeats);
+    this.musicGridEditRequested.emit({ [track]: next });
+  }
+
+  selectEvent(track: MusicTrackId, eventIndex: number): void {
+    const projected = this.gridEvents(track).find((entry) => entry.eventIndex === eventIndex);
+    if (!projected) return;
+    this.setActiveTrack(track);
+    this.gridCursorSlot.set(projected.startSlot);
+    this.gridSelection.set(null);
+    this.selectedEvent.set({ track, eventIndex });
+    if (projected.event.kind === 'chord') {
+      this.insertMode.set('chord');
+      this.chordDraft.set(projected.event.pitches.map((pitch) => ({ ...pitch })));
+      this.chordPlaybackStyle.set(projected.event.playback?.style ?? 'together');
+    } else if (projected.event.kind === 'glissando') {
+      this.insertMode.set('glissando');
+      this.glissandoStart.set({ ...projected.event.startPitch });
+    } else {
+      this.insertMode.set('single');
+      this.chordDraft.set([]);
+    }
+    if (projected.event.kind !== 'separator' && projected.event.kind !== 'rest') {
+      this.selectedDuration.set(eventDurationInBeats(projected.event));
+    }
+    this.focusTrackInput(track);
+  }
+
+  isEventSelected(track: MusicTrackId, eventIndex: number): boolean {
+    const selected = this.selectedEvent();
+    return selected?.track === track && selected.eventIndex === eventIndex;
+  }
+
+  chordActionLabel(): string {
+    return this.selectedEventForTrack()?.event.kind === 'chord'
+      ? 'Akkord aktualisieren'
+      : 'Akkord einfügen';
+  }
+
+  handleEditorEscape(event: Event): void {
+    const selected = this.selectedEventForTrack();
+    if (this.insertMode() !== 'chord' || selected?.event.kind !== 'chord') return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.chordDraft.set(selected.event.pitches.map((pitch) => ({ ...pitch })));
+    this.notice.set(null);
   }
 
   eventDurationBeats(event: MusicEvent): number {
-    return event.kind === 'separator' ? 1 : eventDurationInBeats(event);
+    return event.kind === 'separator' ? 0.25 : eventDurationInBeats(event);
   }
 
   eventDurationLabel(event: MusicEvent): string {
@@ -647,8 +810,12 @@ export class WordEditorComponent {
         return this.pitchLabel(event.pitch);
       case 'chord':
         return event.pitches.map((pitch) => this.pitchLabel(pitch)).join(' + ');
+      case 'glissando':
+        return `${this.pitchLabel(event.startPitch)} → ${this.pitchLabel(event.endPitch)}`;
       case 'separator':
         return '–';
+      case 'rest':
+        return 'Pause';
     }
   }
 
@@ -658,14 +825,22 @@ export class WordEditorComponent {
         return 'Ton';
       case 'chord':
         return 'Akkord';
+      case 'glissando':
+        return 'Glissando';
       case 'separator':
         return 'Trenner';
+      case 'rest':
+        return 'Pause';
     }
   }
 
   eventColors(event: MusicEvent): string[] {
     const pitches =
-      event.kind === 'note' ? [event.pitch] : event.kind === 'chord' ? event.pitches : [];
+      event.kind === 'note'
+        ? [event.pitch]
+        : event.kind === 'chord' || event.kind === 'glissando'
+          ? event.pitches
+          : [];
     return pitches.flatMap((pitch) => {
       const key = this.keys().find((candidate) => samePitch(candidate.pitch, pitch));
       return key ? [key.color] : [];
@@ -703,6 +878,46 @@ export class WordEditorComponent {
     return hasParallelTineCollision(this.events())
       ? 'Importhinweis: Dieselbe Kalimba-Zunge liegt in beiden Spuren auf demselben Anschlag. Die Daten bleiben erhalten; ändere vor dem Abspielen eine der beiden Spuren.'
       : null;
+  }
+
+  private selectedEventForTrack(): { event: MusicEvent; eventIndex: number } | null {
+    const selected = this.selectedEvent();
+    if (!selected || selected.track !== this.activeTrack()) return null;
+    const event = this.trackEvents(selected.track)[selected.eventIndex];
+    return event ? { event, eventIndex: selected.eventIndex } : null;
+  }
+
+  private keyIndex(pitch: Pitch): number {
+    return this.keys().findIndex((key) => samePitch(key.pitch, pitch));
+  }
+
+  private glissandoSequence(start: Pitch, end: Pitch): Pitch[] {
+    const startIndex = this.keyIndex(start);
+    const endIndex = this.keyIndex(end);
+    if (startIndex < 0 || endIndex < 0 || startIndex === endIndex) return [];
+    const direction = startIndex < endIndex ? 1 : -1;
+    const pitches: Pitch[] = [];
+    for (let index = startIndex; ; index += direction) {
+      pitches.push({ ...this.keys()[index].pitch });
+      if (index === endIndex) return pitches;
+    }
+  }
+
+  private replaceSelectedEvent(replacement: MusicEvent): void {
+    const selected = this.selectedEvent();
+    if (!selected) return;
+    const next = [...this.trackEvents(selected.track)];
+    if (!next[selected.eventIndex]) return;
+    next[selected.eventIndex] = replacement;
+    this.musicGridEditRequested.emit({ [selected.track]: next });
+    this.notice.set(null);
+  }
+
+  private clearEventSelection(): void {
+    this.selectedEvent.set(null);
+    this.chordDraft.set([]);
+    this.keyboardChordDraft.set(false);
+    this.insertMode.set('single');
   }
 
   private append(event: MusicEvent): void {

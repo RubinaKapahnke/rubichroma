@@ -17,7 +17,11 @@ import {
   MusicTrackId,
   Pitch,
 } from '../../domain/music-event';
-import { SongDocument, songWordEventsForTrack } from '../../domain/song-document';
+import {
+  songTimeSignature,
+  SongDocument,
+  songWordEventsForTrack,
+} from '../../domain/song-document';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 import { LineForm, WordForm, WordSelection } from './song-editor-form';
 import { KalimbaKeyView, profileInkColor } from './word-editor.component';
@@ -27,6 +31,11 @@ export interface WordSelectionGesture {
   shiftKey: boolean;
   toggleKey: boolean;
   touchSelection: boolean;
+}
+
+export interface MusicPositionRequest extends WordSelection {
+  track: MusicTrackId;
+  slot: number;
 }
 
 const LONG_PRESS_DURATION_MS = 500;
@@ -57,7 +66,9 @@ export class SongSheetComponent {
   readonly structureAction = output<SongStructureAction>();
   readonly wordPreviewRequested = output<WordSelection>();
   readonly linePreviewRequested = output<number>();
+  readonly musicPositionRequested = output<MusicPositionRequest>();
   readonly structureHelpVisible = signal(readStructureHelpVisibility());
+  readonly activeMusicPosition = signal<MusicPositionRequest | null>(null);
   readonly draggedBlock = signal<WordSelection | null>(null);
   readonly blockDropTarget = signal<WordSelection | null>(null);
   readonly blockDropAfter = signal(false);
@@ -355,6 +366,62 @@ export class SongSheetComponent {
     );
   }
 
+  lineSlotCount(lineIndex: number): number {
+    return Math.max(
+      1,
+      this.document().song.lines[lineIndex]?.words.reduce(
+        (slots, _, wordIndex) => slots + this.wordSlotCount(lineIndex, wordIndex),
+        0,
+      ) ?? 1,
+    );
+  }
+
+  barSlotCount(): number {
+    const signature = songTimeSignature(this.document().song);
+    return (signature.numerator * 16) / signature.denominator;
+  }
+
+  pulseSlotCount(): number {
+    return 16 / songTimeSignature(this.document().song).denominator;
+  }
+
+  requestMusicPosition(
+    event: MouseEvent | FocusEvent,
+    lineIndex: number,
+    wordIndex: number,
+    track: MusicTrackId,
+  ): void {
+    if (!this.editMode()) return;
+    const target = event.currentTarget as HTMLElement;
+    const pointer = event instanceof MouseEvent;
+    const fraction = pointer
+      ? Math.max(
+          0,
+          Math.min(
+            0.999,
+            (event.clientX - target.getBoundingClientRect().left) / target.offsetWidth,
+          ),
+        )
+      : 0;
+    const request = {
+      lineIndex,
+      wordIndex,
+      track,
+      slot: Math.floor(fraction * this.wordSlotCount(lineIndex, wordIndex)),
+    };
+    this.activeMusicPosition.set(request);
+    this.musicPositionRequested.emit(request);
+  }
+
+  musicCursorSlot(lineIndex: number, wordIndex: number, track: MusicTrackId): number | null {
+    const active = this.activeMusicPosition();
+    return active?.lineIndex === lineIndex &&
+      active.wordIndex === wordIndex &&
+      active.track === track
+      ? active.slot
+      : null;
+  }
+
   eventSlotCount(event: MusicEvent): number {
     return event.kind === 'separator'
       ? 1
@@ -367,17 +434,21 @@ export class SongSheetComponent {
         return this.pitchLabel(event.pitch);
       case 'chord':
         return event.pitches.map((pitch) => this.pitchLabel(pitch)).join(' + ');
+      case 'glissando':
+        return `${this.pitchLabel(event.startPitch)} → ${this.pitchLabel(event.endPitch)}`;
       case 'separator':
         return '–';
+      case 'rest':
+        return 'Pause';
     }
   }
 
   eventDurationLabel(event: MusicEvent): string {
-    return event.kind === 'separator' ? 'Pause' : durationLabel(event.duration);
+    return event.kind === 'separator' ? 'Taktstrich' : durationLabel(event.duration);
   }
 
   eventColors(event: MusicEvent): string[] {
-    if (event.kind === 'separator') return [];
+    if (event.kind === 'separator' || event.kind === 'rest') return [];
     return (event.kind === 'note' ? [event.pitch] : event.pitches).map(
       (pitch) => this.keyForPitch(pitch)?.color ?? '#ece8f0',
     );

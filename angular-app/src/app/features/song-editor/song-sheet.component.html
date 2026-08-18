@@ -18,7 +18,7 @@
       <p>
         <strong id="song-structure-title">{{ selection() ? '2/3' : '1/3' }}</strong>
         @if (selection()) {
-          Text oder Töne im Inspector bearbeiten. Danach oben „Im Player öffnen“.
+          Text oder Töne im Bereich unter der Liedzeile bearbeiten. Danach oben „Im Player öffnen“.
         } @else {
           Einen Block auswählen, um Text oder Töne zu bearbeiten.
         }
@@ -224,15 +224,34 @@
           <span class="notation-row-label">{{ trackLabel(track) }}</span>
           <div
             class="timeline-row music-timeline"
+            [style.--line-slots]="lineSlotCount(lineIndex)"
+            [style.--bar-slots]="barSlotCount()"
+            [style.--pulse-slots]="pulseSlotCount()"
             [attr.data-testid]="'song-' + track + '-row-' + lineIndex"
           >
             @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
               <div
                 class="timeline-segment"
+                [class.is-editable-track]="editMode()"
+                [attr.tabindex]="editMode() ? 0 : null"
+                [attr.role]="editMode() ? 'grid' : null"
+                [attr.aria-label]="
+                  trackLabel(track) + ' von ' + wordLabel(word, lineIndex, wordIndex)
+                "
                 [style.--word-slots]="wordSlotCount(lineIndex, wordIndex)"
                 [attr.data-word-slots]="wordSlotCount(lineIndex, wordIndex)"
                 [attr.data-testid]="'sheet-track-' + lineIndex + '-' + wordIndex + '-' + track"
+                (focus)="requestMusicPosition($event, lineIndex, wordIndex, track)"
+                (click)="requestMusicPosition($event, lineIndex, wordIndex, track)"
               >
+                @if (musicCursorSlot(lineIndex, wordIndex, track) !== null) {
+                  <span
+                    class="song-insert-marker"
+                    aria-hidden="true"
+                    [style.--cursor-slot]="musicCursorSlot(lineIndex, wordIndex, track)"
+                    [style.--segment-slots]="wordSlotCount(lineIndex, wordIndex)"
+                  ></span>
+                }
                 <span class="event-chips">
                   @for (
                     event of eventsForTrack(lineIndex, wordIndex, track);
@@ -243,6 +262,7 @@
                       class="event-chip"
                       [class.is-chord]="event.kind === 'chord'"
                       [class.is-separator]="event.kind === 'separator'"
+                      [class.is-rest]="event.kind === 'rest'"
                       [style.--event-color]="eventPrimaryColor(event)"
                       [style.--event-ink]="eventInkColor(event)"
                       [style.--event-slots]="eventSlotCount(event)"
@@ -269,7 +289,9 @@
                           }
                         </span>
                       }
-                      <b>{{ eventLabel(event) }}</b>
+                      @if (event.kind !== 'rest') {
+                        <b>{{ eventLabel(event) }}</b>
+                      }
                     </span>
                   } @empty {
                     <span class="empty-track">Keine {{ trackLabel(track) }}</span>

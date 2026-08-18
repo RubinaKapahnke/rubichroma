@@ -1,6 +1,6 @@
 import { decodeLegacyNotation } from './legacy-notation-codec';
 import { eventDurationInBeats, MusicEvent, Pitch } from './music-event';
-import { songWordEventsForTrack, SongDocument } from './song-document';
+import { beatsPerBar, songWordEventsForTrack, SongDocument } from './song-document';
 import { SongPosition } from './song-structure-editing';
 
 export type PlayerTrackId = 'melody' | 'accompaniment';
@@ -83,6 +83,7 @@ export const PLAYER_BEATS_PER_BAR = 4;
 export const PLAYER_KEY_PULSE_BEATS = 0.45;
 
 export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
+  const documentBeatsPerBar = beatsPerBar(document.song);
   const keys = playerKeys(document);
   const keyByPitch = new Map(keys.map((key) => [pitchKey(key.pitch), key]));
   const events: PlayerTimelineEvent[] = [];
@@ -97,31 +98,37 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
       for (const track of ['melody', 'accompaniment'] as const) {
         songWordEventsForTrack(word, track).forEach((event, eventIndex) => {
           if (event.kind === 'separator') return;
+          if (event.kind === 'rest') {
+            trackOffsets[track] += eventDurationInBeats(event);
+            return;
+          }
           const eventStartBeat = startBeat + trackOffsets[track];
-          const pitches = eventPitches(event);
-          const mappedKeys = pitches.flatMap((pitch) => {
-            const key = keyByPitch.get(pitchKey(pitch));
-            return key ? [key] : [];
-          });
-          if (mappedKeys.length === 0) return;
           const durationBeats = durationInBeats(event);
-          const id = `event-${lineIndex}-${wordIndex}-${track}-${eventIndex}`;
-          eventIds.push(id);
-          events.push({
-            id,
-            startBeat: eventStartBeat,
-            durationBeats,
-            lineIndex,
-            wordIndex,
-            pitches: mappedKeys.map((key) => key.pitch),
-            lanes: mappedKeys.map((key) => key.lane),
-            frequencies: mappedKeys.map((key) => frequencyOf(key.pitch)),
-            track,
-            barNumber: Math.floor(eventStartBeat / PLAYER_BEATS_PER_BAR) + 1,
-            laneDurationBeats: mappedKeys.map(() => durationBeats),
-            color: mappedKeys[0].color,
-          });
           trackOffsets[track] += durationBeats;
+          for (const [attackIndex, attack] of playbackAttacks(event, durationBeats).entries()) {
+            const mappedKeys = attack.pitches.flatMap((pitch) => {
+              const key = keyByPitch.get(pitchKey(pitch));
+              return key ? [key] : [];
+            });
+            if (mappedKeys.length === 0) continue;
+            const attackStartBeat = eventStartBeat + attack.offsetBeats;
+            const id = `event-${lineIndex}-${wordIndex}-${track}-${eventIndex}-${attackIndex}`;
+            eventIds.push(id);
+            events.push({
+              id,
+              startBeat: attackStartBeat,
+              durationBeats: attack.durationBeats,
+              lineIndex,
+              wordIndex,
+              pitches: mappedKeys.map((key) => key.pitch),
+              lanes: mappedKeys.map((key) => key.lane),
+              frequencies: mappedKeys.map((key) => frequencyOf(key.pitch)),
+              track,
+              barNumber: Math.floor(attackStartBeat / documentBeatsPerBar) + 1,
+              laneDurationBeats: mappedKeys.map(() => attack.durationBeats),
+              color: mappedKeys[0].color,
+            });
+          }
         });
       }
       beat += Math.max(trackOffsets.melody, trackOffsets.accompaniment);
@@ -135,7 +142,7 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
         eventIds,
         continuesWord,
         wordEnd: !continuesWord,
-        barNumber: Math.floor(startBeat / PLAYER_BEATS_PER_BAR) + 1,
+        barNumber: Math.floor(startBeat / documentBeatsPerBar) + 1,
         startBeat,
         endBeat: beat,
       });
@@ -169,11 +176,11 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
     };
   });
   const bars = Array.from(
-    { length: Math.max(1, Math.ceil(beat / PLAYER_BEATS_PER_BAR)) },
+    { length: Math.max(1, Math.ceil(beat / documentBeatsPerBar)) },
     (_, index) => ({
       number: index + 1,
-      startBeat: index * PLAYER_BEATS_PER_BAR,
-      endBeat: Math.min(beat, (index + 1) * PLAYER_BEATS_PER_BAR),
+      startBeat: index * documentBeatsPerBar,
+      endBeat: Math.min(beat, (index + 1) * documentBeatsPerBar),
     }),
   );
 
@@ -183,7 +190,7 @@ export function buildPlayerTimeline(document: SongDocument): PlayerTimeline {
     lines,
     keys,
     bars,
-    beatsPerBar: PLAYER_BEATS_PER_BAR,
+    beatsPerBar: documentBeatsPerBar,
     totalBeats: beat,
   };
 }
@@ -300,11 +307,47 @@ function visibleText(value: string): string | null {
   return text.length === 0 || INSTRUMENTAL_TEXT.test(text) ? null : text;
 }
 
-function eventPitches(event: Exclude<MusicEvent, { kind: 'separator' }>): readonly Pitch[] {
-  return event.kind === 'note' ? [event.pitch] : event.pitches;
+interface PlaybackAttack {
+  pitches: readonly Pitch[];
+  offsetBeats: number;
+  durationBeats: number;
 }
 
-function durationInBeats(event: Exclude<MusicEvent, { kind: 'separator' }>): number {
+function playbackAttacks(
+  event: Exclude<MusicEvent, { kind: 'separator' | 'rest' }>,
+  durationBeats: number,
+): PlaybackAttack[] {
+  if (event.kind === 'note') {
+    return [{ pitches: [event.pitch], offsetBeats: 0, durationBeats }];
+  }
+  if (event.kind === 'chord' && (event.playback?.style ?? 'together') === 'together') {
+    return [{ pitches: event.pitches, offsetBeats: 0, durationBeats }];
+  }
+  const ordered =
+    event.kind === 'glissando'
+      ? event.pitches
+      : [...event.pitches].sort((left, right) =>
+          event.playback?.style === 'arpeggio-down'
+            ? comparePitch(right, left)
+            : comparePitch(left, right),
+        );
+  const configuredStep = event.kind === 'glissando' ? event.stepBeats : event.playback?.stepBeats;
+  const stepBeats = configuredStep ?? Math.min(0.25, durationBeats / Math.max(ordered.length, 1));
+  return ordered.map((pitch, index) => {
+    const offsetBeats = Math.min(durationBeats, index * stepBeats);
+    return {
+      pitches: [pitch],
+      offsetBeats,
+      durationBeats: Math.max(Math.min(stepBeats, durationBeats), durationBeats - offsetBeats),
+    };
+  });
+}
+
+function comparePitch(left: Pitch, right: Pitch): number {
+  return left.octave - right.octave || left.degree - right.degree;
+}
+
+function durationInBeats(event: Exclude<MusicEvent, { kind: 'separator' | 'rest' }>): number {
   return eventDurationInBeats(event);
 }
 

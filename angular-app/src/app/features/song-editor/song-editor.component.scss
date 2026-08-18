@@ -149,6 +149,25 @@ main {
   font-size: 0.78rem;
 }
 
+.time-signature-control {
+  display: inline-flex;
+  width: max-content;
+  margin-inline: 0.3rem;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--rc-color-text-muted);
+  font-weight: 700;
+
+  select {
+    min-height: 2rem;
+    padding: 0.2rem 0.35rem;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+  }
+}
+
 .document-actions {
   display: flex;
   align-items: center;

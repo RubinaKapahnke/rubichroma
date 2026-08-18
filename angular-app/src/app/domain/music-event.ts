@@ -17,11 +17,34 @@ export interface ChordEvent {
   kind: 'chord';
   pitches: Pitch[];
   duration?: NoteDuration;
+  playback?: ChordPlayback;
+  track?: MusicTrackId;
+}
+
+export interface ChordPlayback {
+  style: 'together' | 'arpeggio-up' | 'arpeggio-down';
+  stepBeats?: number;
+}
+
+export interface GlissandoEvent {
+  kind: 'glissando';
+  startPitch: Pitch;
+  endPitch: Pitch;
+  direction: 'ascending' | 'descending';
+  pitches: Pitch[];
+  duration?: NoteDuration;
+  stepBeats?: number;
   track?: MusicTrackId;
 }
 
 export interface SeparatorEvent {
   kind: 'separator';
+  track?: MusicTrackId;
+}
+
+export interface RestEvent {
+  kind: 'rest';
+  duration: NoteDuration;
   track?: MusicTrackId;
 }
 
@@ -41,7 +64,12 @@ export function parallelTineCollisionKeys(events: readonly MusicEvent[]): Readon
   for (const event of events) {
     const track = musicEventTrack(event);
     if (event.kind === 'separator') continue;
-    for (const pitch of event.kind === 'note' ? [event.pitch] : event.pitches) {
+    if (event.kind === 'rest') {
+      offsets[track] += eventDurationInBeats(event);
+      continue;
+    }
+    const pitches = event.kind === 'note' ? [event.pitch] : event.pitches;
+    for (const pitch of pitches) {
       const key = `${offsets[track]}:${pitch.degree}:${pitch.octave}`;
       const previousTrack = attacks.get(key);
       if (previousTrack && previousTrack !== track) collisions.add(key);
@@ -52,7 +80,7 @@ export function parallelTineCollisionKeys(events: readonly MusicEvent[]): Readon
   return collisions;
 }
 
-export type MusicEvent = NoteEvent | ChordEvent | SeparatorEvent;
+export type MusicEvent = NoteEvent | ChordEvent | GlissandoEvent | RestEvent | SeparatorEvent;
 
 export function cloneMusicEvents(events: readonly MusicEvent[]): MusicEvent[] {
   return events.map((event) => {
@@ -63,15 +91,28 @@ export function cloneMusicEvents(events: readonly MusicEvent[]): MusicEvent[] {
         return {
           ...event,
           pitches: event.pitches.map((pitch) => ({ ...pitch })),
+          ...(event.playback ? { playback: { ...event.playback } } : {}),
           duration: eventDurationInBeats(event),
         };
+      case 'glissando':
+        return {
+          ...event,
+          startPitch: { ...event.startPitch },
+          endPitch: { ...event.endPitch },
+          pitches: event.pitches.map((pitch) => ({ ...pitch })),
+          duration: eventDurationInBeats(event),
+        };
+      case 'rest':
+        return { ...event, duration: eventDurationInBeats(event) };
       case 'separator':
         return { ...event };
     }
   });
 }
 
-export function eventDurationInBeats(event: Pick<NoteEvent | ChordEvent, 'duration'>): number {
+export function eventDurationInBeats(
+  event: Pick<NoteEvent | ChordEvent | GlissandoEvent | RestEvent, 'duration'>,
+): number {
   return normalizeDurationInBeats(event.duration);
 }
 

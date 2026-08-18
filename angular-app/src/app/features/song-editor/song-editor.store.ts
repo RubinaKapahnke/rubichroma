@@ -22,6 +22,7 @@ import {
   SongDocument,
   SongWord,
   splitEventsIntoTracks,
+  TimeSignature,
 } from '../../domain/song-document';
 import {
   MusicSelectionClipboard,
@@ -221,6 +222,20 @@ export class SongEditorStore {
     if (introducesCollision) return { ok: false, reason: 'tine-collision' };
 
     updateWordFidelity(target, encodeLegacyNotation(nextEvents));
+    this.structureHistory.record({ document: current, selection });
+    this.lastStructureSelection = { ...selection };
+    this.syncHistoryAvailability();
+    this.applyStructureSnapshot(document);
+    void this.persistSnapshot(document);
+    return { ok: true, selection: { ...selection } };
+  }
+
+  setTimeSignature(timeSignature: TimeSignature): MusicEventRemovalResult {
+    const current = this.documentState();
+    const selection = this.lastStructureSelection ?? (current ? firstSongPosition(current) : null);
+    if (!current || !selection) return { ok: false, reason: 'invalid-selection' };
+    const document = cloneDocument(current);
+    document.song.timeSignature = { ...timeSignature };
     this.structureHistory.record({ document: current, selection });
     this.lastStructureSelection = { ...selection };
     this.syncHistoryAvailability();

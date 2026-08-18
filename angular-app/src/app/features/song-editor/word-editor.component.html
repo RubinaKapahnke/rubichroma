@@ -1,4 +1,9 @@
-<aside class="word-editor" aria-labelledby="word-editor-title" data-testid="word-editor">
+<aside
+  class="word-editor"
+  aria-labelledby="word-editor-title"
+  data-testid="word-editor"
+  (keydown.escape)="handleEditorEscape($event)"
+>
   <header>
     <div>
       <p class="eyebrow">{{ location() }}</p>
@@ -217,13 +222,21 @@
                   }
                   <div
                     class="event-chip"
+                    [class.is-rest]="entry.event.kind === 'rest'"
                     role="gridcell"
+                    [class.is-selected]="isEventSelected(track, entry.trackIndex)"
                     [attr.data-track]="track"
                     [attr.data-profile-colors]="eventColors(entry.event).join(',')"
                     [style.--duration-beats]="eventDurationBeats(entry.event)"
                     [attr.data-duration-beats]="eventDurationBeats(entry.event)"
+                    [attr.data-start-slot]="eventStartSlot(track, entry.trackIndex)"
+                    (click)="
+                      entry.event.kind === 'rest'
+                        ? selectGridPosition(track, $event, entry.trackIndex)
+                        : null
+                    "
                   >
-                    @if (entry.event.kind !== 'separator') {
+                    @if (entry.event.kind !== 'separator' && entry.event.kind !== 'rest') {
                       <button
                         class="event-preview-action"
                         type="button"
@@ -238,6 +251,19 @@
                       </button>
                     }
                     <button
+                      class="event-select-action"
+                      type="button"
+                      [attr.data-testid]="'event-select-' + entry.index"
+                      [attr.aria-pressed]="isEventSelected(track, entry.trackIndex)"
+                      [attr.aria-label]="
+                        eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' auswählen'
+                      "
+                      (click)="selectEvent(track, entry.trackIndex)"
+                    >
+                      <small>{{ eventKindLabel(entry.event) }}</small>
+                      <strong>{{ eventLabel(entry.event) }}</strong>
+                    </button>
+                    <button
                       class="event-remove-action"
                       type="button"
                       [attr.data-testid]="'event-remove-' + entry.index"
@@ -246,8 +272,6 @@
                       "
                       (click)="removeEvent(track, entry.trackIndex)"
                     >
-                      <small>{{ eventKindLabel(entry.event) }}</small>
-                      <strong>{{ eventLabel(entry.event) }}</strong>
                       <span class="event-remove-mark" aria-hidden="true">×</span>
                     </button>
                     <span class="event-color-strip" aria-hidden="true">
@@ -255,7 +279,7 @@
                         <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
                       }
                     </span>
-                    @if (entry.event.kind !== 'separator') {
+                    @if (entry.event.kind !== 'separator' && entry.event.kind !== 'rest') {
                       <label class="event-duration-control">
                         <span>Dauer</span>
                         <select
@@ -273,7 +297,7 @@
                           <option value="4">4 Schläge</option>
                         </select>
                       </label>
-                    } @else {
+                    } @else if (entry.event.kind === 'separator') {
                       <span class="event-duration-label">{{
                         eventDurationLabel(entry.event)
                       }}</span>
@@ -288,7 +312,7 @@
                 }
               </div>
             } @else {
-              <div class="empty-track-target">
+              <div class="empty-track-target" (click)="selectGridPosition(track, $event)">
                 @if (activeTrack() === track) {
                   <span class="track-insert-marker" aria-hidden="true"></span>
                 }
@@ -317,8 +341,8 @@
             <small>Alternativ 1–9 · 0 löscht</small>
           </div>
           <p>
-            <strong>Notenwert-Kürzel – Notenlänge wählen:</strong> Y Ganze · X Halbe · C Viertel · V
-            Achtel · B Sechzehntel (4/2/1/0,5/0,25 Schläge).
+            <strong>Notenwert-Kürzel – Notenlänge wählen:</strong> C Ganze · V Halbe · B Viertel · N
+            Achtel · M Sechzehntel (4/2/1/0,5/0,25 Schläge).
           </p>
           <p>
             <strong>Navigation:</strong> Pfeile · Alt+←/→ Ereignis · Strg/Cmd+←/→ Takt-/Blockgrenze
@@ -359,6 +383,16 @@
               (change)="setInsertMode('chord')"
             />
             Akkord
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="insert-mode"
+              value="glissando"
+              [checked]="insertMode() === 'glissando'"
+              (change)="setInsertMode('glissando')"
+            />
+            Streichen
           </label>
         </fieldset>
       </div>
@@ -439,10 +473,27 @@
       @if (insertMode() === 'chord') {
         <div class="chord-draft" aria-live="polite">
           <span>{{ draftLabel() }}</span>
+          <label>
+            <span>Spielweise</span>
+            <select
+              data-testid="chord-playback-style"
+              [value]="chordPlaybackStyle()"
+              (change)="chordPlaybackStyle.set($any($event.target).value)"
+            >
+              <option value="together">Gleichzeitig</option>
+              <option value="arpeggio-up">Arpeggio aufwärts</option>
+              <option value="arpeggio-down">Arpeggio abwärts</option>
+            </select>
+          </label>
           <button type="button" [disabled]="chordDraft().length < 2" (click)="insertChord()">
-            Akkord einfügen
+            {{ chordActionLabel() }}
           </button>
         </div>
+      }
+      @if (insertMode() === 'glissando') {
+        <p class="chord-draft" aria-live="polite">
+          {{ glissandoStart() ? 'Endzunge wählen' : 'Startzunge wählen' }}
+        </p>
       }
       <button class="secondary-action" type="button" (click)="insertSeparator()">
         Trenner einfügen

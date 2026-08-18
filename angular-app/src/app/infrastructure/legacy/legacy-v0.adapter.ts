@@ -9,9 +9,11 @@ import { eventDurationInBeats, MusicEvent, MusicTrackId } from '../../domain/mus
 import {
   createTrackedWordFields,
   projectSongWordEvents,
+  songTimeSignature,
   SongDocument,
   SongLine,
   SongWord,
+  TimeSignature,
 } from '../../domain/song-document';
 
 export const LEGACY_STORAGE_KEY = 'kalimba-note-tool-v1';
@@ -36,6 +38,7 @@ export function parseLegacyV0(input: string | unknown): SongDocument {
   const root = requireObject(value, '$');
   const songValue = requireObject(root['song'], '$.song');
   const title = requireString(songValue['title'], '$.song.title');
+  const timeSignature = parseTimeSignature(songValue['timeSignature'], '$.song.timeSignature');
   const linesValue = requireArray(songValue['lines'], '$.song.lines');
   const keysValue = requireArray(root['keys'], '$.keys');
   if (keysValue.length !== 17) {
@@ -86,10 +89,22 @@ export function parseLegacyV0(input: string | unknown): SongDocument {
         validateCompatibilityMetadata(eventDurations, eventTracks, trackedEvents, path);
         const canonicalNotation = notation ?? encodeLegacyNotation(trackedEvents);
         if (notation !== null) {
-          const notationEvents = replaceWithLegacyNotation(notation, eventDurations).events.map(
-            (event, index) => ({ ...event, track: trackOrder[index] }),
+          const comparableCanonicalEvents = trackedEvents
+            .filter((event) => event.kind !== 'rest' && event.kind !== 'glissando')
+            .map((event) => {
+              if (event.kind !== 'chord') return event;
+              const { playback: _playback, ...legacyChord } = event;
+              return legacyChord;
+            });
+          const comparableTracks = comparableCanonicalEvents.map((event) => event.track);
+          const notationDurations = eventDurations?.filter(
+            (_, index) =>
+              trackedEvents[index]?.kind !== 'rest' && trackedEvents[index]?.kind !== 'glissando',
           );
-          if (fingerprintEvents(notationEvents) !== fingerprintEvents(trackedEvents)) {
+          const notationEvents = replaceWithLegacyNotation(notation, notationDurations).events.map(
+            (event, index) => ({ ...event, track: comparableTracks[index] }),
+          );
+          if (fingerprintEvents(notationEvents) !== fingerprintEvents(comparableCanonicalEvents)) {
             throw new LegacyValidationError(`${path}.notation widerspricht den Musikspuren.`);
           }
         }
@@ -139,7 +154,12 @@ export function parseLegacyV0(input: string | unknown): SongDocument {
 
   const keys = keysValue.map((key, index) => requireObject(key, `$.keys[${index}]`));
   return {
-    song: { title, lines, extra: omit(songValue, ['title', 'lines']) },
+    song: {
+      title,
+      timeSignature,
+      lines,
+      extra: omit(songValue, ['title', 'timeSignature', 'lines']),
+    },
     keys,
     extra: omit(root, ['song', 'keys', 'formatVersion']),
   };
@@ -149,6 +169,7 @@ export function exportVanillaCompatible(document: SongDocument): JsonObject {
   const song: JsonObject = {
     ...document.song.extra,
     title: document.song.title,
+    timeSignature: songTimeSignature(document.song) as unknown as JsonValue,
     lines: document.song.lines.map((line) => ({
       ...line.extra,
       words: line.words.map((word) => {
@@ -236,6 +257,10 @@ function parseCanonicalEvents(value: unknown, path: string): MusicEvent[] {
       throw new LegacyValidationError(`${eventPath}.track gehÃ¶rt nicht in eine feste Musikspur.`);
     }
     if (event['kind'] === 'separator') return event as unknown as MusicEvent;
+    if (event['kind'] === 'rest') {
+      validateDuration(event['duration'], `${eventPath}.duration`);
+      return event as unknown as MusicEvent;
+    }
     validateDuration(event['duration'], `${eventPath}.duration`);
     if (event['kind'] === 'note') {
       validatePitch(event['pitch'], `${eventPath}.pitch`);
@@ -249,10 +274,73 @@ function parseCanonicalEvents(value: unknown, path: string): MusicEvent[] {
       pitches.forEach((pitch, pitchIndex) =>
         validatePitch(pitch, `${eventPath}.pitches[${pitchIndex}]`),
       );
+      validateChordPlayback(event['playback'], `${eventPath}.playback`);
+      return event as unknown as MusicEvent;
+    }
+    if (event['kind'] === 'glissando') {
+      validatePitch(event['startPitch'], `${eventPath}.startPitch`);
+      validatePitch(event['endPitch'], `${eventPath}.endPitch`);
+      if (event['direction'] !== 'ascending' && event['direction'] !== 'descending') {
+        throw new LegacyValidationError(
+          `${eventPath}.direction muss ascending oder descending sein.`,
+        );
+      }
+      const pitches = requireArray(event['pitches'], `${eventPath}.pitches`);
+      if (pitches.length < 2) {
+        throw new LegacyValidationError(
+          `${eventPath}.pitches muss mindestens zwei Zungen enthalten.`,
+        );
+      }
+      pitches.forEach((pitch, pitchIndex) =>
+        validatePitch(pitch, `${eventPath}.pitches[${pitchIndex}]`),
+      );
+      validateDuration(event['duration'], `${eventPath}.duration`);
+      validatePositiveOptional(event['stepBeats'], `${eventPath}.stepBeats`);
       return event as unknown as MusicEvent;
     }
     throw new LegacyValidationError(`${eventPath}.kind ist kein unterstÃ¼tztes Musikereignis.`);
   });
+}
+
+function validateChordPlayback(value: unknown, path: string): void {
+  if (value === undefined) return;
+  const playback = requireObject(value, path);
+  if (
+    playback['style'] !== 'together' &&
+    playback['style'] !== 'arpeggio-up' &&
+    playback['style'] !== 'arpeggio-down'
+  ) {
+    throw new LegacyValidationError(`${path}.style ist keine unterstützte Akkord-Spielweise.`);
+  }
+  validatePositiveOptional(playback['stepBeats'], `${path}.stepBeats`);
+}
+
+function validatePositiveOptional(value: unknown, path: string): void {
+  if (value === undefined) return;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new LegacyValidationError(`${path} muss eine positive Zahl sein.`);
+  }
+}
+
+function parseTimeSignature(value: unknown, path: string): TimeSignature {
+  if (value === undefined) return { numerator: 4, denominator: 4 } as const;
+  const signature = requireObject(value, path);
+  const numerator = signature['numerator'];
+  const denominator = signature['denominator'];
+  if (
+    typeof numerator !== 'number' ||
+    !Number.isInteger(numerator) ||
+    numerator < 1 ||
+    numerator > 32
+  ) {
+    throw new LegacyValidationError(
+      `${path}.numerator muss eine ganze Zahl zwischen 1 und 32 sein.`,
+    );
+  }
+  if (denominator !== 2 && denominator !== 4 && denominator !== 8 && denominator !== 16) {
+    throw new LegacyValidationError(`${path}.denominator muss 2, 4, 8 oder 16 sein.`);
+  }
+  return { numerator, denominator } as TimeSignature;
 }
 
 function parseCanonicalTrackOrder(

@@ -1073,7 +1073,7 @@ app-word-editor .event-preview-action {
   z-index: 1;
   top: 0.2rem;
   right: 1.7rem;
-  display: grid;
+  display: none;
   width: 1.8rem;
   min-width: 1.8rem;
   min-height: 1.8rem;
@@ -1083,6 +1083,83 @@ app-word-editor .event-preview-action {
   border: 1px solid var(--rc-color-border);
   border-radius: 999px;
   background: var(--rc-color-surface);
+  cursor: pointer;
+}
+app-word-editor .event-chip.is-selected {
+  border-color: var(--rc-color-primary-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rc-color-focus) 30%, transparent);
+}
+app-word-editor .event-chip.is-rest {
+  min-width: 0;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  cursor: text;
+}
+app-word-editor .event-chip.is-rest > * {
+  display: none;
+}
+
+app-song-sheet .music-timeline {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(100% * var(--pulse-slots) / var(--line-slots) - 1px),
+      color-mix(in srgb, var(--rc-color-border) 24%, transparent)
+        calc(100% * var(--pulse-slots) / var(--line-slots))
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(100% * var(--bar-slots) / var(--line-slots) - 2px),
+      color-mix(in srgb, var(--rc-color-text-muted) 45%, transparent)
+        calc(100% * var(--bar-slots) / var(--line-slots))
+    );
+}
+app-song-sheet .song-insert-marker {
+  position: absolute;
+  z-index: 3;
+  top: 0.18rem;
+  bottom: 0.18rem;
+  left: calc(100% * var(--cursor-slot) / var(--segment-slots));
+  width: 2px;
+  border-radius: 999px;
+  background: var(--rc-color-primary-text);
+  pointer-events: none;
+}
+app-song-sheet .timeline-segment {
+  position: relative;
+}
+app-song-sheet .timeline-segment.is-editable-track {
+  cursor: text;
+}
+app-song-sheet .timeline-segment.is-editable-track:focus-visible {
+  outline: 2px solid var(--rc-color-focus);
+  outline-offset: -2px;
+}
+app-song-sheet .event-chip.is-rest {
+  min-width: 0;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+app-word-editor .event-remove-action {
+  position: absolute;
+  z-index: 1;
+  top: 0.2rem;
+  right: 0.2rem;
+  display: grid;
+  width: 1.35rem;
+  min-width: 1.35rem;
+  min-height: 1.8rem;
+  padding: 0;
+  place-items: center;
+  color: var(--rc-color-text-muted);
+  border: 0;
+  background: transparent;
   cursor: pointer;
 }
 app-word-editor .key-audition-option {

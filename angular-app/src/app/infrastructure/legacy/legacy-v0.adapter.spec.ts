@@ -119,6 +119,52 @@ describe('legacy-v0 adapter', () => {
     });
   });
 
+  it('round-trips canonical rests, time signature and unknown fields while legacy defaults to 4/4', () => {
+    const document = parseLegacyV0(COMPLETE_LEGACY);
+    expect(document.song.timeSignature).toEqual({ numerator: 4, denominator: 4 });
+    document.song.timeSignature = { numerator: 6, denominator: 8 };
+    document.song.lines[0].words[0].melodyEvents.splice(1, 0, {
+      kind: 'rest',
+      duration: 0.75,
+      restUnknown: 'keep',
+    } as never);
+    document.song.lines[0].words[0].accompanimentEvents = [
+      {
+        kind: 'chord',
+        pitches: [
+          { degree: 1, octave: 0 },
+          { degree: 3, octave: 0 },
+        ],
+        duration: 1,
+        playback: { style: 'arpeggio-up', stepBeats: 0.125 },
+      },
+      {
+        kind: 'glissando',
+        startPitch: { degree: 1, octave: 0 },
+        endPitch: { degree: 3, octave: 0 },
+        direction: 'ascending',
+        pitches: [
+          { degree: 1, octave: 0 },
+          { degree: 2, octave: 0 },
+          { degree: 3, octave: 0 },
+        ],
+        duration: 0.5,
+        stepBeats: 0.125,
+      },
+    ];
+
+    const reparsed = parseLegacyV0(exportVanillaCompatible(document));
+    expect(reparsed.song.timeSignature).toEqual({ numerator: 6, denominator: 8 });
+    expect(reparsed.song.lines[0].words[0].melodyEvents[1]).toMatchObject({
+      kind: 'rest',
+      duration: 0.75,
+      restUnknown: 'keep',
+    });
+    expect(reparsed.song.lines[0].words[0].accompanimentEvents).toEqual(
+      document.song.lines[0].words[0].accompanimentEvents,
+    );
+  });
+
   it.each([
     ['invalid JSON', '{'],
     ['invalid key count', INVALID_KEYS],

@@ -23,8 +23,38 @@ export interface SongLine {
 
 export interface Song {
   title: string;
+  timeSignature?: TimeSignature;
   lines: SongLine[];
   extra: JsonObject;
+}
+
+export interface TimeSignature {
+  numerator: number;
+  denominator: 2 | 4 | 8 | 16;
+}
+
+export const DEFAULT_TIME_SIGNATURE: TimeSignature = { numerator: 4, denominator: 4 };
+
+export function songTimeSignature(song: Pick<Song, 'timeSignature'>): TimeSignature {
+  const numerator = song.timeSignature?.numerator;
+  const denominator = song.timeSignature?.denominator;
+  return {
+    numerator:
+      typeof numerator === 'number' &&
+      Number.isInteger(numerator) &&
+      numerator >= 1 &&
+      numerator <= 32
+        ? numerator
+        : DEFAULT_TIME_SIGNATURE.numerator,
+    denominator: [2, 4, 8, 16].includes(denominator ?? 0)
+      ? (denominator as TimeSignature['denominator'])
+      : DEFAULT_TIME_SIGNATURE.denominator,
+  };
+}
+
+export function beatsPerBar(song: Pick<Song, 'timeSignature'>): number {
+  const signature = songTimeSignature(song);
+  return (signature.numerator * 4) / signature.denominator;
 }
 
 export interface SongDocument {
@@ -37,6 +67,7 @@ export function cloneDocument(document: SongDocument): SongDocument {
   return {
     song: {
       title: document.song.title,
+      timeSignature: songTimeSignature(document.song),
       lines: document.song.lines.map((line) => ({
         words: line.words.map((word) => ({
           text: word.text,
