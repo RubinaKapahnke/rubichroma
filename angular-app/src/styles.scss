@@ -88,6 +88,44 @@ app-word-editor .track-row > header button[aria-pressed='true'] {
   background: var(--rc-color-primary);
 }
 
+app-word-editor .keyboard-track-status,
+app-word-editor .keyboard-chord-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.8rem;
+  margin-top: 0.5rem;
+  color: var(--rc-color-text-muted);
+  font-size: 0.72rem;
+}
+
+app-word-editor .keyboard-chord-status {
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid var(--rc-color-primary);
+  color: var(--rc-color-text);
+  background: var(--rc-color-primary-container);
+}
+
+app-word-editor .track-insert-marker {
+  width: 3px;
+  min-height: 3.2rem;
+  align-self: stretch;
+  border-radius: 999px;
+  background: var(--rc-color-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rc-color-focus) 18%, transparent);
+}
+
+app-word-editor .empty-track-target {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+app-word-editor .track-row:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--rc-color-focus) 45%, transparent);
+  outline-offset: 2px;
+}
+
 html[data-theme='dark'] {
   @include mat.theme-overrides(
     (
