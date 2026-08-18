@@ -605,11 +605,7 @@
           </div>
         }
 
-        <div
-          class="editor-layout"
-          [class.has-desktop-inspector]="selectedWord() && !mobileViewport()"
-          (click)="dismissInspectorOnBackground($event)"
-        >
+        <div class="editor-layout" (click)="dismissInspectorOnBackground($event)">
           <app-song-sheet
             [lines]="lines()"
             [document]="store.document()!"
@@ -619,6 +615,7 @@
             [selectedPositions]="selectedPositions()"
             [melodyPositions]="melodyPositions()"
             [touchSelectionActive]="touchSelectionActive()"
+            [editorTemplate]="!mobileViewport() ? wordEditorContent : null"
             (selectionChange)="changeSelection($event)"
             (wordSelect)="handleWordSelection($event)"
             (multiSelectionRequested)="startMultiSelection()"
@@ -627,12 +624,6 @@
             (wordPreviewRequested)="previewBlock($event)"
             (linePreviewRequested)="previewLine($event)"
           />
-
-          @if (selectedWord() && !mobileViewport()) {
-            <aside class="desktop-inspector-drawer" aria-label="Ausgewählten Block bearbeiten">
-              <ng-container [ngTemplateOutlet]="wordEditorContent" />
-            </aside>
-          }
         </div>
       </mat-card-content>
     </mat-card>

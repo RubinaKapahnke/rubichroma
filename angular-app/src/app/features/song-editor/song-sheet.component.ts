@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -6,9 +7,16 @@ import {
   input,
   output,
   signal,
+  TemplateRef,
 } from '@angular/core';
 import { FormArray } from '@angular/forms';
-import { durationLabel, MusicEvent, MusicTrackId, Pitch } from '../../domain/music-event';
+import {
+  durationLabel,
+  eventDurationInBeats,
+  MusicEvent,
+  MusicTrackId,
+  Pitch,
+} from '../../domain/music-event';
 import { SongDocument, songWordEventsForTrack } from '../../domain/song-document';
 import { SongStructureAction } from '../../domain/song-structure-editing';
 import { LineForm, WordForm, WordSelection } from './song-editor-form';
@@ -27,6 +35,7 @@ export const SONG_STRUCTURE_HELP_HIDDEN_KEY = 'rubichroma-song-structure-help-hi
 
 @Component({
   selector: 'app-song-sheet',
+  imports: [NgTemplateOutlet],
   templateUrl: './song-sheet.component.html',
   styleUrl: './song-sheet.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,6 +49,7 @@ export class SongSheetComponent {
   readonly selectedPositions = input.required<readonly WordSelection[]>();
   readonly melodyPositions = input<readonly WordSelection[]>([]);
   readonly touchSelectionActive = input.required<boolean>();
+  readonly editorTemplate = input<TemplateRef<unknown> | null>(null);
   readonly selectionChange = output<WordSelection | null>();
   readonly wordSelect = output<WordSelectionGesture>();
   readonly multiSelectionRequested = output<void>();
@@ -144,6 +154,11 @@ export class SongSheetComponent {
     const text = word.controls.text.value.trim();
     if (this.isMelody(lineIndex, wordIndex) && (!text || text === '♪')) return 'Melodieblock';
     return text || 'Leerer Textblock';
+  }
+
+  textRowLabel(word: WordForm): string {
+    const text = word.controls.text.value.trim();
+    return !text || text === '♪' ? 'Textloser Abschnitt' : text;
   }
 
   runStructureAction(action: SongStructureAction): void {
@@ -324,6 +339,24 @@ export class SongSheetComponent {
   eventsForTrack(lineIndex: number, wordIndex: number, track: MusicTrackId): readonly MusicEvent[] {
     const word = this.document().song.lines[lineIndex]?.words[wordIndex];
     return word ? songWordEventsForTrack(word, track) : [];
+  }
+
+  wordSlotCount(lineIndex: number, wordIndex: number): number {
+    return Math.max(
+      1,
+      ...this.trackOptions.map((track) =>
+        this.eventsForTrack(lineIndex, wordIndex, track).reduce(
+          (slots, event) => slots + this.eventSlotCount(event),
+          0,
+        ),
+      ),
+    );
+  }
+
+  eventSlotCount(event: MusicEvent): number {
+    return event.kind === 'separator'
+      ? 1
+      : Math.max(1, Math.round(eventDurationInBeats(event) * 4));
   }
 
   eventLabel(event: MusicEvent): string {

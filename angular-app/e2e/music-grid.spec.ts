@@ -5,7 +5,49 @@ test('edits the canonical tracks by keyboard and keeps history, focus guards and
 }) => {
   await page.goto('/');
   await page.getByTestId('edit-mode-toggle').click();
+
+  const editorLayout = page.locator('.editor-layout');
+  const songSheet = page.locator('app-song-sheet');
+  const widthBeforeSelection = await songSheet.evaluate(
+    (element) => element.getBoundingClientRect().width,
+  );
+  await expect
+    .poll(async () => {
+      const layoutWidth = await editorLayout.evaluate(
+        (element) => element.getBoundingClientRect().width,
+      );
+      const sheetWidth = await songSheet.evaluate(
+        (element) => element.getBoundingClientRect().width,
+      );
+      return Math.abs(layoutWidth - sheetWidth);
+    })
+    .toBeLessThanOrEqual(1);
+  await expect
+    .poll(async () => {
+      const words = page.locator('.song-line').first().locator('.text-timeline');
+      const [wordsBox, firstBox, lastBox] = await Promise.all([
+        words.boundingBox(),
+        words.locator('.word-card-shell').first().boundingBox(),
+        words.locator('.word-card-shell').last().boundingBox(),
+      ]);
+      if (!wordsBox || !firstBox || !lastBox) return Number.POSITIVE_INFINITY;
+      return Math.max(
+        Math.abs(wordsBox.x - firstBox.x),
+        Math.abs(wordsBox.x + wordsBox.width - (lastBox.x + lastBox.width)),
+      );
+    })
+    .toBeLessThanOrEqual(1);
+
   await page.getByTestId('word-card-0-0').click();
+  await expect(page.getByTestId('inline-word-editor-0')).toBeVisible();
+  await expect
+    .poll(async () => {
+      const sheetWidth = await songSheet.evaluate(
+        (element) => element.getBoundingClientRect().width,
+      );
+      return Math.abs(widthBeforeSelection - sheetWidth);
+    })
+    .toBeLessThanOrEqual(1);
 
   const melody = page.getByTestId('track-row-melody');
   const accompaniment = page.getByTestId('track-row-accompaniment');

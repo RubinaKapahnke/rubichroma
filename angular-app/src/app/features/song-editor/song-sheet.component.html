@@ -71,9 +71,7 @@
       (drop)="dropLineNative($event)"
     >
       <div class="line-heading">
-        <span class="line-number" [attr.aria-label]="'Zeile ' + (lineIndex + 1)">{{
-          lineIndex + 1
-        }}</span>
+        <span class="line-number">Zeile {{ lineIndex + 1 }}</span>
         @if (editMode()) {
           <div class="line-primary-actions">
             <span
@@ -147,134 +145,146 @@
           </div>
         }
       </div>
-      <div class="words" [id]="'word-drop-list-' + lineIndex">
-        @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
-          <div
-            class="word-card-shell"
-            [class.is-selected]="isSelected(lineIndex, wordIndex)"
-            [class.is-block-drop-target]="isBlockDropTarget(lineIndex, wordIndex)"
-            [class.drop-after]="isBlockDropTarget(lineIndex, wordIndex) && blockDropAfter()"
-            (dragover)="markBlockDrop($event, lineIndex, wordIndex)"
-            (drop)="dropBlockNative($event)"
-          >
-            @if (editMode()) {
-              <span
-                class="word-drag-handle drag-handle tooltip-action"
-                role="button"
-                tabindex="0"
-                draggable="true"
-                [attr.data-testid]="'word-drag-handle-' + lineIndex + '-' + wordIndex"
-                [attr.aria-label]="
-                  wordLabel(word, lineIndex, wordIndex) + ' verschieben; Alt plus Pfeiltasten'
-                "
-                title="Block ziehen · Alt+Pfeiltasten"
-                data-tooltip="Block verschieben"
-                (dragstart)="startBlockDrag($event, lineIndex, wordIndex)"
-                (dragend)="clearDragState()"
-                (keydown)="moveBlockWithKeyboard($event, lineIndex, wordIndex)"
-                >⠿</span
-              >
-            }
-            <button
-              class="word-card"
-              type="button"
-              [disabled]="!editMode()"
+      <div class="notation-group" [id]="'word-drop-list-' + lineIndex">
+        <span class="notation-row-label">Text</span>
+        <div class="timeline-row text-timeline" data-testid="text-row">
+          @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
+            <div
+              class="word-card-shell"
               [class.is-selected]="isSelected(lineIndex, wordIndex)"
-              [class.is-active]="isActive(lineIndex, wordIndex)"
-              [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
-              [attr.aria-pressed]="editMode() ? isSelected(lineIndex, wordIndex) : null"
-              [attr.aria-label]="
-                wordAccessibleLabel(word, lineIndex, wordIndex) +
-                ', Zeile ' +
-                (lineIndex + 1) +
-                ', Block ' +
-                (wordIndex + 1) +
-                (editMode() ? ', bearbeiten' : '')
-              "
-              (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
-              (pointermove)="trackLongPress($event)"
-              (pointerup)="finishLongPress($event)"
-              (pointercancel)="finishLongPress($event)"
-              (contextmenu)="preventTouchContextMenu($event)"
-              (click)="selectWord($event, lineIndex, wordIndex)"
-              (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
+              [class.is-block-drop-target]="isBlockDropTarget(lineIndex, wordIndex)"
+              [class.drop-after]="isBlockDropTarget(lineIndex, wordIndex) && blockDropAfter()"
+              [style.--word-slots]="wordSlotCount(lineIndex, wordIndex)"
+              [attr.data-word-slots]="wordSlotCount(lineIndex, wordIndex)"
+              (dragover)="markBlockDrop($event, lineIndex, wordIndex)"
+              (drop)="dropBlockNative($event)"
             >
-              <strong>
-                @if (isMelody(lineIndex, wordIndex)) {
-                  <span class="melody-marker" aria-hidden="true">♪</span>
-                }
-                {{ wordLabel(word, lineIndex, wordIndex) }}
-              </strong>
-              <span class="track-previews" aria-hidden="true">
-                @for (track of trackOptions; track track) {
-                  <span
-                    class="track-preview"
-                    [class.is-accompaniment]="track === 'accompaniment'"
-                    [attr.data-testid]="'sheet-track-' + lineIndex + '-' + wordIndex + '-' + track"
-                  >
-                    <small>{{ trackLabel(track) }}</small>
-                    <span class="event-chips">
-                      @for (
-                        event of eventsForTrack(lineIndex, wordIndex, track);
-                        track $index;
-                        let eventIndex = $index
-                      ) {
-                        <span
-                          class="event-chip"
-                          [class.is-chord]="event.kind === 'chord'"
-                          [class.is-separator]="event.kind === 'separator'"
-                          [style.--event-color]="eventPrimaryColor(event)"
-                          [style.--event-ink]="eventInkColor(event)"
-                          [attr.data-profile-color]="eventPrimaryColor(event)"
-                          [attr.data-testid]="
-                            'sheet-event-' +
-                            lineIndex +
-                            '-' +
-                            wordIndex +
-                            '-' +
-                            track +
-                            '-' +
-                            eventIndex
-                          "
-                        >
-                          @if (event.kind === 'chord') {
-                            <span class="event-color-swatches">
-                              @for (color of eventColors(event); track $index) {
-                                <i
-                                  [style.background-color]="color"
-                                  [attr.data-profile-color]="color"
-                                ></i>
-                              }
-                            </span>
-                          }
-                          <b>{{ eventLabel(event) }}</b>
-                          <small>{{ eventDurationLabel(event) }}</small>
-                        </span>
-                      } @empty {
-                        <span class="empty-track">–</span>
-                      }
-                    </span>
-                  </span>
-                }
-              </span>
-            </button>
-            @if (editMode()) {
+              @if (editMode()) {
+                <span
+                  class="word-drag-handle drag-handle tooltip-action"
+                  role="button"
+                  tabindex="0"
+                  draggable="true"
+                  [attr.data-testid]="'word-drag-handle-' + lineIndex + '-' + wordIndex"
+                  [attr.aria-label]="
+                    wordLabel(word, lineIndex, wordIndex) + ' verschieben; Alt plus Pfeiltasten'
+                  "
+                  title="Block ziehen · Alt+Pfeiltasten"
+                  data-tooltip="Block verschieben"
+                  (dragstart)="startBlockDrag($event, lineIndex, wordIndex)"
+                  (dragend)="clearDragState()"
+                  (keydown)="moveBlockWithKeyboard($event, lineIndex, wordIndex)"
+                  >⠿</span
+                >
+              }
               <button
-                class="word-preview-action tooltip-action"
+                class="word-card"
                 type="button"
-                [attr.data-testid]="'word-preview-' + lineIndex + '-' + wordIndex"
-                [attr.aria-label]="wordLabel(word, lineIndex, wordIndex) + ' anhören'"
-                title="Block anhören"
-                data-tooltip="Block vorhören"
-                [disabled]="!hasPlayableEvents(lineIndex, wordIndex)"
-                (click)="previewWord($event, lineIndex, wordIndex)"
+                [disabled]="!editMode()"
+                [class.is-selected]="isSelected(lineIndex, wordIndex)"
+                [class.is-active]="isActive(lineIndex, wordIndex)"
+                [attr.data-testid]="'word-card-' + lineIndex + '-' + wordIndex"
+                [attr.aria-pressed]="editMode() ? isSelected(lineIndex, wordIndex) : null"
+                [attr.aria-label]="
+                  wordAccessibleLabel(word, lineIndex, wordIndex) +
+                  ', Zeile ' +
+                  (lineIndex + 1) +
+                  ', Block ' +
+                  (wordIndex + 1) +
+                  (editMode() ? ', bearbeiten' : '')
+                "
+                (pointerdown)="startLongPress($event, lineIndex, wordIndex)"
+                (pointermove)="trackLongPress($event)"
+                (pointerup)="finishLongPress($event)"
+                (pointercancel)="finishLongPress($event)"
+                (contextmenu)="preventTouchContextMenu($event)"
+                (click)="selectWord($event, lineIndex, wordIndex)"
+                (keydown)="handleWordKeydown($event, lineIndex, wordIndex)"
               >
-                <span aria-hidden="true">▶</span>
+                <strong>{{ textRowLabel(word) }}</strong>
               </button>
+              @if (editMode()) {
+                <button
+                  class="word-preview-action tooltip-action"
+                  type="button"
+                  [attr.data-testid]="'word-preview-' + lineIndex + '-' + wordIndex"
+                  [attr.aria-label]="wordLabel(word, lineIndex, wordIndex) + ' anhören'"
+                  title="Block anhören"
+                  data-tooltip="Block vorhören"
+                  [disabled]="!hasPlayableEvents(lineIndex, wordIndex)"
+                  (click)="previewWord($event, lineIndex, wordIndex)"
+                >
+                  <span aria-hidden="true">▶</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+        @for (track of trackOptions; track track) {
+          <span class="notation-row-label">{{ trackLabel(track) }}</span>
+          <div
+            class="timeline-row music-timeline"
+            [attr.data-testid]="'song-' + track + '-row-' + lineIndex"
+          >
+            @for (word of line.controls.words.controls; track $index; let wordIndex = $index) {
+              <div
+                class="timeline-segment"
+                [style.--word-slots]="wordSlotCount(lineIndex, wordIndex)"
+                [attr.data-word-slots]="wordSlotCount(lineIndex, wordIndex)"
+                [attr.data-testid]="'sheet-track-' + lineIndex + '-' + wordIndex + '-' + track"
+              >
+                <span class="event-chips">
+                  @for (
+                    event of eventsForTrack(lineIndex, wordIndex, track);
+                    track $index;
+                    let eventIndex = $index
+                  ) {
+                    <span
+                      class="event-chip"
+                      [class.is-chord]="event.kind === 'chord'"
+                      [class.is-separator]="event.kind === 'separator'"
+                      [style.--event-color]="eventPrimaryColor(event)"
+                      [style.--event-ink]="eventInkColor(event)"
+                      [style.--event-slots]="eventSlotCount(event)"
+                      [attr.data-event-slots]="eventSlotCount(event)"
+                      [attr.data-profile-color]="eventPrimaryColor(event)"
+                      [attr.data-testid]="
+                        'sheet-event-' +
+                        lineIndex +
+                        '-' +
+                        wordIndex +
+                        '-' +
+                        track +
+                        '-' +
+                        eventIndex
+                      "
+                    >
+                      @if (event.kind === 'chord') {
+                        <span class="event-color-swatches">
+                          @for (color of eventColors(event); track $index) {
+                            <i
+                              [style.background-color]="color"
+                              [attr.data-profile-color]="color"
+                            ></i>
+                          }
+                        </span>
+                      }
+                      <b>{{ eventLabel(event) }}</b>
+                    </span>
+                  } @empty {
+                    <span class="empty-track">Keine {{ trackLabel(track) }}</span>
+                  }
+                </span>
+              </div>
             }
           </div>
         }
       </div>
+      @if (editorTemplate() && selection()?.lineIndex === lineIndex) {
+        <div class="inline-word-editor" [attr.data-testid]="'inline-word-editor-' + lineIndex">
+          <ng-container [ngTemplateOutlet]="editorTemplate()" />
+        </div>
+      }
     </section>
   }
 </div>
