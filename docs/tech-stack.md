@@ -31,13 +31,17 @@ Das interne Musikmodell ist unabhängig von Angular, Instrumentprofil, Farbe und
 
 Die musikalische Timeline ist ebenfalls eine darstellungs- und instrumentenunabhängige Fachgrenze. Sie ordnet Ereignisse über stabile Identitäten, musikalische Positionen und Dauern an. Instrumentenspuren, Notation, Flow und Audio sind Projektionen beziehungsweise Verbraucher dieser Timeline und definieren keine eigene konkurrierende Zeitbasis.
 
-Bereits in Phase 0 sind strukturierte `note`-, `chord`- und `separator`-Ereignisse die semantische Quelle. Ton und Akkord tragen eine Tonstufe von 1 bis 7, eine Oktave von 0 bis 2 und zunächst explizit die Standarddauer `quarter`. Die bisherige Textnotation liegt nur in einer versionierten Fidelity-Hülle aus exaktem Legacy-Rohtext, Parser-Version und Event-Fingerprint. Solange der Fingerprint zu den Ereignissen passt, wird der Originaltext exakt exportiert; nach einer strukturellen Änderung entsteht deterministisch kanonische Legacy-Notation. Unbekannte oder fehlerhafte Fragmente erzeugen keine Musikereignisse, bleiben bei einem unveränderten Roundtrip aber erhalten.
+Strukturierte `note`-, `chord`-, `rest`- und `separator`-Ereignisse sind die semantische Quelle. Ton, Akkord und Pause tragen eine beatbasierte Dauer; Ganze, Halbe, Viertel, Achtel und Sechzehntel sind im aktuellen Modell und in seinen Projektionen unterscheidbar. Die bisherige Textnotation liegt nur in einer versionierten Fidelity-Hülle aus exaktem Legacy-Rohtext, Parser-Version und Event-Fingerprint. Solange der Fingerprint zu den Ereignissen passt, wird der Originaltext exakt exportiert; nach einer strukturellen Änderung entsteht deterministisch kanonische Legacy-Notation. Unbekannte oder fehlerhafte Fragmente erzeugen keine Musikereignisse, bleiben bei einem unveränderten Roundtrip aber erhalten.
+
+Die kanonische sichtbare und fachliche Einheit ist ein vollständiger **Takt** gemäß der Taktart, kein frei wachsender „Block“. Unterfüllte Takte projizieren verbleibende Zeit als leeres Raster, ohne künstliche Pausen zu verlangen. Bekannte Test-/Entwicklungssongs dürfen deterministisch normalisiert oder als Fixtures neu aufgebaut werden; exakte alte Test-Song-Zuordnungen sind kein Gate. Automatisierte Fixture- und Akzeptanztests ersetzen dafür Migrationssonderfälle, manuelle Kopien, einen dauerhaften Legacy-Anzeigemodus und komplexe Rollback-Dialoge. `localStorage['kalimba-note-tool-v1']` wird niemals gelöscht oder überschrieben; echte Daten außerhalb der bekannten Testdaten benötigen vor Mutation ein eigenes Risikogate.
 
 Textnotation, Kalimba-Zahlen, Tonbuchstaben und farbige Darstellung sind Projektionen dieses Modells. Keine sichtbare Notationsform ist selbst die führende Datenstruktur.
 
 Instrumentprofile, Farbprofile und Übungszustand bleiben eigenständige fachliche Bereiche. Dadurch können später weitere Instrumente und Darstellungen ergänzt werden, ohne das Musikmodell auszutauschen.
 
-Das Musikmodell erlaubt mehrere musikalische Ebenen wie Melodie und Begleitung von Anfang an, auch wenn der MVP zunächst keine vollständige Mehrspur- oder Mixer-Oberfläche anbietet. Ereigniszuordnung und Speicherung dürfen deshalb keine dauerhaft einzige Stimme voraussetzen.
+Übungen und Lieder verwenden dasselbe instrumentenunabhängige Musikmodell und dieselbe musikalische Timeline. Eine Übung ergänzt erwartete musikalische Ereignisse, Lernziel, Fähigkeit, Schwierigkeit und Bewertungsregeln, definiert aber keine konkurrierende Noten-, Instrument- oder Zeitstruktur. Redaktionelle Kernaufgaben und automatisch erzeugte Wiederholungsvarianten folgen derselben fachlichen Übungsdefinition; Varianten bleiben auf explizit erlaubte musikalische und instrumentelle Grenzen beschränkt.
+
+Das Musikmodell speichert Melodie und Begleitung als getrennte kanonische Spuren, die demselben Takt- und Zeitmodell folgen. Im MVP schaltet der Mixer jede Spur ausschließlich Ein/Aus; spurbezogene Lautstärke und Solo sind nicht vorgesehen.
 
 Ein Farbprofil gehört zu genau einem Instrumentprofil und einer Stimmung. Die Zuordnung referenziert stabile physische Zungen- oder Tasten-IDs und hält die zu dieser Stimmung gehörenden Tonhöhen und Tonstufen als Metadaten vor. Bei einer anderen Stimmung wird eine neue Farbskala angelegt; RubiChroma übernimmt die Zuordnung nicht stillschweigend.
 
@@ -46,6 +50,8 @@ Ein Farbprofil gehört zu genau einem Instrumentprofil und einer Stimmung. Die Z
 Material und CDK werden für generische Elemente wie Formulare, Dialoge, Menüs, Slider und barrierearme Interaktionen verwendet. Musikalische und lernbezogene Elemente sind eigene RubiChroma-Komponenten, insbesondere Notation, Takte, Wiedergabeposition, Loop-Bereich, Farbhilfen, Instrumentdarstellung und Foto-Pipette.
 
 Das Corporate-Identity-Dokument ist die führende Quelle für Theme-Tokens und Gestaltung. Light und Dark Mode gehören zum MVP. Beim ersten Start gilt die Systemeinstellung; eine manuelle Auswahl wird lokal gespeichert. Die MVP-Oberfläche ist deutsch, während Texte und Formate technisch für spätere Internationalisierung vorbereitet werden.
+
+Die aktuelle Lieferung ist Desktop-first: Das gemeinsame Drei-Spur-Taktraster, direkte Bearbeitung, Keyboard-first-Bedienung und rechte Seitenleiste werden zuerst im Browser/Desktop vollständig abgenommen. 375/390-Pixel-Optimierung, Touch, Safe Area und Mobile-Sheet folgen nach ausdrücklicher Desktopfreigabe als eigener Meilenstein. Die Editor-UX führt #69; die Player-UX #70. Transport/Synchronisation, Übungstempo/Loop und Audio/Metronom/Scheduling bleiben in #5, #6 und #8 getrennte Fachverträge.
 
 ### Reaktive Zustandsgrenzen
 
@@ -59,7 +65,7 @@ Tone.js ist die gemeinsame Zeitgrundlage für Wiedergabe und alle zeitabhängige
 
 Audio wird erst nach einer bewussten Benutzeraktion gestartet und vollständig lokal bereitgestellt. Klangerzeugung und Soundquelle bleiben hinter der Audioanbindung austauschbar, damit der synthetische MVP-Klang später durch Samples ergänzt werden kann, ohne Timeline oder Musikmodell auszutauschen.
 
-Eine zukünftige Spielerkennung wird über eine von Transport und Audioausgabe getrennte Eingabeschnittstelle angebunden. Mikrofon- und MIDI-Adapter liefern normalisierte gespielte Ereignisse; eine davon getrennte Feedbackgrenze vergleicht sie mit erwarteten Timeline-Ereignissen. Weder Eingabe noch Feedback werden zur semantischen Quelle des Liedes.
+Bildschirm-Interaktion sowie eine zukünftige Spielerkennung werden über von Transport, Audioausgabe und fachlicher Übungsdefinition getrennte Eingabeschnittstellen angebunden. Mikrofon- und MIDI-Adapter liefern normalisierte gespielte Ereignisse; eine davon getrennte Feedbackgrenze vergleicht Eingaben mit erwarteten Timeline-Ereignissen. Dieselbe Übung und Bewertung darf dadurch unterschiedliche Eingabequellen verwenden. Weder Eingabe noch Feedback werden zur semantischen Quelle des Liedes oder der Übung.
 
 ### Speicherung und Offlinebetrieb
 
@@ -67,6 +73,8 @@ Dexie-Schemata und exportierte Sicherungsformate sind ab der ersten Version expl
 
 - Service Worker: Anwendung, Fonts und statische Audioressourcen
 - IndexedDB: Lieder, Farbprofile, Übungszustand und lokale Nutzerdaten
+
+Der gespeicherte Übungszustand unterscheidet automatisch gemessene Evidenz von selbst eingeschätzter realer Übungsaktivität. Die Herkunft einer Bewertung bleibt erhalten, damit spätere Mikrofon- oder MIDI-Evidenz bestehende Selbsteinschätzungen ergänzt, aber nicht rückwirkend als objektiv gemessen erscheinen lässt.
 
 Speicherung, Audio und Medienzugriff werden hinter eigenen Services gekapselt. So können sie für eine spätere Capacitor-App bei Bedarf durch SQLite oder native Funktionen ersetzt werden.
 
