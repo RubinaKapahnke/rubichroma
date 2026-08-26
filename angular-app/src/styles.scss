@@ -4,6 +4,7 @@
 @use '@fontsource/sora/600.css' as sora600;
 @use '@fontsource/sora/700.css' as sora700;
 @use './styles/tokens';
+@use './app/features/player/player.component';
 
 html {
   @include mat.theme(
@@ -47,6 +48,44 @@ html {
 
   min-width: 0;
   background: var(--rc-color-background);
+}
+
+app-word-editor .track-rows {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+app-word-editor .track-row {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+}
+
+app-word-editor .track-row.is-target {
+  outline: 2px solid var(--rc-color-primary);
+}
+app-word-editor .track-row > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+app-word-editor .track-row > header button {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: 999px;
+  color: var(--rc-color-text);
+  background: var(--rc-color-surface);
+  cursor: pointer;
+}
+app-word-editor .track-row > header button[aria-pressed='true'] {
+  color: var(--rc-color-on-primary);
+  border-color: var(--rc-color-primary);
+  background: var(--rc-color-primary);
 }
 
 html[data-theme='dark'] {
@@ -131,28 +170,651 @@ input {
   outline-offset: var(--rc-focus-width);
 }
 
+app-song-editor,
+app-song-editor .topbar,
+app-song-editor .brand-lockup,
+app-song-editor mat-card-content,
+app-song-editor app-word-editor {
+  min-width: 0;
+}
+
+app-song-editor main,
+app-song-editor .topbar,
+app-song-editor .editor-card,
+app-song-editor .editor-layout,
+app-song-editor app-word-editor {
+  max-width: 100%;
+}
+
+app-song-editor .topbar,
+app-song-editor .editor-card,
+app-song-editor .editor-layout {
+  width: 100%;
+}
+
+app-song-editor .structure-toolbar {
+  flex-wrap: wrap;
+}
+
+.history-actions,
+.editor-history-actions,
+.line-primary-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.history-actions {
+  flex: 0 0 auto;
+}
+
+.history-action {
+  display: grid;
+  width: var(--rc-control-min-size);
+  min-width: var(--rc-control-min-size);
+  height: var(--rc-control-min-size);
+  padding: 0;
+  place-items: center;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+  font-size: 1.25rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.add-line-button {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.55rem;
+  color: var(--rc-color-primary-text);
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-sm);
+  background: var(--rc-color-primary-container);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .selection-toolbar {
   display: flex;
-  position: sticky;
-  z-index: 9;
-  top: 5rem;
+  width: min(72rem, calc(100% - 1rem));
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.65rem;
-  margin-bottom: 0.75rem;
+  margin: 0 auto max(0.5rem, env(safe-area-inset-bottom));
   padding: 0.65rem 0.8rem;
   border: 1px solid var(--rc-color-primary-text);
   border-radius: var(--rc-radius-panel);
   background: var(--rc-color-primary-container);
   box-shadow: var(--rc-shadow-md);
+
+  button {
+    min-height: var(--rc-control-min-size);
+    white-space: normal;
+  }
+
+  .mat-mdc-button-base {
+    height: auto;
+    min-height: var(--rc-control-min-size);
+  }
 }
 
-.selection-spacer {
-  flex: 1;
+.selection-summary {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.65rem;
+}
+
+.rc-selection-overlay-pane {
+  width: 100%;
+  max-width: 100vw;
+  pointer-events: none;
+
+  .selection-toolbar {
+    pointer-events: auto;
+  }
+}
+
+.rc-editor-overlay-backdrop {
+  background: rgb(17 19 29 / 68%);
+  backdrop-filter: blur(2px);
+}
+
+.rc-editor-overlay-pane {
+  display: flex;
+  width: 100%;
+  max-width: 100vw;
+  max-height: var(--rc-visual-viewport-height, 100dvh);
+  align-items: flex-end;
+}
+
+.editor-sheet-frame {
+  width: 100%;
+  max-width: 100vw;
+}
+
+main.has-multi-selection {
+  padding-bottom: calc(var(--rc-selection-bar-height, 7.5rem) + 1rem);
+}
+
+app-song-editor .player-action {
+  margin-inline-start: auto;
+}
+
+app-song-editor .document-action-separator {
+  height: 1px;
+  margin-block: 0.2rem;
+  background: var(--rc-color-border);
+}
+
+app-song-editor .restore-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-panel);
+  background: var(--rc-color-primary-container);
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+}
+
+app-song-editor .restore-preview-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+
+  button {
+    min-height: var(--rc-control-min-size);
+    padding-inline: 0.85rem;
+    border-radius: var(--rc-radius-control);
+    cursor: pointer;
+  }
+
+  .secondary-action {
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    background: var(--rc-color-surface);
+  }
+
+  .restore-action {
+    color: var(--rc-color-on-primary);
+    border: 1px solid var(--rc-color-primary);
+    background: var(--rc-color-primary);
+    font-weight: 700;
+  }
+}
+
+app-song-editor .duplicate-song-dialog {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-panel);
+  background: var(--rc-color-primary-container);
+
+  > div:first-child,
+  label {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0.5rem;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  input {
+    min-height: var(--rc-control-min-size);
+    padding: 0.5rem 0.65rem;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+    font: inherit;
+  }
+}
+
+app-song-editor .duplicate-song-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+
+  button {
+    min-height: var(--rc-control-min-size);
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--rc-radius-control);
+    cursor: pointer;
+  }
+
+  .restore-action {
+    color: var(--rc-color-on-primary);
+    border: 1px solid var(--rc-color-primary);
+    background: var(--rc-color-primary);
+    font-weight: 700;
+  }
+}
+
+app-song-editor .editor-card.has-open-library {
+  .edit-mode-bar,
+  .editor-layout {
+    display: none;
+  }
+}
+
+app-song-editor .song-library {
+  display: grid;
+  gap: 1rem;
+}
+
+app-song-editor .song-library-header,
+app-song-editor .song-library-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+app-song-editor .song-family-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+  gap: 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--rc-color-border);
+}
+
+app-song-editor .song-library-entry:not(:has(.song-family-header)) {
+  margin-inline-start: 1.25rem;
+}
+
+app-song-editor .variant-name {
+  font-weight: 700;
+}
+
+app-song-editor .variant-name-editor {
+  display: grid;
+  gap: 0.2rem;
+}
+
+app-song-editor .song-library-header {
+  h2,
+  p {
+    margin: 0;
+  }
+
+  p {
+    margin-top: 0.2rem;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+}
+
+app-song-editor .song-library .secondary-action {
+  min-height: var(--rc-control-min-size);
+  padding: 0.5rem 0.8rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+  cursor: pointer;
+}
+
+app-song-editor .create-song-action {
+  justify-self: start;
+}
+
+app-song-editor .text-import-dialog {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--rc-color-primary-text);
+  border-radius: var(--rc-radius-panel);
+  background: var(--rc-color-primary-container);
+
+  > header,
+  > footer,
+  .text-import-preview > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--rc-color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  button {
+    min-height: var(--rc-control-min-size);
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--rc-radius-control);
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .restore-action {
+    color: var(--rc-color-on-primary);
+    border: 1px solid var(--rc-color-primary);
+    background: var(--rc-color-primary);
+    font-weight: 700;
+  }
+
+  footer > div {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+app-song-editor .text-import-source {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+
+  textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.75rem;
+    resize: vertical;
+    color: var(--rc-color-text);
+    border: 1px solid var(--rc-color-border);
+    border-radius: var(--rc-radius-control);
+    background: var(--rc-color-surface);
+    font:
+      0.9rem/1.5 ui-monospace,
+      SFMono-Regular,
+      Consolas,
+      monospace;
+  }
+}
+
+app-song-editor .text-import-preview {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+}
+
+app-song-editor .text-import-warnings,
+app-song-editor .text-import-lines {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+  margin: 0;
+  padding-inline-start: 1.4rem;
+}
+
+app-song-editor .text-import-warnings li {
+  color: var(--rc-color-text-muted);
+
+  &.is-blocking {
+    color: var(--rc-color-error);
+  }
+
+  code {
+    display: block;
+    margin-top: 0.2rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+app-song-editor .text-import-lines li {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+
+  code {
+    overflow-wrap: anywhere;
+    color: var(--rc-color-text);
+    font-size: 0.9rem;
+  }
+
+  > span {
+    color: var(--rc-color-text-muted);
+    font-size: 0.76rem;
+  }
+
+  .text-import-lyric {
+    color: var(--rc-color-text);
+    font-size: 0.85rem;
+  }
+}
+
+app-song-editor .song-library-toolbar {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+app-song-editor .song-library-search {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--rc-color-text-muted);
+  font-size: 0.78rem;
+}
+
+app-song-editor .song-library-search input,
+app-song-editor .song-library-identity input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--rc-control-min-size);
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+  font: inherit;
+}
+
+app-song-editor .library-sort {
+  align-self: center;
+  color: var(--rc-color-text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+app-song-editor .library-notice,
+app-song-editor .library-empty-state {
+  margin: 0;
+  color: var(--rc-color-text-muted);
+}
+
+app-song-editor .song-library-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+app-song-editor .song-library-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+
+  .song-library-identity {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+    flex: 1 1 auto;
+  }
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  span:not(.current-song-badge) {
+    color: var(--rc-color-text-muted);
+    font-size: 0.78rem;
+  }
+}
+
+app-song-editor .song-library-entry-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+}
+
+app-song-editor .song-library-entry.is-current {
+  border-color: var(--rc-color-primary-text);
+}
+
+app-song-editor .current-song-badge {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.55rem;
+  color: var(--rc-color-primary-text);
+  border-radius: 999px;
+  background: var(--rc-color-primary-container);
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 @media (max-width: 600px) {
+  app-song-editor .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    width: 100%;
+    min-height: 3.5rem;
+    gap: 0.35rem;
+    padding-block: max(0.35rem, env(safe-area-inset-top)) 0.35rem;
+    padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right));
+    white-space: normal;
+  }
+
+  app-song-editor .song-library-header,
+  app-song-editor .song-library-entry {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  app-song-editor .duplicate-song-dialog,
+  app-song-editor .duplicate-song-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  app-song-editor .song-library-entry {
+    display: flex;
+  }
+
+  app-song-editor .song-library-entry:not(:has(.song-family-header)) {
+    margin-inline-start: 0.75rem;
+  }
+
+  app-song-editor .song-library-header .secondary-action,
+  app-song-editor .song-library-entry-actions .secondary-action {
+    width: 100%;
+  }
+
+  app-song-editor .song-library-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  app-song-editor .text-import-dialog {
+    > header,
+    > footer,
+    .text-import-preview > header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    footer > div {
+      display: grid;
+      width: 100%;
+    }
+  }
+
+  app-song-editor .library-sort {
+    white-space: normal;
+  }
+
+  app-song-editor .song-library-entry-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-song-editor .topbar .brand-lockup {
+    min-width: 0;
+  }
+
+  app-song-editor .topbar .spacer {
+    display: none;
+  }
+
+  app-song-editor .topbar .module-name {
+    display: none;
+  }
+
+  app-song-editor .topbar .save-state {
+    width: auto;
+    max-width: 6.25rem;
+    min-height: var(--rc-control-min-size);
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  app-song-editor .save-state-long {
+    display: none;
+  }
+
+  app-song-editor .save-state-short {
+    display: inline;
+  }
+
+  app-song-editor mat-card-actions button {
+    flex: 1 1 10rem;
+    min-height: var(--rc-control-min-size);
+    white-space: normal;
+  }
+
+  .theme-control {
+    min-width: 0;
+  }
+
   .theme-control select {
-    min-width: 5.75rem;
+    width: 5.25rem;
+    min-width: 0;
   }
 
   .theme-control > span {
@@ -167,12 +829,337 @@ input {
   }
 
   .selection-toolbar {
-    top: 4.5rem;
+    display: grid;
+    width: calc(100% - 1rem);
+    max-height: min(10rem, 25dvh, calc(var(--rc-visual-viewport-height, 100vh) * 0.25));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--rc-control-min-size);
+    grid-template-areas:
+      'summary summary close'
+      'copy paste paste';
+    gap: 0.4rem;
+    margin-bottom: max(0.35rem, env(safe-area-inset-bottom));
+    padding: 0.45rem;
+    overflow: hidden;
+  }
+
+  .selection-summary {
+    grid-area: summary;
+    align-self: center;
+    overflow: hidden;
+    font-size: 0.76rem;
+
+    strong,
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .selection-toolbar [data-testid='copy-selection'] {
+    grid-area: copy;
+  }
+
+  .selection-toolbar [data-testid='paste-selection'] {
+    grid-area: paste;
+  }
+
+  .selection-toolbar [data-testid='clear-selection'] {
+    grid-area: close;
+    min-width: var(--rc-control-min-size);
+    padding-inline: 0.25rem;
+    overflow: hidden;
+    font-size: 0;
+
+    &::after {
+      font-size: 1.35rem;
+      content: '×';
+    }
+  }
+
+  .rc-editor-overlay-pane {
+    padding-top: max(0.25rem, env(safe-area-inset-top));
+  }
+
+  .editor-sheet-frame {
+    height: min(calc(var(--rc-visual-viewport-height, 100vh) - 0.5rem), 50rem);
+  }
+
+  app-song-editor .player-action {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  app-song-editor .restore-preview,
+  app-song-editor .restore-preview-actions {
     align-items: stretch;
     flex-direction: column;
   }
+}
 
-  .selection-spacer {
+@media (max-width: 420px) {
+  app-song-editor .topbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-song-editor .topbar .brand-lockup {
+    grid-column: 1 / -1;
+  }
+
+  app-song-editor .topbar .theme-control {
+    max-width: 100%;
+    justify-self: end;
+  }
+
+  app-song-editor .topbar .theme-control select {
+    max-width: 100%;
+  }
+
+  app-song-editor .topbar .save-state {
+    grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+    justify-self: end;
+    white-space: normal;
+  }
+}
+
+.save-state-short {
+  display: none;
+}
+
+app-word-editor .inspector-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+app-word-editor .word-editor-content {
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+app-word-editor .word-editor > header {
+  padding: 0.75rem 0.85rem;
+}
+app-word-editor .word-editor .history-action {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+}
+app-word-editor .block-management > summary {
+  min-height: var(--rc-control-min-size);
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  color: var(--rc-color-text-muted);
+  background: var(--rc-color-surface-subtle);
+}
+app-word-editor .block-management[open] > summary {
+  margin-bottom: 0.55rem;
+}
+app-word-editor .block-management .more-block-actions {
+  margin-top: 0.55rem;
+}
+app-word-editor .destructive-action {
+  color: var(--rc-color-error) !important;
+  border-color: var(--rc-color-error) !important;
+}
+app-word-editor .preview-action {
+  display: inline-flex;
+  min-width: 5rem;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+app-word-editor .preview-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+app-word-editor .event-preview-action {
+  position: absolute;
+  z-index: 1;
+  top: 0.2rem;
+  right: 1.7rem;
+  display: grid;
+  width: 1.8rem;
+  min-width: 1.8rem;
+  min-height: 1.8rem;
+  padding: 0;
+  place-items: center;
+  color: var(--rc-color-primary-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: 999px;
+  background: var(--rc-color-surface);
+  cursor: pointer;
+}
+app-word-editor .key-audition-option {
+  display: flex;
+  min-height: var(--rc-control-min-size);
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+}
+
+app-word-editor .syllable-split {
+  padding: 0.7rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface-subtle);
+}
+app-word-editor .syllable-split > summary {
+  margin: 0;
+}
+app-word-editor .syllable-split[open] > summary {
+  margin-bottom: 0.7rem;
+}
+app-word-editor .split-controls,
+app-word-editor .split-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+app-word-editor .split-controls label,
+app-word-editor .split-preview span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+app-word-editor .split-controls span,
+app-word-editor .split-preview small,
+app-word-editor .split-note {
+  color: var(--rc-color-text-muted);
+  font-size: 0.72rem;
+}
+app-word-editor .split-controls select {
+  width: 100%;
+  min-height: var(--rc-control-min-size);
+  padding-inline: 0.55rem;
+  color: var(--rc-color-text);
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+}
+app-word-editor .split-preview {
+  margin-top: 0.65rem;
+}
+app-word-editor .split-preview span {
+  padding: 0.55rem;
+  border: 1px solid var(--rc-color-border);
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-surface);
+}
+app-word-editor .split-note {
+  margin-top: 0.55rem;
+  line-height: 1.4;
+}
+app-word-editor .split-confirm {
+  min-height: var(--rc-control-min-size);
+  margin-top: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--rc-color-on-primary);
+  border: 0;
+  border-radius: var(--rc-radius-control);
+  background: var(--rc-color-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  app-word-editor .word-editor-content {
+    gap: 0.6rem;
+    padding-top: 0.6rem;
+  }
+  app-word-editor .key-hands {
+    gap: 0.45rem;
+    margin-top: 0.4rem;
+  }
+  app-word-editor .key-hand-group {
+    padding: 0.45rem;
+  }
+  app-word-editor .key-button {
+    min-height: 3.8rem;
+  }
+  app-word-editor .key-help {
     display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  app-word-editor .split-controls,
+  app-word-editor .split-preview {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Shared, non-layout-reserving tooltips for compact icon actions. */
+.tooltip-action {
+  position: relative;
+}
+
+.tooltip-action::after {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  width: max-content;
+  max-width: 12rem;
+  padding: 0.3rem 0.45rem;
+  pointer-events: none;
+  content: none;
+  opacity: 0;
+  color: #ffffff;
+  border-radius: 0.35rem;
+  background: #342e38;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transform: translate(-50%, -0.2rem);
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+
+.tooltip-action:hover::after,
+.tooltip-action:focus::after {
+  content: attr(data-tooltip);
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-action::after {
+    transition: none;
+  }
+}
+
+app-song-sheet .event-color-swatches {
+  display: flex;
+  height: 0.38rem;
+  margin-bottom: 0.18rem;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+app-song-sheet .event-color-swatches i {
+  flex: 1 1 0;
+}
+
+app-song-sheet .empty-track {
+  display: grid;
+  min-width: 2.25rem;
+  min-height: 1.75rem;
+  place-items: center;
+  color: var(--rc-color-text-muted);
+  border: 1px dashed var(--rc-color-border);
+  border-radius: 0.45rem;
+  font-size: 0.7rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  app-song-sheet
+    .word-card-shell:not(:hover, :focus-within, .is-selected)
+    :is(.word-drag-handle, .word-preview-action) {
+    opacity: 0;
   }
 }

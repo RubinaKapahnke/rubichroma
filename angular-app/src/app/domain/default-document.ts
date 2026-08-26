@@ -1,5 +1,4 @@
-import { SongDocument } from './song-document';
-import { replaceWithLegacyNotation } from './legacy-notation-codec';
+import { cloneDocument, createTrackedWordFields, SongDocument } from './song-document';
 
 const values = [
   '2″',
@@ -65,8 +64,8 @@ export const DEFAULT_DOCUMENT: SongDocument = {
     lines: [
       {
         words: [
-          { text: 'Willkommen', ...replaceWithLegacyNotation('1 2 3 (135)'), extra: {} },
-          { text: '♪', ...replaceWithLegacyNotation('5′-3 1′'), toneCount: 3, extra: {} },
+          { text: 'Willkommen', ...createTrackedWordFields('1 2 3 (135)'), extra: {} },
+          { text: '♪', ...createTrackedWordFields('5′-3 1′'), toneCount: 3, extra: {} },
         ],
         extra: {},
       },
@@ -81,3 +80,19 @@ export const DEFAULT_DOCUMENT: SongDocument = {
   })),
   extra: {},
 };
+
+export function createEmptySongDocument(): SongDocument {
+  const document = cloneDocument(DEFAULT_DOCUMENT);
+  document.song = {
+    title: 'Neues Lied',
+    lines: [
+      {
+        words: [{ text: '', ...createTrackedWordFields(''), extra: {} }],
+        extra: {},
+      },
+    ],
+    extra: {},
+  };
+  document.extra = {};
+  return document;
+}

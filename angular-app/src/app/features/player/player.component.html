@@ -1,0 +1,217 @@
+<main
+  class="player-page"
+  [class.color-full]="colorAid() === 'full'"
+  [class.color-soft]="colorAid() === 'soft'"
+  [class.color-off]="colorAid() === 'off'"
+>
+  <header class="context-header">
+    <div class="brand-lockup" aria-label="RubiChroma Player">
+      <strong><span>Rubi</span>Chroma</strong><small>Übungsplayer</small>
+    </div>
+    <label class="theme-control">
+      <span>Darstellung</span>
+      <select aria-label="Farbschema" [value]="theme.preference()" (change)="changeTheme($event)">
+        <option value="system">System</option>
+        <option value="light">Hell</option>
+        <option value="dark">Dunkel</option>
+      </select>
+    </label>
+  </header>
+
+  @if (store.error(); as error) {
+    <div class="error" role="alert">{{ error }}</div>
+  }
+
+  @if (timeline(); as playerTimeline) {
+    <section
+      class="player-shell"
+      aria-labelledby="player-title"
+      aria-keyshortcuts="Space"
+      (click)="handlePlayerSurfaceClick($event)"
+    >
+      <header class="player-heading">
+        <div>
+          <p>Dein aktueller Song · lokal geladen</p>
+          <h1 id="player-title" data-testid="player-title">{{ store.document()?.song?.title }}</h1>
+        </div>
+        <div class="player-heading-actions">
+          <a routerLink="/" class="back-link player-back-action" data-testid="back-to-editor" (click)="prepareEditorReturn()">← Zurück zum Editor</a>
+          <div class="play-status" aria-live="polite" data-testid="play-status">
+            <span class="status-dot" [class.running]="transport.playing()"></span>
+            <span>{{ transport.playing() ? 'Wiedergabe läuft' : transport.ended() ? 'Bereich beendet' : 'Bereit' }}</span>
+            <strong>Takt {{ currentBar() }} · {{ formatBeatTime(transport.positionBeat()) }} / {{ formatBeatTime(transport.rangeEndBeat()) }}</strong>
+          </div>
+        </div>
+      </header>
+
+      <div class="visual-toolbar" aria-label="Playerdarstellung">
+        <div class="view-switch" aria-label="Visualisierung wechseln">
+          <button type="button" data-testid="view-flow" [class.active]="viewMode() === 'flow'" [attr.aria-pressed]="viewMode() === 'flow'" (click)="setView('flow')">Flow</button>
+          <button type="button" data-testid="view-tab" [class.active]="viewMode() === 'tab'" [attr.aria-pressed]="viewMode() === 'tab'" (click)="setView('tab')">Lauf-Tab</button>
+        </div>
+      </div>
+
+      <div class="visual-stage" [class.tab-stage]="viewMode() === 'tab'">
+        @if (viewMode() === 'flow') {
+          <section class="flow-visual" data-testid="flow-panel" aria-label="Flow-Ansicht">
+            <div class="falling-field">
+              <div class="flow-track-area">
+                <div class="lane-grid" aria-hidden="true">
+                  @for (key of playerTimeline.keys; track key.id) { <span [attr.data-testid]="'flow-lane-' + key.lane"></span> }
+                </div>
+                @if (visibleEvents().length === 0) {
+                  <p class="flow-empty" data-testid="flow-empty">Die nächsten Töne erscheinen gleich.</p>
+                }
+                @for (event of visibleEvents(); track event.id) {
+                  @for (lane of event.lanes; track lane) {
+                    <div class="falling-event-slot" [style.--lane-index]="lane" [style.--flow-progress]="flowProgress(event)" [attr.data-event-id]="event.id" [attr.data-lane]="lane" [attr.data-start]="event.startBeat">
+                      <button type="button" class="flow-event" [class.accompaniment]="event.track === 'accompaniment'" [class.active-event]="activeEvent()?.id === event.id" [style.--note-color]="event.color" [style.height]="laneEventHeight(event, lane)" [attr.data-profile-color]="event.color" (click)="selectEvent(event)" [attr.aria-label]="eventDegreeLabel(event, lane) + ', Schlag ' + (event.startBeat + 1)">
+                        @if (showDegrees()) { <strong>{{ eventDegreeLabel(event, lane) }}</strong> }
+                        @if (showLetters()) { <span>{{ eventLetterLabel(event, lane) }}</span> }
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
+              <div class="strike-line"><span>Jetzt</span></div>
+            </div>
+            <div class="kalimba-bed" aria-label="17-Zungen-Kalimba" data-testid="kalimba">
+              @for (key of playerTimeline.keys; track key.id) {
+                <div class="kalimba-key kalimba-tine" [class.active-key]="isLaneActive(key.lane)" [class.next-key]="isLaneUpcoming(key.lane)" [class.key-pulse]="isLaneActive(key.lane)" [style.--note-color]="key.color" [attr.data-profile-color]="key.color" [attr.data-testid]="'flow-key-' + key.lane" [attr.data-lane]="key.lane" [attr.data-pulse-token]="lanePulseToken(key.lane)">
+                  @if (showLetters()) { <strong>{{ key.letter }}</strong> }
+                  @if (showDegrees()) {
+                    <span class="kalimba-degree"><i aria-hidden="true">{{ octaveDots(key, 'up') }}</i><b>{{ keyDegree(key) }}</b><i aria-hidden="true">{{ octaveDots(key, 'down') }}</i></span>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        } @else {
+          <section class="tab-visual" data-testid="tab-panel" aria-label="Lauf-Tab-Ansicht">
+            <div class="running-tab-field">
+              <div class="track-guide melody-guide"><span>Melodie</span></div>
+              <div class="track-guide accompaniment-guide"><span>Begleitung</span></div>
+              @for (event of visibleEvents(); track event.id) {
+                <div class="tab-event-slot" [class.accompaniment]="event.track === 'accompaniment'" [style.--tab-position]="tabPosition(event)" [attr.data-event-id]="event.id" [attr.data-start]="event.startBeat">
+                  <button type="button" class="tab-event" [class.accompaniment]="event.track === 'accompaniment'" [class.active-event]="activeEvent()?.id === event.id" [style.--note-color]="event.color" [style.width]="eventWidth(event)" [attr.data-profile-color]="event.color" (click)="selectEvent(event)">
+                    @if (showDegrees()) { <strong>{{ eventDegreeLabels(event) }}</strong> }
+                    @if (showLetters()) { <span>{{ eventLetterLabels(event) }}</span> }
+                  </button>
+                </div>
+              }
+              <div class="tab-playhead"><span>Jetzt</span></div>
+            </div>
+            <div class="kalimba-bed" aria-label="17-Zungen-Kalimba">
+              @for (key of playerTimeline.keys; track key.id) {
+                <div class="kalimba-key kalimba-tine" [class.active-key]="isLaneActive(key.lane)" [class.next-key]="isLaneUpcoming(key.lane)" [class.key-pulse]="isLaneActive(key.lane)" [style.--note-color]="key.color" [attr.data-profile-color]="key.color" [attr.data-testid]="'tab-key-' + key.lane" [attr.data-lane]="key.lane" [attr.data-pulse-token]="lanePulseToken(key.lane)">
+                  @if (showLetters()) { <strong>{{ key.letter }}</strong> }
+                  @if (showDegrees()) { <span class="kalimba-degree"><i aria-hidden="true">{{ octaveDots(key, 'up') }}</i><b>{{ keyDegree(key) }}</b><i aria-hidden="true">{{ octaveDots(key, 'down') }}</i></span> }
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (textLines().length > 0) {
+          <section class="lyric-window" aria-label="Synchroner Liedtext" data-testid="lyric-window">
+            <strong class="current-lyric-bar">Takt {{ currentBar() }}</strong>
+            <div class="lyric-lines">
+              @for (line of textLines(); track line.lineIndex) {
+                <p class="lyric-line" [class.next-line]="lineRole(line) === 'next'" [attr.data-line]="line.lineIndex">
+                  @for (word of line.words; track word.id) {
+                    @if (word.text) {
+                      <span class="lyric-syllable" [class.word-end]="word.wordEnd" [class.past]="wordState(word) === 'past'" [class.current]="wordState(word) === 'current'" [attr.data-testid]="'lyric-' + word.lineIndex + '-' + word.wordIndex" [attr.aria-current]="wordState(word) === 'current' ? 'true' : null">{{ word.text }}</span>
+                    }
+                  }
+                </p>
+              }
+            </div>
+          </section>
+        }
+      </div>
+
+      <div class="progress-strip" aria-hidden="true"><span [style.--progress-scale]="positionPercent() / 100"></span></div>
+
+      <div class="control-deck" aria-label="Transport, Position, Tempo und Lautstärke">
+        <div class="transport-buttons">
+          <button type="button" class="primary-action" data-testid="play-toggle" (click)="transport.togglePlay()">{{ transport.playing() ? 'Ⅱ Pause' : transport.ended() ? '▶ Wiederholen' : '▶ Start' }}</button>
+          <button type="button" class="stop-action" data-testid="stop" (click)="transport.stop()">■ Stopp</button>
+        </div>
+        <div class="control-group position-control">
+          <div class="control-label"><label for="position">Position</label><span>{{ transport.positionBeat() | number: '1.1-1' }} / {{ transport.rangeEndBeat() | number: '1.0-1' }} Schläge</span></div>
+          <input id="position" type="range" data-testid="position" [min]="transport.rangeStartBeat()" [max]="transport.rangeEndBeat()" step="0.05" [value]="transport.positionBeat()" (input)="transport.seek($any($event.target).value)" />
+        </div>
+        <div class="control-group speed-control">
+          <div class="control-label tempo-label"><span>Tempo</span><div class="tempo-unit-switch" role="group" aria-label="Tempoeinheit"><button type="button" data-testid="tempo-unit-bpm" [class.active]="tempoUnit() === 'bpm'" [attr.aria-pressed]="tempoUnit() === 'bpm'" (click)="setTempoUnit('bpm')">BPM</button><button type="button" data-testid="tempo-unit-percent" [class.active]="tempoUnit() === 'percent'" [attr.aria-pressed]="tempoUnit() === 'percent'" (click)="setTempoUnit('percent')">%</button></div><strong data-testid="tempo-value">{{ tempoValueLabel(tempoDisplayValue()) }}</strong></div>
+          <div class="speed-row">
+            @for (speed of speedOptions; track speed) { <button type="button" [class.active]="transport.speedPercent() === speed" [attr.aria-pressed]="transport.speedPercent() === speed" [attr.data-testid]="'tempo-preset-' + speed" (click)="transport.setSpeed(speed)">{{ tempoValueLabel(tempoPresetValue(speed)) }}</button> }
+            <input type="range" data-testid="speed" [attr.aria-label]="'Übungsgeschwindigkeit in ' + (tempoUnit() === 'bpm' ? 'BPM' : 'Prozent')" [attr.min]="tempoUnit() === 'bpm' ? '38' : '40'" [attr.max]="tempoUnit() === 'bpm' ? '116' : '120'" [attr.step]="tempoUnit() === 'bpm' ? '0.1' : '5'" [value]="tempoDisplayValue()" (input)="setTempoDisplayValue($any($event.target).value)" />
+          </div>
+        </div>
+        <div class="control-group volume-control"><div class="control-label"><label for="volume">Lautstärke</label><strong>{{ transport.volumePercent() }} %</strong></div><input id="volume" type="range" min="0" max="100" [value]="transport.volumePercent()" (input)="transport.setVolume($any($event.target).value)" /></div>
+      </div>
+
+      <details class="practice-settings" data-testid="practice-settings">
+        <summary><span>Übungseinstellungen</span><strong data-testid="practice-settings-status">{{ practiceSettingsStatus() }}</strong></summary>
+        <div class="practice-settings-content">
+          <div class="display-options">
+            <div class="preview-switch" role="group" aria-label="Vorschauzeitraum">
+              <span>Vorschau</span>
+              @for (bars of [1, 2, 4]; track bars) {
+                <button type="button" [class.active]="previewBars() === bars" [attr.aria-pressed]="previewBars() === bars" [attr.data-testid]="'preview-' + bars" (click)="setPreviewBars(bars)">{{ bars }} {{ bars === 1 ? 'Takt' : 'Takte' }}</button>
+              }
+            </div>
+            <label><input type="checkbox" data-testid="show-degrees" [checked]="showDegrees()" [disabled]="showDegrees() && !showLetters()" (change)="setShowDegrees($any($event.target).checked)" /> Zahl</label>
+            <label><input type="checkbox" data-testid="show-letters" [checked]="showLetters()" [disabled]="showLetters() && !showDegrees()" (change)="setShowLetters($any($event.target).checked)" /> Ton</label>
+            <label>Farbhilfe <select data-testid="color-aid" [value]="colorAid()" (change)="setColorAid($any($event.target).value)"><option value="full">Vollständig</option><option value="soft">Abgeschwächt</option><option value="off">Aus</option></select></label>
+            <label class="motion-option"><input type="checkbox" data-testid="reduced-motion" [checked]="reducedMotion()" (change)="reducedMotion.set($any($event.target).checked)" /> Bewegung reduzieren</label>
+          </div>
+          <div class="secondary-tools">
+            <label class="metronome-toggle"><input type="checkbox" data-testid="metronome-enabled" [checked]="transport.metronomeEnabled()" (change)="transport.setMetronomeEnabled($any($event.target).checked)" /> Metronom</label>
+            <details data-testid="loop-drawer" [open]="transport.loopEnabled()">
+              <summary><span>Loop</span><strong>{{ transport.loopEnabled() ? 'Takt ' + loopStartBar() + '–' + loopEndBar() : 'Aus' }}</strong></summary>
+              <div class="loop-content">
+                <label><input type="checkbox" data-testid="loop-enabled" [checked]="transport.loopEnabled()" (change)="setLoopEnabled($any($event.target).checked)" /> Bereich wiederholen</label>
+                <label>Von Takt <select data-testid="loop-start-bar" [value]="loopStartBar()" (change)="setLoopStartBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
+                <label>bis Takt <select data-testid="loop-end-bar" [value]="loopEndBar()" (change)="setLoopEndBar($any($event.target).value)">@for (bar of playerTimeline.bars; track bar.number) { <option [value]="bar.number">{{ bar.number }}</option> }</select></label>
+                <span data-testid="loop-summary">Takt {{ loopStartBar() }}–{{ loopEndBar() }} · Schlag {{ selectedLoopRange().startBeat + 1 }} bis {{ selectedLoopRange().endBeat }}</span>
+              </div>
+            </details>
+            <details data-testid="mixer-drawer">
+              <summary><span>Mixer</span><strong>2 Ebenen</strong></summary>
+              <div class="mixer-content">
+                <label data-testid="track-melody"><strong>Melodie</strong><input type="checkbox" [checked]="transport.melodyEnabled()" (change)="transport.setTrackEnabled('melody', $any($event.target).checked)" /> Ein</label>
+                <label data-testid="track-accompaniment"><strong>Begleitung</strong><input type="checkbox" [checked]="transport.accompanimentEnabled()" (change)="transport.setTrackEnabled('accompaniment', $any($event.target).checked)" /> Ein</label>
+              </div>
+            </details>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="score-sheet" aria-labelledby="score-title" data-testid="score-sheet">
+      <div class="score-heading"><div><span>Vollständiges Notenblatt des geladenen Songs</span><h2 id="score-title">{{ store.document()?.song?.title }}</h2></div><small>Silbe wählen, um an diese Stelle zu springen</small></div>
+      <div class="score-lines" data-testid="score-scroll" (pointerdown)="pauseScoreFollow()" (touchstart)="pauseScoreFollow()" (wheel)="pauseScoreFollow()">
+        @for (line of playerTimeline.lines; track line.lineIndex) {
+          <div class="score-line" [attr.data-testid]="'score-line-' + line.lineIndex">
+            @for (word of line.words; track word.id) {
+              <button type="button" class="score-entry" [class.bar-start]="word.startBeat % playerTimeline.beatsPerBar === 0" [class.score-active]="activeWord()?.id === word.id" [class.score-played]="word.endBeat <= transport.positionBeat()" [style.--note-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-profile-color]="eventsForWord(word)[0]?.color ?? '#8f90a0'" [attr.data-score-word]="word.id" [attr.data-testid]="'score-' + word.id" [attr.data-start]="word.startBeat" [attr.aria-current]="activeWord()?.id === word.id ? 'true' : null" (click)="selectScoreWord(word)">
+                <span class="score-event-row">
+                  @for (event of eventsForWord(word); track event.id) {
+                    <span class="score-event" [class.accompaniment]="event.track === 'accompaniment'" [class.bar-start]="event.startBeat % playerTimeline.beatsPerBar === 0" [style.--duration-beats]="event.durationBeats" [attr.data-duration-beats]="event.durationBeats" [attr.data-track]="event.track">
+                      @if (event.startBeat % playerTimeline.beatsPerBar === 0) { <i class="score-event-bar">Takt {{ event.barNumber }}</i> }
+                      <i class="score-track-name">{{ event.track === 'melody' ? 'Melodie' : 'Begleitung' }}</i><b>{{ eventDegreeLabels(event) }}</b><small>{{ eventLetterLabels(event) }}</small><em>{{ eventDurationLabel(event) }}</em>
+                    </span>
+                  }
+                </span>
+                <strong>{{ word.text ?? '♪' }}</strong>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  } @else if (store.status() === 'loading') {
+    <div class="loading" aria-live="polite">Player wird vorbereitet …</div>
+  }
+</main>

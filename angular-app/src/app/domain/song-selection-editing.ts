@@ -1,10 +1,10 @@
 import {
   decodeLegacyNotation,
   encodeLegacyNotation,
-  replaceWithLegacyNotation,
+  fidelityForEvents,
 } from './legacy-notation-codec';
-import { cloneMusicEvents, MusicEvent } from './music-event';
-import { cloneDocument, SongDocument, SongWord } from './song-document';
+import { cloneMusicEvents, MusicEvent, MusicTrackId } from './music-event';
+import { cloneDocument, projectSongWordEvents, SongDocument, SongWord } from './song-document';
 import { SongPosition } from './song-structure-editing';
 
 export type SongSelectionMode = 'single' | 'range' | 'toggle';
@@ -16,7 +16,7 @@ export interface SongSelectionState {
 }
 
 export interface MusicSelectionClipboard {
-  sequences: MusicEvent[][];
+  sequences: Array<Record<MusicTrackId, MusicEvent[]>>;
 }
 
 export type MusicSelectionPasteResult =
@@ -104,9 +104,13 @@ export function createMusicSelectionClipboard(
   if (ordered.length === 0 || ordered.length !== positions.length) return null;
 
   return {
-    sequences: ordered.map((position) =>
-      cloneMusicEvents(wordAt(document, position)!.events.filter(isNoteOrChord)),
-    ),
+    sequences: ordered.map((position) => {
+      const word = wordAt(document, position)!;
+      return {
+        melody: cloneMusicEvents(word.melodyEvents.filter(isNoteOrChord)),
+        accompaniment: cloneMusicEvents(word.accompanimentEvents.filter(isNoteOrChord)),
+      };
+    }),
   };
 }
 
@@ -129,13 +133,23 @@ export function pasteMusicSelection(
   for (const [index, position] of orderedTargets.entries()) {
     const target = wordAt(document, position);
     if (!target) return { ok: false, reason: 'invalid-target' };
-    const targetNotation = encodeLegacyNotation(target.events, target.legacyNotation);
+    const targetNotation = encodeLegacyNotation(
+      projectSongWordEvents(target),
+      target.legacyNotation,
+    );
     if (decodeLegacyNotation(targetNotation).hasUnknownFragments) {
       return { ok: false, reason: 'target-has-unknown-legacy-fragments' };
     }
 
-    const nextEvents = replaceNoteChordEvents(target.events, clipboard.sequences[index]);
-    Object.assign(target, replaceWithLegacyNotation(encodeLegacyNotation(nextEvents)));
+    target.melodyEvents = replaceNoteChordEvents(
+      target.melodyEvents,
+      clipboard.sequences[index].melody,
+    );
+    target.accompanimentEvents = replaceNoteChordEvents(
+      target.accompanimentEvents,
+      clipboard.sequences[index].accompaniment,
+    );
+    updateWordFidelity(target);
   }
 
   return {
@@ -179,6 +193,18 @@ function replaceNoteChordEvents(
 
   next.push(...source.slice(sourceIndex));
   return next;
+}
+
+function updateWordFidelity(word: SongWord): void {
+  const events = projectSongWordEvents(word);
+  const raw = encodeLegacyNotation(events);
+  const trackMetadataExplicit =
+    word.legacyNotation.trackMetadataExplicit || word.accompanimentEvents.length > 0;
+  word.legacyNotation = {
+    ...fidelityForEvents(raw, events),
+    trackOrder: events.map((event) => event.track ?? 'melody'),
+    ...(trackMetadataExplicit ? { trackMetadataExplicit: true } : {}),
+  };
 }
 
 function wordAt(document: SongDocument, position: SongPosition): SongWord | undefined {

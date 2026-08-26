@@ -1,4 +1,12 @@
-import { cloneMusicEvents, MusicEvent, Pitch } from './music-event';
+import {
+  cloneMusicEvents,
+  eventDurationInBeats,
+  MusicEvent,
+  musicEventTrack,
+  MusicTrackId,
+  normalizeDurationInBeats,
+  Pitch,
+} from './music-event';
 
 export const LEGACY_NOTATION_PARSER_VERSION = 'legacy-notation-v1' as const;
 
@@ -6,6 +14,8 @@ export interface LegacyNotationFidelity {
   raw: string;
   parserVersion: typeof LEGACY_NOTATION_PARSER_VERSION;
   eventFingerprint: string;
+  trackOrder?: MusicTrackId[];
+  trackMetadataExplicit?: boolean;
 }
 
 export interface DecodedLegacyNotation {
@@ -31,7 +41,7 @@ export function decodeLegacyNotation(raw: string): DecodedLegacyNotation {
     if (token.startsWith('(') && token.endsWith(')')) {
       const pitches = parseChord(token.slice(1, -1));
       if (pitches) {
-        events.push({ kind: 'chord', pitches, duration: 'quarter' });
+        events.push({ kind: 'chord', pitches, duration: 1 });
       } else {
         hasUnknownFragments = true;
       }
@@ -39,7 +49,7 @@ export function decodeLegacyNotation(raw: string): DecodedLegacyNotation {
     }
     const pitch = parsePitch(token);
     if (pitch) {
-      events.push({ kind: 'note', pitch, duration: 'quarter' });
+      events.push({ kind: 'note', pitch, duration: 1 });
     } else {
       hasUnknownFragments = true;
     }
@@ -72,16 +82,30 @@ export function encodeLegacyNotation(
 export function cloneLegacyNotationFidelity(
   fidelity: LegacyNotationFidelity,
 ): LegacyNotationFidelity {
-  return { ...fidelity };
+  return {
+    ...fidelity,
+    ...(fidelity.trackOrder ? { trackOrder: [...fidelity.trackOrder] } : {}),
+  };
 }
 
 export function fingerprintEvents(events: readonly MusicEvent[]): string {
   const semanticShape = events.map((event) => {
     switch (event.kind) {
       case 'note':
-        return ['n', event.pitch.degree, event.pitch.octave, event.duration];
+        return [
+          'n',
+          event.pitch.degree,
+          event.pitch.octave,
+          durationFingerprint(event),
+          musicEventTrack(event),
+        ];
       case 'chord':
-        return ['c', event.pitches.map((pitch) => [pitch.degree, pitch.octave]), event.duration];
+        return [
+          'c',
+          event.pitches.map((pitch) => [pitch.degree, pitch.octave]),
+          durationFingerprint(event),
+          musicEventTrack(event),
+        ];
       case 'separator':
         return ['s'];
     }
@@ -89,14 +113,33 @@ export function fingerprintEvents(events: readonly MusicEvent[]): string {
   return `v1:${JSON.stringify(semanticShape)}`;
 }
 
-export function replaceWithLegacyNotation(raw: string): {
+export function replaceWithLegacyNotation(
+  raw: string,
+  durations?: readonly (number | null)[],
+): {
   events: MusicEvent[];
   legacyNotation: LegacyNotationFidelity;
 } {
   const decoded = decodeLegacyNotation(raw);
+  const events = decoded.events.map((event, index): MusicEvent =>
+    event.kind === 'separator'
+      ? event
+      : { ...event, duration: normalizeDurationInBeats(durations?.[index] ?? undefined) },
+  );
   return {
-    events: cloneMusicEvents(decoded.events),
-    legacyNotation: cloneLegacyNotationFidelity(decoded.fidelity),
+    events: cloneMusicEvents(events),
+    legacyNotation: fidelityForEvents(raw, events),
+  };
+}
+
+export function fidelityForEvents(
+  raw: string,
+  events: readonly MusicEvent[],
+): LegacyNotationFidelity {
+  return {
+    raw,
+    parserVersion: LEGACY_NOTATION_PARSER_VERSION,
+    eventFingerprint: fingerprintEvents(events),
   };
 }
 
@@ -144,4 +187,11 @@ function serializeEvent(event: MusicEvent): string {
 
 function serializePitch(pitch: Pitch): string {
   return `${pitch.degree}${pitch.octave === 0 ? '' : pitch.octave === 1 ? '′' : '″'}`;
+}
+
+function durationFingerprint(
+  event: Exclude<MusicEvent, { kind: 'separator' }>,
+): string | [string, number] {
+  const beats = eventDurationInBeats(event);
+  return beats === 1 ? 'quarter' : ['beats', beats];
 }

@@ -6,13 +6,13 @@ import {
 } from './legacy-notation-codec';
 
 describe('legacy notation codec', () => {
-  it('decodes notes, chords and separators into structured quarter-note events', () => {
+  it('decodes legacy notes, chords and separators with a one-beat default', () => {
     const decoded = decodeLegacyNotation("1 2′ 3″ (135)-7'");
 
     expect(decoded.events).toEqual([
-      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 'quarter' },
-      { kind: 'note', pitch: { degree: 2, octave: 1 }, duration: 'quarter' },
-      { kind: 'note', pitch: { degree: 3, octave: 2 }, duration: 'quarter' },
+      { kind: 'note', pitch: { degree: 1, octave: 0 }, duration: 1 },
+      { kind: 'note', pitch: { degree: 2, octave: 1 }, duration: 1 },
+      { kind: 'note', pitch: { degree: 3, octave: 2 }, duration: 1 },
       {
         kind: 'chord',
         pitches: [
@@ -20,10 +20,10 @@ describe('legacy notation codec', () => {
           { degree: 3, octave: 0 },
           { degree: 5, octave: 0 },
         ],
-        duration: 'quarter',
+        duration: 1,
       },
       { kind: 'separator' },
-      { kind: 'note', pitch: { degree: 7, octave: 1 }, duration: 'quarter' },
+      { kind: 'note', pitch: { degree: 7, octave: 1 }, duration: 1 },
     ]);
   });
 
@@ -38,7 +38,7 @@ describe('legacy notation codec', () => {
   it('does not turn malformed fragments into musical events', () => {
     const decoded = decodeLegacyNotation('5′ x(');
     expect(decoded.events).toEqual([
-      { kind: 'note', pitch: { degree: 5, octave: 1 }, duration: 'quarter' },
+      { kind: 'note', pitch: { degree: 5, octave: 1 }, duration: 1 },
     ]);
     expect(decoded.hasUnknownFragments).toBe(true);
   });
@@ -52,5 +52,14 @@ describe('legacy notation codec', () => {
     };
 
     expect(encodeLegacyNotation(word.events, word.legacyNotation)).toBe('7″ (35) - 2');
+  });
+
+  it('applies an explicit two-beat duration without changing legacy notation text', () => {
+    const word = replaceWithLegacyNotation('5', [2]);
+
+    expect(word.events).toEqual([
+      { kind: 'note', pitch: { degree: 5, octave: 0 }, duration: 2 },
+    ]);
+    expect(encodeLegacyNotation(word.events, word.legacyNotation)).toBe('5');
   });
 });

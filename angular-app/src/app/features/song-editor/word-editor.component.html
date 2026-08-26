@@ -4,179 +4,467 @@
       <p class="eyebrow">{{ location() }}</p>
       <h2 id="word-editor-title">Wort und Töne bearbeiten</h2>
     </div>
-    <button class="icon-button" type="button" aria-label="Editor schließen" (click)="closed.emit()">
-      ×
-    </button>
+    <div class="inspector-header-actions">
+      <button
+        class="preview-action"
+        type="button"
+        data-testid="block-preview-editor"
+        aria-label="Aktuellen Block anhören"
+        title="Aktuellen Block anhören"
+        [disabled]="events().length === 0"
+        (click)="blockPreviewRequested.emit()"
+      >
+        <span aria-hidden="true">▶</span> Block
+      </button>
+      <div class="editor-history-actions" role="group" aria-label="Änderungsverlauf">
+        <button
+          class="history-action"
+          type="button"
+          data-testid="undo-structure-editor"
+          aria-label="Rückgängig"
+          title="Rückgängig (Strg+Z)"
+          [disabled]="!canUndo()"
+          (click)="undoRequested.emit()"
+        >
+          <span aria-hidden="true">↶</span>
+        </button>
+        <button
+          class="history-action"
+          type="button"
+          data-testid="redo-structure-editor"
+          aria-label="Wiederholen"
+          title="Wiederholen (Strg+Y)"
+          [disabled]="!canRedo()"
+          (click)="redoRequested.emit()"
+        >
+          <span aria-hidden="true">↷</span>
+        </button>
+      </div>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label="Editor schließen"
+        title="Editor schließen (Esc)"
+        (click)="closed.emit()"
+      >
+        ×
+      </button>
+    </div>
   </header>
 
-  <div class="block-actions" aria-label="Blockstruktur bearbeiten">
-    <button
-      type="button"
-      data-testid="undo-structure-editor"
-      [disabled]="!canUndo()"
-      (click)="undoRequested.emit()"
-    >
-      Rückgängig
-    </button>
-    <button
-      type="button"
-      data-testid="block-add-word"
-      (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
-    >
-      Wort danach
-    </button>
-    <button
-      type="button"
-      data-testid="block-add-melody"
-      (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
-    >
-      Melodie danach
-    </button>
-    <button
-      type="button"
-      data-testid="block-duplicate"
-      (click)="structureAction.emit({ kind: 'duplicate-block' })"
-    >
-      Block duplizieren
-    </button>
-    <button
-      type="button"
-      data-testid="block-copy-next-line"
-      [disabled]="!canCopyToNextLine()"
-      (click)="structureAction.emit({ kind: 'copy-events-to-next-line' })"
-    >
-      Töne in nächste Zeile
-    </button>
-    <button
-      type="button"
-      data-testid="block-delete"
-      [disabled]="!canDeleteBlock()"
-      (click)="structureAction.emit({ kind: 'delete-block' })"
-    >
-      Block löschen
-    </button>
-  </div>
-
-  <mat-form-field appearance="outline">
-    <mat-label>Wort oder Textstück</mat-label>
-    <input
-      matInput
-      [attr.data-testid]="'word-' + testIdSuffix()"
-      [formControl]="textControl()"
-      autocomplete="off"
-    />
-  </mat-form-field>
-
-  <section aria-labelledby="events-title">
-    <div class="section-heading">
-      <h3 id="events-title">Musikereignisse</h3>
-      <span>{{ events().length }}</span>
-    </div>
-    @if (events().length) {
-      <div class="event-list">
-        @for (event of events(); track $index) {
-          <button
-            class="event-chip"
-            type="button"
-            [attr.data-testid]="'event-remove-' + $index"
-            [attr.aria-label]="eventKindLabel(event) + ' ' + eventLabel(event) + ' entfernen'"
-            (click)="removeEvent($index)"
-          >
-            <small>{{ eventKindLabel(event) }}</small>
-            <strong>{{ eventLabel(event) }}</strong>
-            <span aria-hidden="true">×</span>
-          </button>
-        }
-      </div>
-    } @else {
-      <p class="empty-state">Noch keine Töne in diesem Block.</p>
-    }
-  </section>
-
-  <section aria-labelledby="keys-title">
-    <div class="section-heading">
-      <h3 id="keys-title">Kalimba-Zungen</h3>
-      <fieldset class="mode-picker">
-        <legend class="visually-hidden">Einfügemodus</legend>
-        <label>
-          <input
-            type="radio"
-            name="insert-mode"
-            value="single"
-            [checked]="insertMode() === 'single'"
-            (change)="setInsertMode('single')"
-          />
-          Einzelton
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="insert-mode"
-            value="chord"
-            [checked]="insertMode() === 'chord'"
-            (change)="setInsertMode('chord')"
-          />
-          Akkord
-        </label>
-      </fieldset>
-    </div>
-    <p class="key-help">Umrandet = im Block vorhanden. Pink = für den neuen Akkord ausgewählt.</p>
-    <div class="key-palette" aria-label="17 Kalimba-Zungen in physischer Reihenfolge">
-      @for (key of keys(); track key.id) {
-        <button
-          class="key-button"
-          type="button"
-          [class.is-used]="isPitchUsed(key.pitch)"
-          [class.is-draft]="isPitchInDraft(key.pitch)"
-          [style.--key-color]="key.color"
-          [attr.data-testid]="'key-' + key.id"
-          [attr.aria-pressed]="insertMode() === 'chord' ? isPitchInDraft(key.pitch) : null"
-          [attr.aria-label]="
-            key.letter + ' ' + key.value + ', ' + (key.hand === 'R' ? 'rechte' : 'linke') + ' Hand'
-          "
-          (click)="handleKey(key)"
-        >
-          <small>{{ key.hand }}</small>
-          <strong>{{ key.letter }}</strong>
-          <span>{{ key.value }}</span>
-        </button>
-      }
-    </div>
-    @if (insertMode() === 'chord') {
-      <div class="chord-draft" aria-live="polite">
-        <span>{{ draftLabel() }}</span>
-        <button type="button" [disabled]="chordDraft().length < 2" (click)="insertChord()">
-          Akkord einfügen
-        </button>
+  <div class="word-editor-content">
+    @if (isMelodyBlock()) {
+      <div class="melody-block-marker" data-testid="melody-block-marker">
+        <span aria-hidden="true">♪</span>
+        <strong>Melodieblock</strong>
       </div>
     }
-    <button class="secondary-action" type="button" (click)="insertSeparator()">
-      Trenner einfügen
-    </button>
-  </section>
-
-  @if (notice(); as message) {
-    <p class="editor-notice" role="alert">{{ message }}</p>
-  }
-
-  <details open>
-    <summary>Textnotation und Kompatibilität</summary>
     <mat-form-field appearance="outline">
-      <mat-label>Legacy-Notation</mat-label>
+      <mat-label>{{
+        isMelodyBlock() ? 'Optionaler Text zum Melodieblock' : 'Wort oder Textstück'
+      }}</mat-label>
       <input
         matInput
-        class="notation-input"
-        [attr.data-testid]="'notation-' + testIdSuffix()"
-        [formControl]="notationControl()"
+        [attr.data-testid]="'word-' + testIdSuffix()"
+        [formControl]="visibleTextControl"
         autocomplete="off"
       />
-      <mat-hint>
-        @if (hasUnknownFragments()) {
-          Unbekannte Fragmente bleiben bei unveränderter Notation erhalten.
-        } @else {
-          <code>(13)</code> = Akkord · <code>-</code> = Trenner
-        }
-      </mat-hint>
     </mat-form-field>
-  </details>
+
+    <details class="syllable-split" data-testid="syllable-split">
+      <summary>Text in Silben teilen</summary>
+      @if (canSplitSyllable()) {
+        @if (splitPreview(); as preview) {
+          <div class="split-controls">
+            <label>
+              <span>Trennstelle</span>
+              <select
+                data-testid="syllable-split-point"
+                [value]="selectedSplitIndex()"
+                (change)="setSplitIndex($any($event.target).value)"
+              >
+                @for (point of splitPoints(); track point) {
+                  @if (previewSyllableSplitFor(point); as option) {
+                    <option [value]="point">
+                      {{ option.firstText }} | {{ option.secondText }}
+                    </option>
+                  }
+                }
+              </select>
+            </label>
+            <label>
+              <span>Melodie zuordnen</span>
+              <select
+                data-testid="syllable-split-events-melody"
+                [value]="selectedFirstEventCount('melody')"
+                (change)="setFirstSplitEventCount('melody', $any($event.target).value)"
+              >
+                @for (count of splitEventCounts('melody'); track count) {
+                  <option [value]="count">
+                    {{ count }} zu erster · {{ eventsForTrack('melody').length - count }} zu zweiter
+                  </option>
+                }
+              </select>
+            </label>
+            <label>
+              <span>Begleitung zuordnen</span>
+              <select
+                data-testid="syllable-split-events-accompaniment"
+                [value]="selectedFirstEventCount('accompaniment')"
+                (change)="setFirstSplitEventCount('accompaniment', $any($event.target).value)"
+              >
+                @for (count of splitEventCounts('accompaniment'); track count) {
+                  <option [value]="count">
+                    {{ count }} zu erster · {{ eventsForTrack('accompaniment').length - count }} zu
+                    zweiter
+                  </option>
+                }
+              </select>
+            </label>
+          </div>
+          <div class="split-preview" data-testid="syllable-split-preview" aria-live="polite">
+            <span
+              ><strong>{{ preview.firstText }}</strong
+              ><small
+                >{{ selectedFirstEventCount('melody') }} Melodie ·
+                {{ selectedFirstEventCount('accompaniment') }} Begleitung</small
+              ></span
+            >
+            <span
+              ><strong>{{ preview.secondText }}</strong
+              ><small
+                >{{ eventsForTrack('melody').length - selectedFirstEventCount('melody') }} Melodie ·
+                {{
+                  eventsForTrack('accompaniment').length - selectedFirstEventCount('accompaniment')
+                }}
+                Begleitung</small
+              ></span
+            >
+          </div>
+          <p class="split-note">
+            Die Ereignisse bleiben in ihrer Reihenfolge, Spur und Dauer erhalten.
+          </p>
+          <button
+            class="split-confirm"
+            type="button"
+            data-testid="syllable-split-confirm"
+            [disabled]="!canApplySyllableSplit()"
+            (click)="splitSyllable()"
+          >
+            Teilung übernehmen
+          </button>
+        }
+      } @else {
+        <p class="split-note" data-testid="syllable-split-unavailable">
+          Zum sicheren Teilen braucht dieser Text mindestens zwei Musikereignisse und eine
+          eindeutige Trennstelle. Melodieblöcke und Notation mit unbekannten Legacy-Fragmenten
+          bleiben unverändert.
+        </p>
+      }
+    </details>
+
+    <section aria-labelledby="events-title">
+      <div class="section-heading">
+        <h3 id="events-title">Musikereignisse</h3>
+        <span data-testid="event-count">{{ eventCountLabel() }}</span>
+      </div>
+      <div class="track-rows">
+        @for (track of trackOptions; track track) {
+          <section
+            class="track-row"
+            [class.is-target]="activeTrack() === track"
+            [attr.data-testid]="'track-row-' + track"
+          >
+            <header>
+              <strong>{{ trackLabel(track) }}</strong>
+              <button
+                type="button"
+                [attr.data-testid]="'track-target-' + track"
+                [attr.aria-pressed]="activeTrack() === track"
+                (click)="setActiveTrack(track)"
+              >
+                {{ activeTrack() === track ? 'Aktive Zielspur' : 'Hier einfügen' }}
+              </button>
+            </header>
+            @if (eventsForTrack(track).length) {
+              <div class="event-list">
+                @for (entry of eventsForTrack(track); track entry.index) {
+                  <div
+                    class="event-chip"
+                    [attr.data-track]="track"
+                    [attr.data-profile-colors]="eventColors(entry.event).join(',')"
+                    [style.--duration-beats]="eventDurationBeats(entry.event)"
+                    [attr.data-duration-beats]="eventDurationBeats(entry.event)"
+                  >
+                    @if (entry.event.kind !== 'separator') {
+                      <button
+                        class="event-preview-action"
+                        type="button"
+                        [attr.data-testid]="'event-preview-' + entry.index"
+                        [attr.aria-label]="
+                          eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' anhören'
+                        "
+                        title="Ereignis anhören"
+                        (click)="previewEvent(track, entry.trackIndex)"
+                      >
+                        <span aria-hidden="true">▶</span>
+                      </button>
+                    }
+                    <button
+                      class="event-remove-action"
+                      type="button"
+                      [attr.data-testid]="'event-remove-' + entry.index"
+                      [attr.aria-label]="
+                        eventKindLabel(entry.event) + ' ' + eventLabel(entry.event) + ' entfernen'
+                      "
+                      (click)="removeEvent(track, entry.trackIndex)"
+                    >
+                      <small>{{ eventKindLabel(entry.event) }}</small>
+                      <strong>{{ eventLabel(entry.event) }}</strong>
+                      <span class="event-remove-mark" aria-hidden="true">×</span>
+                    </button>
+                    <span class="event-color-strip" aria-hidden="true">
+                      @for (color of eventColors(entry.event); track $index) {
+                        <i [style.background-color]="color" [attr.data-profile-color]="color"></i>
+                      }
+                    </span>
+                    @if (entry.event.kind !== 'separator') {
+                      <label class="event-duration-control">
+                        <span>Dauer</span>
+                        <select
+                          [attr.data-testid]="'event-duration-' + entry.index"
+                          [value]="eventDurationBeats(entry.event)"
+                          [attr.aria-label]="'Dauer von ' + eventLabel(entry.event)"
+                          (change)="
+                            setEventDuration(track, entry.trackIndex, $any($event.target).value)
+                          "
+                        >
+                          <option value="1">1 Schlag</option>
+                          <option value="2">2 Schläge</option>
+                        </select>
+                      </label>
+                    } @else {
+                      <span class="event-duration-label">{{
+                        eventDurationLabel(entry.event)
+                      }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="empty-state">Noch keine Ereignisse in dieser Spur.</p>
+            }
+          </section>
+        }
+      </div>
+      @if (parallelCollisionWarning(); as warning) {
+        <p class="editor-notice" role="alert">{{ warning }}</p>
+      }
+    </section>
+
+    <section aria-labelledby="keys-title">
+      <div class="section-heading">
+        <h3 id="keys-title">Kalimba-Zungen</h3>
+        <fieldset class="mode-picker">
+          <legend class="visually-hidden">Einfügemodus</legend>
+          <label>
+            <input
+              type="radio"
+              name="insert-mode"
+              value="single"
+              [checked]="insertMode() === 'single'"
+              (change)="setInsertMode('single')"
+            />
+            Einzelton
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="insert-mode"
+              value="chord"
+              [checked]="insertMode() === 'chord'"
+              (change)="setInsertMode('chord')"
+            />
+            Akkord
+          </label>
+        </fieldset>
+      </div>
+      <p class="key-help">Umrandet = im Block vorhanden. Pink = für den neuen Akkord ausgewählt.</p>
+      <label class="key-audition-option">
+        <input
+          type="checkbox"
+          data-testid="audition-keys"
+          [checked]="auditionKeys()"
+          (change)="auditionKeys.set($any($event.target).checked)"
+        />
+        Ton beim Klick auf Zunge anhören
+      </label>
+      <p class="key-scroll-hint" id="key-scroll-hint">
+        Nach Spielhand gruppiert. Auf kleinen Bildschirmen je Hand seitlich wischen.
+      </p>
+      <div
+        class="key-hands"
+        data-testid="key-palette"
+        aria-label="17 Kalimba-Zungen, nach linker und rechter Hand gruppiert"
+        aria-describedby="key-scroll-hint"
+      >
+        @for (
+          group of [
+            { label: 'Linke Hand', id: 'left', keys: leftKeys() },
+            { label: 'Rechte Hand', id: 'right', keys: rightKeys() },
+          ];
+          track group.id
+        ) {
+          <section
+            class="key-hand-group"
+            [attr.aria-labelledby]="'key-hand-' + group.id + '-title'"
+          >
+            <div class="key-hand-heading">
+              <strong [id]="'key-hand-' + group.id + '-title'">{{ group.label }}</strong>
+              <span>{{ group.keys.length }} Zungen</span>
+            </div>
+            <div class="key-palette-shell">
+              <span class="key-scroll-cue" aria-hidden="true">← seitlich wischen →</span>
+              <div
+                class="key-palette"
+                [attr.data-testid]="'key-palette-' + group.id"
+                [attr.aria-label]="group.label + ': ' + group.keys.length + ' Kalimba-Zungen'"
+              >
+                @for (key of group.keys; track key.id) {
+                  <button
+                    class="key-button"
+                    type="button"
+                    [class.is-used]="isPitchUsed(key.pitch)"
+                    [class.is-draft]="isPitchInDraft(key.pitch)"
+                    [style.--key-color]="key.color"
+                    [style.--key-ink]="keyInkColor(key.color)"
+                    [attr.data-testid]="'key-' + key.id"
+                    [attr.data-profile-color]="key.color"
+                    [attr.aria-pressed]="
+                      insertMode() === 'chord' ? isPitchInDraft(key.pitch) : null
+                    "
+                    [attr.aria-label]="
+                      key.letter +
+                      ' ' +
+                      key.value +
+                      ', ' +
+                      (key.hand === 'R' ? 'rechte' : 'linke') +
+                      ' Hand'
+                    "
+                    (click)="handleKey(key)"
+                  >
+                    <small>{{ key.hand }}</small>
+                    <strong>{{ key.letter }}</strong>
+                    <span>{{ key.value }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          </section>
+        }
+      </div>
+      @if (insertMode() === 'chord') {
+        <div class="chord-draft" aria-live="polite">
+          <span>{{ draftLabel() }}</span>
+          <button type="button" [disabled]="chordDraft().length < 2" (click)="insertChord()">
+            Akkord einfügen
+          </button>
+        </div>
+      }
+      <button class="secondary-action" type="button" (click)="insertSeparator()">
+        Trenner einfügen
+      </button>
+    </section>
+
+    @if (notice(); as message) {
+      <p class="editor-notice" role="alert">{{ message }}</p>
+    }
+
+    <details class="block-management" data-testid="block-management">
+      <summary>Block einfügen und verwalten</summary>
+      <section class="add-next-block" aria-labelledby="add-next-block-title">
+        <div>
+          <strong id="add-next-block-title">Nächsten Liedblock anlegen</strong>
+          <p>Direkt hinter dem aktuell bearbeiteten Block.</p>
+        </div>
+        <div class="add-next-block-actions">
+          <button
+            class="primary-block-action"
+            type="button"
+            data-testid="block-add-word"
+            (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'word' })"
+          >
+            + Textblock
+          </button>
+          <button
+            type="button"
+            data-testid="block-add-melody"
+            (click)="structureAction.emit({ kind: 'insert-block', blockKind: 'melody' })"
+          >
+            + Melodieblock
+          </button>
+        </div>
+      </section>
+      <details
+        class="more-block-actions"
+        data-testid="more-block-actions"
+        [open]="moreActionsOpen()"
+      >
+        <summary
+          aria-controls="more-block-actions-menu"
+          [attr.aria-expanded]="moreActionsOpen()"
+          (click)="toggleMoreActions($event)"
+        >
+          Seltene und destruktive Aktionen
+        </summary>
+        <div id="more-block-actions-menu" class="block-actions" aria-label="Weitere Blockaktionen">
+          <button
+            type="button"
+            data-testid="block-duplicate"
+            (click)="runStructureAction({ kind: 'duplicate-block' })"
+          >
+            Block duplizieren
+          </button>
+          <button
+            type="button"
+            data-testid="block-copy-next-line"
+            [disabled]="!canCopyToNextLine()"
+            (click)="copyActiveTrackToNextLine()"
+          >
+            {{ trackLabel(activeTrack()) }} in nächste Zeile
+          </button>
+          <button
+            class="destructive-action"
+            type="button"
+            data-testid="block-delete"
+            [disabled]="!canDeleteBlock()"
+            (click)="runStructureAction({ kind: 'delete-block' })"
+          >
+            Block löschen
+          </button>
+        </div>
+      </details>
+    </details>
+
+    <details>
+      <summary>Textnotation und Kompatibilität</summary>
+      <mat-form-field appearance="outline">
+        <mat-label>Legacy-Notation</mat-label>
+        <input
+          matInput
+          class="notation-input"
+          [attr.data-testid]="'notation-' + testIdSuffix()"
+          [formControl]="notationControl()"
+          autocomplete="off"
+        />
+        <mat-hint>
+          @if (hasUnknownFragments()) {
+            Unbekannte Fragmente bleiben bei unveränderter Notation erhalten.
+          } @else {
+            <code>(13)</code> = Akkord · <code>-</code> = Trenner
+          }
+        </mat-hint>
+      </mat-form-field>
+    </details>
+  </div>
 </aside>

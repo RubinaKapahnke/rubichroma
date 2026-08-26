@@ -34,7 +34,9 @@ Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus de
 
 ## Aktueller Schnitt
 
-Nachweislich integriert sind Laden/Migration, Titel- und Textbearbeitung, getrennte Melodie-/Begleitspuren, sichtbare weitere Notendauern, Einzelnoten, Akkorde, Pausen und Trenner, Strukturaktionen, Undo/Redo, Desktop- sowie Touch-/Langdruck-Mehrfachauswahl, positionsweise Zwischenablage, Drag-and-drop innerhalb und zwischen Zeilen einschließlich Tastaturalternative, manuelle Silbentrennung mit editierbarer Vorschau und Ereigniszuordnung, Autosave, versionierter Sicherungsexport/-restore sowie JSON-Import/-Export. Der Editor-Player-Rundweg verwendet denselben Song; Player, Liedtext und Notenblatt projizieren dieselben getrennten Spuren und Silbenzuordnungen.
+Nachweislich integriert sind Laden/Migration, Titel- und Textbearbeitung, getrennte Melodie-/Begleitspuren, sichtbare weitere Notendauern, Einzelnoten, Akkorde, Pausen und Trenner, Strukturaktionen, Undo/Redo, Desktop- sowie Touch-/Langdruck-Mehrfachauswahl, positionsweise Zwischenablage, Drag-and-drop innerhalb und zwischen Zeilen einschließlich Tastaturalternative, manuelle Silbentrennung mit editierbarer Vorschau und Ereigniszuordnung, Autosave, versionierter Sicherungsexport und -Restore sowie JSON-Import/-Export.
+
+Der erste produktive Player-Schnitt öffnet denselben geladenen Song aus dem Editor und projiziert Tone.js-Transport, synthetischen Klang, Flow, Lauf-Tab, Liedtext, Notenblatt und die physische 17-Zungen-Kalimba aus einer gemeinsamen Timeline. Melodie, Begleitung, Dauern und Silbenzuordnungen stammen aus denselben kanonischen Editor-Daten.
 
 Der bestätigte nächste Fachvertrag ersetzt die sichtbare/fachliche „Block“-Einheit durch vollständige Takte. Unterfüllte Takte zeigen leere Rasterzeit; bekannte Test-Fixtures dürfen deterministisch normalisiert oder neu aufgebaut werden. Dies beschreibt den freigegebenen Zielvertrag, nicht bereits integrierten Funktionsstand. `localStorage['kalimba-note-tool-v1']` bleibt unverändert.
 

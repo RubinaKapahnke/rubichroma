@@ -1,13 +1,13 @@
 import Dexie from 'dexie';
 import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { COMPLETE_LEGACY } from '../../../testing/fixtures/legacy-v0.fixtures';
-import {
-  encodeLegacyNotation,
-  replaceWithLegacyNotation,
-} from '../../domain/legacy-notation-codec';
-import { stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
-import { KalimbaDatabase } from './kalimba.database';
+import { encodeLegacyNotation, fidelityForEvents } from '../../domain/legacy-notation-codec';
+import { createEmptySongDocument } from '../../domain/default-document';
+import { MusicEvent } from '../../domain/music-event';
+import { createTrackedWordFields, projectSongWordEvents } from '../../domain/song-document';
+import { parseLegacyV0, stringifyVanillaCompatible } from '../legacy/legacy-v0.adapter';
+import { CURRENT_SONG_META_KEY, KalimbaDatabase } from './kalimba.database';
 import { SongRepository } from './song.repository';
 
 Dexie.dependencies.indexedDB = indexedDB;
@@ -60,15 +60,15 @@ describe('SongRepository', () => {
       extra: {},
     });
     imported.song.title = 'Bearbeitet';
-    Object.assign(imported.song.lines[0].words[0], replaceWithLegacyNotation('(13)-x('));
+    Object.assign(imported.song.lines[0].words[0], createTrackedWordFields('(13)-x('));
     const saved = await repo.save(imported);
     const secondRepo = repository();
     const reimported = await secondRepo.migrateLegacy(stringifyVanillaCompatible(saved), saved);
     expect(reimported.song.title).toBe('Bearbeitet');
     const reimportedWord = reimported.song.lines[0].words[0];
-    expect(encodeLegacyNotation(reimportedWord.events, reimportedWord.legacyNotation)).toBe(
-      '(13)-x(',
-    );
+    expect(
+      encodeLegacyNotation(projectSongWordEvents(reimportedWord), reimportedWord.legacyNotation),
+    ).toBe('(13)-x(');
     expect(reimported.extra['unknownRoot']).toEqual(COMPLETE_LEGACY['unknownRoot']);
   });
 
@@ -115,6 +115,288 @@ describe('SongRepository', () => {
     expect((await repo.load())?.song.title).toBe('Die Schöne – Grüße');
   });
 
+  it('keeps saves bound to their stable song id across a current-song switch', async () => {
+    const repo = repository();
+    const first = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    const firstRecord = (await repo.database.songs.get(firstId))!;
+    const second = structuredClone(firstRecord);
+    second.id = 'song-secondary';
+    second.document.song.title = 'Second song';
+    second.revision = 1;
+    await repo.database.songs.put(second);
+    const secondUpdatedAt = second.updatedAt;
+
+    await repo.openSong(second.id);
+    const lateFirstSave = structuredClone(first);
+    lateFirstSave.song.title = 'Late save for first song';
+    await repo.save(lateFirstSave, firstId);
+
+    expect(await repo.currentSongId()).toBe(second.id);
+    expect((await repo.load(second.id))?.song.title).toBe('Second song');
+    expect((await repo.load(firstId))?.song.title).toBe('Late save for first song');
+    expect((await repo.database.songs.get(second.id))?.updatedAt).toBe(secondUpdatedAt);
+  });
+
+  it('creates and lists an independent empty song without altering the existing song', async () => {
+    const repo = repository();
+    const first = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    const created = await repo.createSong(createEmptySongDocument());
+
+    expect(created.id).toMatch(/^song-/);
+    expect(created.id).not.toBe(firstId);
+    expect(created.document.song.title).toBe('Neues Lied');
+    expect(created.document.song.lines[0].words[0].text).toBe('');
+    expect(created.document.keys).toHaveLength(17);
+    expect(await repo.currentSongId()).toBe(created.id);
+    expect(await repo.load(firstId)).toEqual(first);
+    expect(await repo.listSongs()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: firstId, title: first.song.title }),
+        expect.objectContaining({ id: created.id, title: 'Neues Lied' }),
+      ]),
+    );
+  });
+
+  it('rolls back a new song and current selection when creation fails', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated create failure');
+    });
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    fail = true;
+
+    await expect(repo.createSong(createEmptySongDocument())).rejects.toThrow(
+      'simulated create failure',
+    );
+    expect(await repo.currentSongId()).toBe(firstId);
+    expect(await repo.database.songs.count()).toBe(3);
+  });
+
+  it('renames and duplicates songs without changing their musical or unknown data', async () => {
+    const repo = repository();
+    const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const originalId = (await repo.currentSongId())!;
+    const originalRecord = (await repo.database.songs.get(originalId))!;
+    await repo.database.songs.put({
+      ...originalRecord,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+
+    const renamed = await repo.renameSong(originalId, 'Umbenanntes Lied');
+    const expectedRenamed = structuredClone(original);
+    expectedRenamed.song.title = 'Umbenanntes Lied';
+    expect(renamed.document).toEqual(expectedRenamed);
+    expect(renamed.createdAt).toBe('2025-01-01T00:00:00.000Z');
+    expect(renamed.updatedAt > '2025-01-01T00:00:00.000Z').toBe(true);
+
+    const duplicate = await repo.duplicateSong(originalId);
+    const expectedDuplicate = structuredClone(expectedRenamed);
+    expectedDuplicate.song.title = 'Umbenanntes Lied – Kopie';
+    expect(duplicate.id).not.toBe(originalId);
+    expect(duplicate.familyId).not.toBe(renamed.familyId);
+    expect(duplicate.variantName).toBe('Original');
+    expect(duplicate.document).toEqual(expectedDuplicate);
+    expect(duplicate.createdAt).not.toBe(renamed.createdAt);
+    expect(await repo.currentSongId()).toBe(originalId);
+    expect((await repo.load(originalId))?.song.title).toBe('Umbenanntes Lied');
+    expect((await repo.listSongs()).map((song) => song.id)).toContain(duplicate.id);
+
+    const variant = await repo.duplicateSongAsVariant(originalId, 'C-Stimmung');
+    expect(variant.id).not.toBe(originalId);
+    expect(variant.familyId).toBe(renamed.familyId);
+    expect(variant.variantName).toBe('C-Stimmung');
+    expect(variant.document).toEqual(renamed.document);
+
+    const changedVariant = structuredClone(variant.document);
+    changedVariant.song.lines[0].words[0].text = 'Nur in der Variante';
+    await repo.save(changedVariant, variant.id);
+    expect((await repo.load(variant.id))?.song.lines[0].words[0].text).toBe('Nur in der Variante');
+    expect((await repo.load(originalId))?.song.lines[0].words[0].text).not.toBe(
+      'Nur in der Variante',
+    );
+
+    const renamedVariant = await repo.renameVariant(variant.id, 'Einfach');
+    expect(renamedVariant.variantName).toBe('Einfach');
+    expect(renamedVariant.familyId).toBe(renamed.familyId);
+  });
+
+  it('rolls back a failed rename without changing the original or active song', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated rename failure');
+    });
+    const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const originalId = (await repo.currentSongId())!;
+    fail = true;
+
+    await expect(repo.renameSong(originalId, 'Nicht gespeichert')).rejects.toThrow(
+      'simulated rename failure',
+    );
+    expect(await repo.currentSongId()).toBe(originalId);
+    expect(await repo.load(originalId)).toEqual(original);
+  });
+
+  it('keeps the previous current song when switching fails inside the transaction', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated switch failure');
+    });
+    const first = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const firstId = (await repo.currentSongId())!;
+    const second = structuredClone((await repo.database.songs.get(firstId))!);
+    second.id = 'song-switch-target';
+    second.document.song.title = 'Switch target';
+    await repo.database.songs.put(second);
+
+    fail = true;
+    await expect(repo.openSong(second.id)).rejects.toThrow('simulated switch failure');
+
+    expect(await repo.currentSongId()).toBe(firstId);
+    expect(await repo.load()).toEqual(first);
+  });
+
+  it('exports and restores the exact song record and related metadata atomically', async () => {
+    const repo = repository();
+    const original = await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const enriched = structuredClone(original);
+    enriched.song.lines[0].words[0].melodyEvents[0] = {
+      ...enriched.song.lines[0].words[0].melodyEvents[0],
+      duration: 2,
+      eventUnknown: { nested: ['kept'] },
+    } as unknown as MusicEvent;
+    enriched.song.lines[0].words[0].extra['backupUnknown'] = { fidelity: true };
+    await repo.save(enriched);
+    await repo.database.meta.put({ key: 'profile-setting', value: '{"mode":"full"}' });
+    const backup = await repo.exportLocalBackupSnapshot();
+
+    const changed = structuredClone(enriched);
+    changed.song.title = 'Temporary local change';
+    await repo.save(changed);
+    await repo.database.meta.put({ key: 'profile-setting', value: 'changed' });
+
+    expect(await repo.restoreLocalBackupSnapshot(backup)).toEqual(backup.songs[0].document);
+    expect(await repo.database.songs.toArray()).toEqual(backup.songs);
+    expect(await repo.database.meta.toArray()).toEqual(backup.metadata);
+  });
+
+  it('rolls back both song and metadata when a restore transaction fails', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated restore failure');
+    });
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const before = await repo.exportLocalBackupSnapshot();
+    const candidate = structuredClone(before);
+    candidate.songs[0].document.song.title = 'Must roll back';
+    candidate.metadata.push({ key: 'restore-only', value: 'must roll back' });
+
+    fail = true;
+    await expect(repo.restoreLocalBackupSnapshot(candidate)).rejects.toThrow(
+      'simulated restore failure',
+    );
+    expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
+  });
+
+  it('imports the backed-up current song repeatedly with fresh identity and exact fidelity', async () => {
+    const repo = repository();
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const originalId = (await repo.currentSongId())!;
+    const originalRecord = structuredClone((await repo.database.songs.get(originalId))!);
+    const snapshot = await repo.exportLocalBackupSnapshot();
+    const source = snapshot.songs.find((song) => song.id === originalId)!;
+    source.document.song.title = 'Importierter Sicherungssong';
+    source.document.song.lines[0].words[0].melodyEvents[0] = {
+      ...source.document.song.lines[0].words[0].melodyEvents[0],
+      duration: 2,
+      importedUnknown: { nested: ['bleibt', 2] },
+    } as unknown as MusicEvent;
+    source.document.song.lines[0].words[0].extra['backupImportUnknown'] = {
+      fidelity: true,
+    };
+
+    const first = await repo.importLocalBackupAsNewSong(snapshot);
+    const second = await repo.importLocalBackupAsNewSong(snapshot);
+
+    expect(first.id).toMatch(/^song-/);
+    expect(second.id).toMatch(/^song-/);
+    expect(new Set([originalId, first.id, second.id]).size).toBe(3);
+    expect(first.document).toEqual(source.document);
+    expect(second.document).toEqual(source.document);
+    expect(first.revision).toBe(1);
+    expect(first.createdAt).toBe(first.updatedAt);
+    expect(second.createdAt).toBe(second.updatedAt);
+    expect(await repo.currentSongId()).toBe(second.id);
+    expect(await repo.database.songs.get(originalId)).toEqual(originalRecord);
+    expect(await repo.database.songs.count()).toBe(5);
+  });
+
+  it('leaves songs and metadata unchanged when new-song backup import fails', async () => {
+    let fail = false;
+    const repo = repository(() => {
+      if (fail) throw new Error('simulated backup import failure');
+    });
+    await repo.migrateLegacy(JSON.stringify(COMPLETE_LEGACY), {
+      song: { title: '', lines: [], extra: {} },
+      keys: [],
+      extra: {},
+    });
+    const snapshot = await repo.exportLocalBackupSnapshot();
+    const before = structuredClone(snapshot);
+    fail = true;
+
+    await expect(repo.importLocalBackupAsNewSong(snapshot)).rejects.toThrow(
+      'simulated backup import failure',
+    );
+    expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
+
+    const randomUuid = vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+      throw new Error('simulated id failure');
+    });
+    await expect(repo.importLocalBackupAsNewSong(snapshot)).rejects.toThrow('simulated id failure');
+    randomUuid.mockRestore();
+    expect(await repo.exportLocalBackupSnapshot()).toEqual(before);
+  });
+
   it('atomically upgrades a real Dexie v1 song record to structured events', async () => {
     const name = `upgrade-${crypto.randomUUID()}`;
     const legacyDocument = storedV1Document();
@@ -131,16 +413,89 @@ describe('SongRepository', () => {
 
     const database = new KalimbaDatabase(name);
     databases.push(database);
-    const stored = await database.songs.get('current');
+    const currentId = (await database.meta.get(CURRENT_SONG_META_KEY))?.value;
+    const stored = currentId ? await database.songs.get(currentId) : undefined;
     const marker = await database.meta.get('legacy-v0-imported');
 
     expect(stored?.revision).toBe(4);
+    expect(stored?.id).toMatch(/^song-/);
+    expect(stored?.id).not.toBe('current');
+    expect(stored?.createdAt).toBe('2025-01-01T00:00:00.000Z');
     expect(stored?.updatedAt).toBe('2025-01-01T00:00:00.000Z');
+    expect(stored?.familyId).toBe(`family-${stored?.id}`);
+    expect(stored?.variantName).toBe('Original');
     expect(marker?.value).toBe('marker');
     expect('notation' in (stored?.document.song.lines[0].words[0] ?? {})).toBe(false);
     expect(stringifyVanillaCompatible(stored!.document)).toContain(
       JSON.stringify("1' 2′ 3″ (135)-7′"),
     );
+  });
+
+  it('atomically splits Dexie v2 events plus track identity and never duplicates on reopen', async () => {
+    const name = `upgrade-tracks-${crypto.randomUUID()}`;
+    const intermediate = parseLegacyV0(COMPLETE_LEGACY) as unknown as Record<string, any>;
+    for (const line of intermediate['song']['lines']) {
+      for (const word of line['words']) {
+        const canonicalWord = word as ReturnType<
+          typeof parseLegacyV0
+        >['song']['lines'][number]['words'][number];
+        word['events'] = projectSongWordEvents(canonicalWord);
+        delete word['melodyEvents'];
+        delete word['accompanimentEvents'];
+      }
+    }
+    const firstWord = intermediate['song']['lines'][0]['words'][0];
+    firstWord['events'][0]['eventUnknown'] = { nested: ['bleibt'] };
+    const accompaniment = {
+      kind: 'note',
+      pitch: { degree: 7, octave: 0 },
+      duration: 2,
+      track: 'accompaniment',
+      accompanimentUnknown: true,
+    } as unknown as MusicEvent;
+    firstWord['events'].splice(1, 0, accompaniment);
+    firstWord['legacyNotation'] = fidelityForEvents(
+      "1' 7 2â€² 3â€³ (135)-7â€²",
+      firstWord['events'],
+    );
+
+    const v2 = new Dexie(name);
+    v2.version(2).stores({ songs: 'id', meta: 'key' });
+    await v2.table('songs').put({
+      id: 'current',
+      document: intermediate,
+      revision: 8,
+      updatedAt: '2026-08-17T10:00:00.000Z',
+    });
+    v2.close();
+
+    const firstOpen = new KalimbaDatabase(name);
+    databases.push(firstOpen);
+    const currentId = (await firstOpen.meta.get(CURRENT_SONG_META_KEY))?.value;
+    const firstStored = currentId ? await firstOpen.songs.get(currentId) : undefined;
+    const migratedWord = firstStored!.document.song.lines[0].words[0];
+    expect(firstStored).toMatchObject({ revision: 8, updatedAt: '2026-08-17T10:00:00.000Z' });
+    expect(migratedWord.melodyEvents).toHaveLength(6);
+    expect(migratedWord.accompanimentEvents).toHaveLength(1);
+    expect(migratedWord.melodyEvents[0]).toMatchObject({
+      eventUnknown: { nested: ['bleibt'] },
+    });
+    expect(migratedWord.accompanimentEvents[0]).toMatchObject({
+      duration: 2,
+      accompanimentUnknown: true,
+    });
+    expect('events' in migratedWord).toBe(false);
+    firstOpen.close();
+
+    const secondOpen = new KalimbaDatabase(name);
+    const reopenedCurrentId = (await secondOpen.meta.get(CURRENT_SONG_META_KEY))?.value;
+    const secondStored = reopenedCurrentId
+      ? await secondOpen.songs.get(reopenedCurrentId)
+      : undefined;
+    expect(reopenedCurrentId).toBe(currentId);
+    expect(secondStored).toEqual(firstStored);
+    expect(secondStored!.document.song.lines[0].words[0].accompanimentEvents).toHaveLength(1);
+    secondOpen.close();
   });
 
   it('rolls back the Dexie v1 upgrade if a stored word cannot be migrated', async () => {
@@ -167,6 +522,33 @@ describe('SongRepository', () => {
     verifier.version(1).stores({ songs: 'id', meta: 'key' });
     const record = await verifier.table('songs').get('current');
     expect(record.document.song.lines[0].words[0].notation).toBe(42);
+    verifier.close();
+    await Dexie.delete(name);
+  });
+
+  it('fails closed when a v3 database has songs but no unambiguous current record', async () => {
+    const name = `upgrade-ambiguous-${crypto.randomUUID()}`;
+    const v3 = new Dexie(name);
+    v3.version(3).stores({ songs: 'id', meta: 'key' });
+    await v3.table('songs').put({
+      id: 'unexpected-song-id',
+      document: parseLegacyV0(COMPLETE_LEGACY),
+      revision: 3,
+      updatedAt: '2026-08-17T11:00:00.000Z',
+    });
+    v3.close();
+
+    const failedUpgrade = new KalimbaDatabase(name);
+    await expect(failedUpgrade.open()).rejects.toThrow(
+      'Dexie-v3-Ablage enthält Lieder ohne eindeutige aktuelle Auswahl.',
+    );
+    failedUpgrade.close();
+
+    const verifier = new Dexie(name);
+    verifier.version(3).stores({ songs: 'id', meta: 'key' });
+    expect((await verifier.table('songs').toArray()).map((song) => song.id)).toEqual([
+      'unexpected-song-id',
+    ]);
     verifier.close();
     await Dexie.delete(name);
   });

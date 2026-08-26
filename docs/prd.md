@@ -37,7 +37,7 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 1. Tutorialstück oder eigenes Lied wählen.
 2. Farben manuell einrichten oder aus einem Foto übernehmen.
 3. Kurzen Abschnitt ansehen und anhören.
-4. Schwierige Stelle block- oder tonweise markieren.
+4. Schwierige Stelle takt- oder tonweise markieren.
 5. Tempo reduzieren und den Bereich wiederholen.
 6. Farbhilfe vollständig, abgeschwächt oder ohne Farbe anzeigen.
 7. Abschnitt ohne laufende Wiedergabe selbst spielen.
@@ -47,6 +47,7 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 - Das RubiChroma-Logo führt auf allen Seiten zur Startseite. Die konkrete Umsetzung und Abnahme werden in [#12](https://github.com/RubinaKapahnke/rubichroma/issues/12) geführt; Editor und Player sind Verbraucher dieses Vertrags.
 - „Song bearbeiten“ öffnet nach bewusster Auswahl oder Neuanlage denselben Song unmittelbar im Bearbeiten-Modus. Die Editierabsicht ist Navigations-/UI-Zustand und verändert keine Songdaten.
 - Einstiege ohne ausdrückliche Editierabsicht öffnen den ruhigen Ansichtsmodus. „Song abspielen“ bleibt davon getrennt und aktiviert den Bearbeiten-Modus nicht.
+- Abbruch verändert weder aktiven Song noch Modus noch lokale Daten. Erfolgreiche Moduswechsel bleiben eindeutig und reversibel; Fokus, Undo/Redo, Autosave und Datenfidelity bleiben erhalten.
 
 ## MVP-Scope
 

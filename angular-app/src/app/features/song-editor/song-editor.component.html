@@ -1,4 +1,8 @@
-<mat-toolbar class="topbar">
+<mat-toolbar
+  class="topbar"
+  [attr.inert]="interactionMode() === 'editing' && mobileViewport() ? '' : null"
+  [attr.aria-hidden]="interactionMode() === 'editing' && mobileViewport() ? 'true' : null"
+>
   <div class="brand-lockup" aria-label="RubiChroma, Kalimba-Editor">
     <strong class="wordmark" aria-hidden="true"
       ><span class="wordmark-rubi">Rubi</span><span>Chroma</span></strong
@@ -22,170 +26,705 @@
   <span class="save-state" role="status" aria-live="polite" [attr.data-status]="store.status()">
     @switch (store.status()) {
       @case ('loading') {
-        Wird geladen …
+        <span class="save-state-long">Wird geladen …</span
+        ><span class="save-state-short">Lädt</span>
       }
       @case ('saving') {
-        Speichert …
+        <span class="save-state-long">Speichert …</span
+        ><span class="save-state-short">Speichert</span>
       }
       @case ('saved') {
-        Lokal gespeichert
+        <span class="save-state-long">Lokal gespeichert</span
+        ><span class="save-state-short">Gespeichert</span>
       }
       @case ('error') {
-        Aktion erforderlich
+        <span class="save-state-long">Aktion erforderlich</span
+        ><span class="save-state-short">Fehler</span>
       }
     }
   </span>
 </mat-toolbar>
 
-<main>
-  <section class="hero">
-    <p class="kicker" lang="en">Color Your Music</p>
-    <h1>Musik wird sichtbar – in deinen Farben.</h1>
-    <p>
-      Bearbeite Liedtext und Kalimba-Notation in einer klaren, persönlichen Arbeitsfläche.
-      Vorhandene Legacy-Notation bleibt verlustfrei erhalten; Änderungen werden sofort in
-      Musikereignisse übersetzt und automatisch gespeichert.
-    </p>
-  </section>
-
+<main
+  [class.has-multi-selection]="touchSelectionActive()"
+  [attr.inert]="interactionMode() === 'editing' && mobileViewport() ? '' : null"
+  [attr.aria-hidden]="interactionMode() === 'editing' && mobileViewport() ? 'true' : null"
+>
   @if (store.error(); as error) {
     <div class="error" role="alert" data-testid="error-message">{{ error }}</div>
   }
 
   @if (store.hasDocument()) {
-    @if (selectedPositions().length > 0) {
-      <div
-        class="selection-toolbar"
-        role="toolbar"
-        aria-label="Aktionen für ausgewählte Liedblöcke"
-        data-testid="selection-toolbar"
-      >
-        <strong data-testid="selection-count">{{ selectionCountLabel() }}</strong>
-        @if (clipboardCount() > 0) {
-          <span data-testid="clipboard-count">{{ clipboardCount() }} kopiert</span>
-        }
-        <span class="selection-spacer"></span>
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="copy-selection"
-          (click)="copyMusicSelection()"
-        >
-          Noten/Akkorde kopieren
-        </button>
-        <button
-          mat-flat-button
-          type="button"
-          data-testid="paste-selection"
-          [disabled]="!canPasteMusicSelection()"
-          (click)="pasteMusicSelection()"
-        >
-          In Auswahl einfügen
-        </button>
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="clear-selection"
-          (click)="closeWordEditor()"
-        >
-          Auswahl beenden
-        </button>
-      </div>
-    }
-    <mat-card class="editor-card">
-      <mat-card-header>
-        <mat-card-title>Song</mat-card-title>
-        <mat-card-subtitle
-          >{{ lines().length }} Zeilen · Strukturierte Musikereignisse</mat-card-subtitle
-        >
-      </mat-card-header>
-      <mat-card-content>
-        <div class="structure-toolbar">
+    <mat-card
+      class="editor-card"
+      [class.is-editing]="editingEnabled()"
+      [class.has-open-library]="libraryOpen()"
+    >
+      <mat-card-header class="document-toolbar">
+        <div class="document-identity">
+          <label class="visually-hidden" for="song-title">Liedtitel</label>
+          <input
+            id="song-title"
+            class="document-title"
+            data-testid="song-title"
+            [formControl]="title"
+            [attr.readonly]="editingEnabled() ? null : ''"
+            placeholder="Liedtitel"
+            autocomplete="off"
+          />
+          <span class="document-meta">{{ lines().length }} Zeilen · Liedtext und Musik</span>
+        </div>
+
+        <div class="document-actions" aria-label="Dokumentaktionen">
+          <button
+            mat-flat-button
+            type="button"
+            class="player-action"
+            data-testid="open-player"
+            (click)="openPlayer()"
+          >
+            Im Player öffnen
+          </button>
           <button
             mat-stroked-button
             type="button"
-            data-testid="undo-structure"
-            [disabled]="!store.canUndo()"
-            (click)="undoStructure()"
+            class="library-action"
+            data-testid="open-library"
+            [attr.aria-expanded]="libraryOpen()"
+            aria-controls="song-library"
+            (click)="openLibrary()"
           >
-            Rückgängig
+            Liedbibliothek
           </button>
-          @if (actionNotice(); as message) {
-            <span role="status" aria-live="polite" data-testid="structure-status">{{
-              message
-            }}</span>
+          @if (editingEnabled()) {
+            <button
+              mat-stroked-button
+              type="button"
+              data-testid="edit-mode-toggle"
+              aria-pressed="true"
+              (click)="finishEditing()"
+            >
+              Bearbeitung beenden
+            </button>
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              data-testid="edit-mode-toggle"
+              aria-pressed="false"
+              (click)="startEditing()"
+            >
+              Bearbeiten
+            </button>
           }
+          <details class="document-more-actions">
+            <summary aria-label="Weitere Dokumentaktionen">Mehr</summary>
+            <div class="document-more-panel">
+              <input
+                #fileInput
+                hidden
+                type="file"
+                accept="application/json,.json"
+                data-testid="song-file-input"
+                (change)="importFile($event)"
+              />
+              <button type="button" data-testid="import-button" (click)="fileInput.click()">
+                Song-Datei laden
+              </button>
+              <button type="button" data-testid="export-button" (click)="exportFile()">
+                Song-Datei exportieren
+              </button>
+              <div class="document-action-separator" role="separator"></div>
+              <input
+                #backupFileInput
+                hidden
+                type="file"
+                accept="application/json,.json"
+                data-testid="backup-file-input"
+                (change)="inspectLocalBackupFile($event)"
+              />
+              <button
+                type="button"
+                data-testid="backup-import-button"
+                (click)="backupFileInput.click()"
+              >
+                RubiChroma-Sicherung laden
+              </button>
+              <button
+                type="button"
+                data-testid="backup-export-button"
+                (click)="exportLocalBackupFile()"
+              >
+                Lokale Sicherung erstellen
+              </button>
+            </div>
+          </details>
         </div>
-        <mat-form-field appearance="outline" class="title-field">
-          <mat-label>Titel</mat-label>
-          <input matInput data-testid="song-title" [formControl]="title" autocomplete="off" />
-        </mat-form-field>
+      </mat-card-header>
 
-        <div class="editor-layout">
+      <mat-card-content>
+        @if (libraryOpen()) {
+          <section
+            id="song-library"
+            class="song-library"
+            aria-labelledby="song-library-title"
+            data-testid="song-library"
+          >
+            <header class="song-library-header">
+              <div>
+                <h2 id="song-library-title">Lokale Liedbibliothek</h2>
+                <p>Diese Lieder bleiben privat in diesem Browser.</p>
+              </div>
+              <button
+                type="button"
+                class="secondary-action"
+                aria-label="Liedbibliothek schließen"
+                data-testid="close-library"
+                (click)="closeLibrary()"
+              >
+                Schließen
+              </button>
+            </header>
+
+            <div class="song-library-toolbar">
+              <label class="song-library-search">
+                <span>Nach Liedtitel suchen</span>
+                <input
+                  type="search"
+                  data-testid="library-search"
+                  [value]="libraryQuery()"
+                  (input)="updateLibraryQuery($event)"
+                />
+              </label>
+              <span class="library-sort">Sortierung: zuletzt bearbeitet</span>
+              <button
+                mat-flat-button
+                type="button"
+                class="create-song-action"
+                data-testid="create-song"
+                (click)="createNewSong()"
+              >
+                Neues Lied
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                class="text-import-action"
+                data-testid="start-text-notation-import"
+                (click)="startTextNotationImport()"
+              >
+                Textnotation importieren
+              </button>
+            </div>
+
+            @if (libraryNotice(); as notice) {
+              <p class="library-notice" role="status" aria-live="polite">{{ notice }}</p>
+            }
+
+            @if (textImportOpen()) {
+              <section
+                class="text-import-dialog"
+                role="dialog"
+                aria-labelledby="text-import-title"
+                data-testid="text-notation-import"
+              >
+                <header>
+                  <div>
+                    <strong id="text-import-title">Lesbare Textnotation importieren</strong>
+                    <p>
+                      Erste freie Zeile: Titel. Unterstützt werden 1–7, °, Akkorde wie (1+3+5),
+                      Taktgrenzen |, Abschnitte und eindeutige Zeilenverweise.
+                    </p>
+                  </div>
+                  <input
+                    #textNotationFileInput
+                    hidden
+                    type="file"
+                    accept="text/plain,text/markdown,.txt,.md"
+                    data-testid="text-notation-file"
+                    (change)="loadTextNotationFile($event)"
+                  />
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    data-testid="choose-text-notation-file"
+                    (click)="textNotationFileInput.click()"
+                  >
+                    .txt/.md wählen
+                  </button>
+                </header>
+                <label class="text-import-source">
+                  <span>Textnotation einfügen</span>
+                  <textarea
+                    rows="10"
+                    data-testid="text-notation-source"
+                    [value]="textImportSource()"
+                    (input)="updateTextNotationSource($event)"
+                    placeholder="Mein Lied&#10;Intro&#10;Textzeile&#10;1 2° (1+3+5) | 4"
+                  ></textarea>
+                </label>
+
+                @if (textImportPreview(); as preview) {
+                  <section class="text-import-preview" data-testid="text-notation-preview">
+                    <header>
+                      <div>
+                        <span>Erkannter Titel</span>
+                        <strong>{{ preview.title || 'Noch kein Titel' }}</strong>
+                      </div>
+                      <p data-testid="text-notation-counts">
+                        {{ preview.lines.length }} Zeilen · {{ preview.noteCount }} Einzeltöne ·
+                        {{ preview.chordCount }} Akkorde · {{ preview.barlineCount }} Taktgrenzen
+                      </p>
+                    </header>
+
+                    @if (preview.warnings.length) {
+                      <ul class="text-import-warnings" aria-label="Annahmen und Warnungen">
+                        @for (warning of preview.warnings; track $index) {
+                          <li [class.is-blocking]="warning.blocking">
+                            <strong>{{ warning.blocking ? 'Bitte klären' : 'Annahme' }}:</strong>
+                            {{ warning.message }}
+                            @if (warning.source) {
+                              <code>Zeile {{ warning.lineNumber }}: {{ warning.source }}</code>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+
+                    <ol class="text-import-lines" aria-label="Normalisierte Notationszeilen">
+                      @for (line of preview.lines; track $index) {
+                        <li>
+                          <span class="text-import-line-meta">
+                            {{ line.section }} · Zeile {{ line.rowNumber }}
+                            @if (line.repeatedFromRow) {
+                              · expandiert aus {{ line.repeatedFromRow }}
+                            }
+                          </span>
+                          @if (line.text) {
+                            <span class="text-import-lyric">{{ line.text }}</span>
+                          }
+                          <code>{{ line.normalizedNotation }}</code>
+                          <span>
+                            {{ line.eventCount }} Ereignisse · {{ line.barlineCount }} Taktgrenzen
+                          </span>
+                        </li>
+                      }
+                    </ol>
+                  </section>
+                }
+
+                <footer>
+                  <p>Bis zur Bestätigung bleiben aktueller Song und Bibliothek unverändert.</p>
+                  <div>
+                    <button
+                      type="button"
+                      class="secondary-action"
+                      data-testid="cancel-text-notation-import"
+                      (click)="cancelTextNotationImport()"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      class="restore-action"
+                      data-testid="confirm-text-notation-import"
+                      [disabled]="!textImportPreview()?.canImport"
+                      (click)="confirmTextNotationImport()"
+                    >
+                      Als neuen Song importieren
+                    </button>
+                  </div>
+                </footer>
+              </section>
+            }
+
+            @if (pendingDuplicateSongId()) {
+              <section
+                class="duplicate-song-dialog"
+                role="dialog"
+                aria-labelledby="duplicate-song-title"
+                data-testid="duplicate-song-dialog"
+              >
+                <div>
+                  <strong id="duplicate-song-title">Song duplizieren</strong>
+                  <p>
+                    Eine Variante bleibt mit dieser Songfamilie verbunden, kann musikalisch aber
+                    unabhängig bearbeitet werden.
+                  </p>
+                  <label>
+                    <span>Variantenname</span>
+                    <input
+                      type="text"
+                      data-testid="duplicate-variant-name"
+                      [value]="duplicateVariantName()"
+                      (input)="updateDuplicateVariantName($event)"
+                      (keydown.enter)="duplicateAsVariant()"
+                      (keydown.escape)="cancelDuplicate()"
+                    />
+                  </label>
+                </div>
+                <div class="duplicate-song-actions">
+                  <button type="button" class="secondary-action" (click)="cancelDuplicate()">
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    data-testid="duplicate-independent"
+                    (click)="duplicateAsIndependentSong()"
+                  >
+                    Als eigenständigen Song duplizieren
+                  </button>
+                  <button
+                    type="button"
+                    class="restore-action"
+                    data-testid="duplicate-variant"
+                    (click)="duplicateAsVariant()"
+                  >
+                    Als Variante duplizieren
+                  </button>
+                </div>
+              </section>
+            }
+
+            <div class="song-library-list" aria-label="Gespeicherte Lieder">
+              @for (song of filteredLibrarySongs(); track song.id) {
+                <article
+                  class="song-library-entry"
+                  [class.is-current]="song.id === store.activeSongId()"
+                  [attr.data-testid]="'library-song-' + song.id"
+                >
+                  @if (isFamilyStart(song)) {
+                    @if (familyFor(song); as family) {
+                      <header
+                        class="song-family-header"
+                        [attr.data-testid]="'library-family-' + family.familyId"
+                      >
+                        <strong>{{ family.title }}</strong>
+                        <span>
+                          {{ family.songs.length }}
+                          {{ family.songs.length === 1 ? 'Variante' : 'Varianten' }}
+                        </span>
+                      </header>
+                    }
+                  }
+                  <div class="song-library-identity">
+                    @if (renamingSongId() === song.id) {
+                      <label>
+                        <span class="visually-hidden">Neuer Liedtitel</span>
+                        <input
+                          type="text"
+                          [attr.data-testid]="'rename-song-' + song.id"
+                          [value]="renameTitle()"
+                          (input)="updateRenameTitle($event)"
+                          (keydown.enter)="confirmRename(song.id)"
+                          (keydown.escape)="cancelRename()"
+                        />
+                      </label>
+                    } @else {
+                      <strong>{{ song.title || 'Lied ohne Titel' }}</strong>
+                    }
+                    @if (renamingVariantId() === song.id) {
+                      <label class="variant-name-editor">
+                        <span>Variantenname</span>
+                        <input
+                          type="text"
+                          [attr.data-testid]="'variant-name-' + song.id"
+                          [value]="variantName()"
+                          (input)="updateVariantName($event)"
+                          (keydown.enter)="confirmVariantRename(song.id)"
+                          (keydown.escape)="cancelVariantRename()"
+                        />
+                      </label>
+                    } @else {
+                      <span class="variant-name">Variante: {{ song.variantName }}</span>
+                    }
+                    @if (song.exampleHint) {
+                      <span class="example-song-hint">{{ song.exampleHint }}</span>
+                    }
+                    <span>Zuletzt bearbeitet {{ formatLibraryDate(song.updatedAt) }}</span>
+                  </div>
+                  <div class="song-library-entry-actions">
+                    @if (song.id === store.activeSongId()) {
+                      <span class="current-song-badge">Geöffnet</span>
+                    } @else {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.title + ' öffnen'"
+                        (click)="openLibrarySong(song.id)"
+                      >
+                        Öffnen
+                      </button>
+                    }
+                    @if (renamingSongId() === song.id) {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        (click)="confirmRename(song.id)"
+                      >
+                        Speichern
+                      </button>
+                      <button type="button" class="secondary-action" (click)="cancelRename()">
+                        Abbrechen
+                      </button>
+                    } @else if (renamingVariantId() === song.id) {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        (click)="confirmVariantRename(song.id)"
+                      >
+                        Speichern
+                      </button>
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        (click)="cancelVariantRename()"
+                      >
+                        Abbrechen
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.title + ' umbenennen'"
+                        (click)="startRename(song.id, song.title)"
+                      >
+                        Umbenennen
+                      </button>
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.variantName + ' Variantenname ändern'"
+                        (click)="startVariantRename(song.id, song.variantName)"
+                      >
+                        Variantenname ändern
+                      </button>
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        [attr.aria-label]="song.title + ' duplizieren'"
+                        (click)="startDuplicate(song.id)"
+                      >
+                        Duplizieren
+                      </button>
+                    }
+                  </div>
+                </article>
+              } @empty {
+                <p class="library-empty-state">Kein Lied mit diesem Titel gefunden.</p>
+              }
+            </div>
+          </section>
+        }
+
+        @if (pendingRestore(); as backup) {
+          <section
+            class="restore-preview"
+            role="dialog"
+            aria-labelledby="restore-preview-title"
+            aria-describedby="restore-preview-consequence"
+            data-testid="restore-preview"
+          >
+            <div>
+              <strong id="restore-preview-title">Sicherung geprüft</strong>
+              <p>
+                <b>{{ backup.title }}</b> · {{ backup.lineCount }}
+                {{ backup.lineCount === 1 ? 'Zeile' : 'Zeilen' }} · gesichert am
+                {{ formatBackupDate(backup.exportedAt) }}
+              </p>
+              <p id="restore-preview-consequence">
+                Importiere dieses Lied als unabhängigen neuen Bibliothekseintrag oder stelle die
+                gesamte lokale Sicherung wieder her. Bis zur Bestätigung bleiben alle Daten
+                unverändert; die historische Legacy-Ablage bleibt immer erhalten.
+              </p>
+            </div>
+            <div class="restore-preview-actions">
+              <button
+                type="button"
+                class="secondary-action"
+                data-testid="backup-restore-cancel"
+                (click)="cancelLocalRestore()"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                class="restore-action"
+                data-testid="backup-import-new-confirm"
+                (click)="confirmLocalBackupImport()"
+              >
+                Als neuen Song importieren
+              </button>
+              <button
+                type="button"
+                class="restore-action"
+                data-testid="backup-restore-confirm"
+                (click)="confirmLocalRestore()"
+              >
+                Wiederherstellen
+              </button>
+            </div>
+          </section>
+        }
+        @if (editingEnabled()) {
+          <div class="edit-mode-bar" data-testid="edit-mode-status">
+            <div class="history-actions" role="group" aria-label="Änderungsverlauf">
+              <button
+                class="history-action"
+                type="button"
+                data-testid="undo-structure"
+                aria-label="Rückgängig"
+                aria-keyshortcuts="Control+Z Meta+Z"
+                title="Rückgängig (Strg+Z)"
+                [disabled]="!store.canUndo()"
+                (click)="undoStructure()"
+              >
+                <span aria-hidden="true">↶</span>
+              </button>
+              <button
+                class="history-action"
+                type="button"
+                data-testid="redo-structure"
+                aria-label="Wiederholen"
+                aria-keyshortcuts="Control+Y Meta+Shift+Z"
+                title="Wiederholen (Strg+Y)"
+                [disabled]="!store.canRedo()"
+                (click)="redoStructure()"
+              >
+                <span aria-hidden="true">↷</span>
+              </button>
+            </div>
+            <strong>Bearbeiten-Modus</strong>
+            <span>Block auswählen, um Text und Töne zu bearbeiten.</span>
+            @if (actionNotice(); as message) {
+              <span role="status" aria-live="polite" data-testid="structure-status">{{
+                message
+              }}</span>
+            }
+          </div>
+        }
+
+        <div
+          class="editor-layout"
+          [class.has-desktop-inspector]="selectedWord() && !mobileViewport()"
+          (click)="dismissInspectorOnBackground($event)"
+        >
           <app-song-sheet
             [lines]="lines()"
+            [document]="store.document()!"
+            [keys]="kalimbaKeys()"
+            [editMode]="editingEnabled()"
             [selection]="selection()"
             [selectedPositions]="selectedPositions()"
+            [melodyPositions]="melodyPositions()"
+            [touchSelectionActive]="touchSelectionActive()"
             (selectionChange)="changeSelection($event)"
             (wordSelect)="handleWordSelection($event)"
+            (multiSelectionRequested)="startMultiSelection()"
+            (blockAddRequested)="addSongBlock()"
             (structureAction)="applyStructureAction($event)"
+            (wordPreviewRequested)="previewBlock($event)"
+            (linePreviewRequested)="previewLine($event)"
           />
 
-          @if (selectedWord(); as word) {
-            <button
-              class="editor-backdrop"
-              type="button"
-              aria-label="Editor schließen"
-              (click)="closeWordEditor()"
-            ></button>
-            <app-word-editor
-              [textControl]="word.controls.text"
-              [notationControl]="word.controls.notation"
-              [location]="selectionLocation()"
-              [testIdSuffix]="selectionTestId()"
-              [keys]="kalimbaKeys()"
-              [canDeleteBlock]="canDeleteSelectedBlock()"
-              [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
-              [canUndo]="store.canUndo()"
-              (closed)="closeWordEditor()"
-              (structureAction)="applyStructureAction($event)"
-              (undoRequested)="undoStructure()"
-            />
-          } @else {
-            <aside class="editor-placeholder">
-              <strong>Block auswählen</strong>
-              <span>Wähle ein Wort oder einen Melodieblock, um Text und Töne zu bearbeiten.</span>
+          @if (selectedWord() && !mobileViewport()) {
+            <aside class="desktop-inspector-drawer" aria-label="Ausgewählten Block bearbeiten">
+              <ng-container [ngTemplateOutlet]="wordEditorContent" />
             </aside>
           }
         </div>
       </mat-card-content>
-      <mat-card-actions align="end">
-        <input
-          #fileInput
-          hidden
-          type="file"
-          accept="application/json,.json"
-          (change)="importFile($event)"
-        />
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="import-button"
-          (click)="fileInput.click()"
-        >
-          JSON importieren
-        </button>
-        <button mat-flat-button type="button" data-testid="export-button" (click)="exportFile()">
-          JSON exportieren
-        </button>
-      </mat-card-actions>
     </mat-card>
   } @else if (store.status() === 'loading') {
     <div class="loading" aria-live="polite">Song wird vorbereitet …</div>
   }
 
   <p class="privacy-note">
-    Nur dieser Browser: IndexedDB und ein vorhandener Legacy-Stand desselben Origins werden
-    verwendet.
+    Dein Song wird nur in diesem Browser gespeichert und nicht in eine Cloud übertragen. Vorhandene
+    ältere RubiChroma-Daten bleiben erhalten.
   </p>
 </main>
+
+<ng-template #wordEditorContent>
+  @if (selectedWord(); as word) {
+    <app-word-editor
+      [textControl]="word.controls.text"
+      [notationControl]="word.controls.notation"
+      [structuredEvents]="selectedMusicEvents()"
+      [location]="selectionLocation()"
+      [testIdSuffix]="selectionTestId()"
+      [keys]="kalimbaKeys()"
+      [isMelodyBlock]="selectedWordIsMelody()"
+      [canDeleteBlock]="canDeleteSelectedBlock()"
+      [canCopyToNextLine]="canCopySelectedBlockToNextLine()"
+      [canUndo]="store.canUndo()"
+      [canRedo]="store.canRedo()"
+      (closed)="closeWordEditor()"
+      (structureAction)="applyStructureAction($event)"
+      (musicEventAppendRequested)="addMusicEvent($event)"
+      (musicEventRemovalRequested)="removeMusicEvent($event)"
+      (musicEventDurationRequested)="setMusicEventDuration($event)"
+      (musicEventPreviewRequested)="previewMusicEvent($event)"
+      (pitchPreviewRequested)="previewPitch($event)"
+      (blockPreviewRequested)="previewBlock()"
+      (undoRequested)="undoStructure()"
+      (redoRequested)="redoStructure()"
+    />
+  }
+</ng-template>
+
+<ng-template cdkPortal #editorPortal="cdkPortal">
+  <div
+    class="editor-sheet-frame"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Wort und Töne bearbeiten"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <ng-container [ngTemplateOutlet]="wordEditorContent" />
+  </div>
+</ng-template>
+
+<ng-template cdkPortal #selectionPortal="cdkPortal">
+  <div
+    class="selection-toolbar"
+    role="toolbar"
+    aria-label="Aktionen für ausgewählte Liedblöcke"
+    data-testid="selection-toolbar"
+  >
+    <span class="selection-summary">
+      <strong data-testid="selection-count">{{ selectionCountLabel() }}</strong>
+      @if (clipboardCount() > 0) {
+        <span data-testid="clipboard-count">{{ clipboardCount() }} kopiert</span>
+      }
+    </span>
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="copy-selection"
+      [disabled]="selectedPositions().length === 0"
+      (click)="copyMusicSelection()"
+    >
+      Kopieren
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      data-testid="paste-selection"
+      [disabled]="!canPasteMusicSelection()"
+      (click)="pasteMusicSelection()"
+    >
+      Einfügen
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="clear-selection"
+      (click)="closeWordEditor()"
+    >
+      Beenden
+    </button>
+  </div>
+</ng-template>
