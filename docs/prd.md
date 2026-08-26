@@ -49,6 +49,11 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 - Einstiege ohne ausdrückliche Editierabsicht öffnen den ruhigen Ansichtsmodus. „Song abspielen“ bleibt davon getrennt und aktiviert den Bearbeiten-Modus nicht.
 - Abbruch verändert weder aktiven Song noch Modus noch lokale Daten. Erfolgreiche Moduswechsel bleiben eindeutig und reversibel; Fokus, Undo/Redo, Autosave und Datenfidelity bleiben erhalten.
 
+Zwei Produktentscheidungen bleiben als Human Gates offen:
+
+1. Der konkrete Anzeigeweg ist noch nicht festgelegt: zusätzlicher „Song anzeigen“-Einstieg in den ruhigen Editor, gemeinsamer Anzeigen-/Abspielen-Einstieg in den ruhigen Editor mit Wiedergabe oder Player zugleich als reiner Anzeigeweg. Die bestätigten vorhandenen Pfade werden bis zur Entscheidung nicht umgedeutet.
+2. Bei einem Logo-Klick während einer noch unbestätigten Inline-Eingabe ist noch offen, ob die Eingabe verworfen, vorher bestätigt oder per Rückfrage behandelt wird. Bereits bestätigte oder automatisch gespeicherte Änderungen sind davon nicht betroffen.
+
 ## MVP-Scope
 
 - kuratiertes Instrument- und Stimmungsprofil für eine 17-Zungen-Kalimba in C
