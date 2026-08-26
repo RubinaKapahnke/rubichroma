@@ -7,14 +7,14 @@ Isolierte Angular-22-Standalone-App als erster Migrationsschnitt. Der bestehende
 Voraussetzung ist Node.js 24. Die Befehle werden in `angular-app/` ausgeführt:
 
 ```sh
-pnpm install
+pnpm install --frozen-lockfile
 pnpm start
 pnpm test
 pnpm build
 pnpm e2e
 ```
 
-`pnpm e2e` erwartet einen installierten Playwright-Chromium-Browser (`pnpm exec playwright install chromium`). Der Browser-Download ist bewusst kein Installationsskript.
+`pnpm e2e` erwartet installierte Playwright-Browser für Chromium und WebKit (`pnpm exec playwright install chromium webkit`). Der Browser-Download ist bewusst kein Installationsskript.
 
 ## Daten und Kompatibilität
 
@@ -23,7 +23,7 @@ pnpm e2e
 - Der importierte Stand und alle weiteren Änderungen liegen in IndexedDB (`kalimba-angular-v1`). Migration und Marker werden atomar in einer Dexie-Transaktion geschrieben.
 - Dexie-Schema v2 migriert bereits vorhandene v1-Songdatensätze atomar und idempotent vom direkten `word.notation`-Feld auf strukturierte Musikereignisse. Revision, Zeitstempel und Migrationsmarker bleiben bei dieser rein strukturellen Umstellung konsistent.
 - JSON-Export behält `song` und `keys` auf oberster Ebene. Unbekannte Zusatzfelder, Unicode, leere Werte, `toneCount` und die 17 Key-Objekte werden bei Import/Export erhalten.
-- Strukturierte `note`-, `chord`- und `separator`-Ereignisse sind die semantische Primärquelle. Töne und Akkorde verwenden eine Tonstufe von 1 bis 7, eine Oktave von 0 bis 2 und derzeit explizit die Standarddauer `quarter`.
+- Strukturierte `note`-, `chord`-, `rest`- und `separator`-Ereignisse sind die semantische Primärquelle. Melodie und Begleitung werden getrennt gespeichert. Beatbasierte Dauern decken Ganze, Halbe, Viertel, Achtel und Sechzehntel ab und bleiben durch Import/Export, IndexedDB, Undo/Redo, Autosave, Reload und Playerprojektionen erhalten.
 - Exakter Legacy-Rohtext, Parser-Version und Event-Fingerprint bilden eine reine Fidelity-Hülle. Unveränderte Ereignisse exportieren exakt den importierten Text einschließlich unbekannter Fragmente; nach einer strukturellen Änderung wird deterministisch kanonisch serialisiert. Eingaben im Feld „Legacy-Notation“ werden unmittelbar wieder in Ereignisse geparst.
 
 Es ist absichtlich kein Service Worker registriert: Ohne fest vereinbarten Angular-Deploy-Unterpfad könnte dessen Scope den Legacy-Root übernehmen.
@@ -34,7 +34,11 @@ Die Angular-Oberfläche verwendet die verbindliche Sora-Hausschrift lokal aus de
 
 ## Aktueller Schnitt
 
-Enthalten sind Laden/Migration, ein auswahlbasierter Kerneditor für Titel, Worttext und Legacy-Notation, die direkte Bearbeitung strukturierter Einzelnoten, Akkorde und Trenner über die 17 Kalimba-Zungen, Block- und Zeilenstrukturaktionen, die Übertragung von Musikereignissen in die nächste Zeile, sitzungsbezogenes Undo, Desktop-Mehrfachauswahl mit Shift und Strg/⌘ sowie eine einfache positionsweise Noten-/Akkord-Zwischenablage, ein mobiles Editor-Bottom-Sheet, Autosave und JSON-Import/-Export. Noch nicht enthalten sind vollständige Vanilla-Featureparität, Touch-/Langdruck-Auswahl, komplexe Verteilmodi, Drag-and-drop, Silbentrennung, Audio/Tone.js, Fotoimport, Backend, NgRx oder Capacitor.
+Nachweislich integriert sind Laden/Migration, Titel- und Textbearbeitung, getrennte Melodie-/Begleitspuren, sichtbare weitere Notendauern, Einzelnoten, Akkorde, Pausen und Trenner, Strukturaktionen, Undo/Redo, Desktop- sowie Touch-/Langdruck-Mehrfachauswahl, positionsweise Zwischenablage, Drag-and-drop innerhalb und zwischen Zeilen einschließlich Tastaturalternative, manuelle Silbentrennung mit editierbarer Vorschau und Ereigniszuordnung, Autosave, versionierter Sicherungsexport/-restore sowie JSON-Import/-Export. Der Editor-Player-Rundweg verwendet denselben Song; Player, Liedtext und Notenblatt projizieren dieselben getrennten Spuren und Silbenzuordnungen.
+
+Der bestätigte nächste Fachvertrag ersetzt die sichtbare/fachliche „Block“-Einheit durch vollständige Takte. Unterfüllte Takte zeigen leere Rasterzeit; bekannte Test-Fixtures dürfen deterministisch normalisiert oder neu aufgebaut werden. Dies beschreibt den freigegebenen Zielvertrag, nicht bereits integrierten Funktionsstand. `localStorage['kalimba-note-tool-v1']` bleibt unverändert.
+
+Noch nicht enthalten beziehungsweise noch nicht vollständig abgenommen sind die vollständige Vanilla-Featureparität, das kanonische vollständige Taktraster, komplexe Verteilmodi, Fotoimport, Backend, NgRx oder Capacitor. Die laufende UX-Lieferung ist Desktop-first; Mobile-Optimierung folgt nach der Desktopfreigabe als eigener Meilenstein.
 
 ## Ablösung der Alt-App
 

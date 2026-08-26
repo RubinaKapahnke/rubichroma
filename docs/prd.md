@@ -42,6 +42,12 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 6. Farbhilfe vollständig, abgeschwächt oder ohne Farbe anzeigen.
 7. Abschnitt ohne laufende Wiedergabe selbst spielen.
 
+## Verbindliche Navigation und Modusabsicht
+
+- Das RubiChroma-Logo führt auf allen Seiten zur Startseite. Die konkrete Umsetzung und Abnahme werden in [#12](https://github.com/RubinaKapahnke/rubichroma/issues/12) geführt; Editor und Player sind Verbraucher dieses Vertrags.
+- „Song bearbeiten“ öffnet nach bewusster Auswahl oder Neuanlage denselben Song unmittelbar im Bearbeiten-Modus. Die Editierabsicht ist Navigations-/UI-Zustand und verändert keine Songdaten.
+- Einstiege ohne ausdrückliche Editierabsicht öffnen den ruhigen Ansichtsmodus. „Song abspielen“ bleibt davon getrennt und aktiviert den Bearbeiten-Modus nicht.
+
 ## MVP-Scope
 
 - kuratiertes Instrument- und Stimmungsprofil für eine 17-Zungen-Kalimba in C
@@ -57,8 +63,10 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 - eine Taktart und ein Grundtempo pro Lied
 - nicht blockierende Warnungen bei falscher Taktfüllung
 - synthetischer Kalimba-Klang
-- Start, Pause, Stopp, Lautstärke und synchrone Hervorhebung
-- block- und tonweise Bereichsauswahl, Loop und relative Übungsgeschwindigkeit
+- Start, Pause, Stopp, Gesamtlautstärke, Metronom Ein/Aus und synchrone Hervorhebung
+- getrennte Melodie- und Begleitspur mit ausschließlich Ein/Aus je Spur; keine spurbezogene Lautstärke und kein Solo
+- takt- und tonweise Bereichsauswahl, Loop und relative Übungsgeschwindigkeit
+- Flow-Horizont mit 1, 2 oder 4 Takten; Standard sind 2 Takte
 - drei Farbstufen: vollständig, abgeschwächt und ohne Farbe
 - lokale Speicherung, Sicherungsimport/-export sowie Browserdruck/A4-PDF
 - offline-first und ohne Benutzerkonto
@@ -73,7 +81,7 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 - öffentliche Songbibliothek
 - automatische Instrument-, Sticker-, Tasten- oder Tonerkennung
 - Mikrofonanalyse und automatische Spielbewertung
-- Metronom und Einzählen
+- Einzählen
 - punktierte Noten, Triolen sowie Takt- oder Tempowechsel
 - realistische Samples und Audioexport
 - öffentliche Beta
@@ -304,7 +312,7 @@ Der Player soll später erkennen können, was ein Nutzer tatsächlich spielt. Mi
 | Darstellung | synchronisierte Tab-/Laufnotation und aktive Hervorhebung | eine gemeinsame Playeroberfläche mit umschaltbarer Laufnotation und Kalimba-Flow; gleichzeitige Darstellung nur optional |
 | Transport | Start, Pause, Stopp, Lautstärke und sichtbare Position | zusätzlich erweiterte Navigation und persönliche Ansichtspräferenzen |
 | Üben | Bereich, Loop, relative Übungsgeschwindigkeit und Metronom Ein/Aus | zusätzlich getrennt steuerbarer Einzähler |
-| Ebenen | mehrere Ebenen im Datenmodell vorbereitet, zunächst ohne vollständigen Mixer | Ein/Aus je Ebene; keine spurbezogene Lautstärke oder Solo-Funktion |
+| Ebenen | getrennte Melodie und Begleitung; ausschließlich Ein/Aus je Spur | weitere Instrument- oder Arrangementspuren nach demselben Vertrag; keine spurbezogene Lautstärke oder Solo-Funktion |
 | Spielerkennung | keine Mikrofon-, MIDI- oder Bewertungsfunktion | trennbare Eingabe und sachliches Feedback für gespielte Ereignisse |
 
 ### Testbare Player-Anforderungen
@@ -349,6 +357,12 @@ Die folgenden Nutzerabläufe bilden den fachlichen Abnahmevertrag, jeweils sowei
 
 ## Roadmap
 
+### Kanonischer Takt- und Testdatenvertrag
+
+Das bisher sichtbare und fachliche „Block“-Konzept wird durch **Takt** ersetzt. Jede kanonische Einheit ist genau ein vollständiger Takt gemäß der Taktart. Unterfüllte Takte zeigen verbleibende Zeit als leeres Raster; künstliche Pausen sind nicht erforderlich.
+
+Die vorhandenen Songs sind Test-/Entwicklungsdaten. Überlange oder inkonsistente Fixtures dürfen deterministisch neu auf vollständige Takte verteilt, normalisiert oder neu aufgebaut werden. Die exakte Erhaltung alter Test-Song-Zuordnungen ist kein Gate; automatisierte Fixture- und Akzeptanztests sind führend. Es sind weder manuelle Kopien noch ein dauerhafter Legacy-Anzeigemodus oder ein komplexer Rollback-Dialog erforderlich. Die historische Quelle `localStorage['kalimba-note-tool-v1']` wird weiterhin niemals gelöscht oder überschrieben. Echte Daten außerhalb der bekannten Testdaten lösen vor Mutation ein eigenes Risikogate aus. Fachlich führend ist [#3](https://github.com/RubinaKapahnke/rubichroma/issues/3), die Editorwirkung führt [#69](https://github.com/RubinaKapahnke/rubichroma/issues/69).
+
 ### Phase 0: sichere Ablösung der bestehenden App
 
 Phase 0 bleibt bis zum Cutover ein paralleler Migrationsstrang. Neue MVP-Produktfeatures beginnen nach dem ersten Kerngate; die vollständige Parität ist spätestens vor der Abschaltung der Alt-App erforderlich.
@@ -360,6 +374,12 @@ Phase 0 bleibt bis zum Cutover ein paralleler Migrationsstrang. Neue MVP-Produkt
 5. Sicherungsexport und Wiederherstellung sind verlustfrei getestet; unbekannte Felder und unveränderte Legacy-Notation bleiben exakt erhalten.
 6. Kernabläufe sind durch Unit-, Integrations- und Browser-Tests sowie responsive, Touch-, Tastatur- und Accessibility-Abnahmen abgesichert.
 7. Angular wird erst nach erfülltem Cutover-Gate zur einzigen Anwendung. Die Root-Vanilla-Dateien werden im selben, separat freigegebenen Schritt entfernt; ein datenverlustfreier Rollback-Release liegt bereit.
+
+### Bestätigte Desktop-first-Lieferreihenfolge
+
+1. Der aktuelle Meilenstein liefert und validiert auf Browser/Desktop das gemeinsame zeitbasierte Drei-Spur-Raster, direkte Taktbearbeitung, Keyboard-first-Bedienung und die rechte Seitenleiste gemäß [#69](https://github.com/RubinaKapahnke/rubichroma/issues/69).
+2. Nach ausdrücklicher Desktopfreigabe folgen Mobile-Optimierung, 375/390 Pixel, Touch, Safe Area und Mobile-Sheet als eigener Meilenstein.
+3. [#70](https://github.com/RubinaKapahnke/rubichroma/issues/70) führt ausschließlich Player-UX; [#5](https://github.com/RubinaKapahnke/rubichroma/issues/5) Transport/Synchronisation, [#6](https://github.com/RubinaKapahnke/rubichroma/issues/6) Übungstempo/Loop und [#8](https://github.com/RubinaKapahnke/rubichroma/issues/8) Audio/Metronom/Scheduling.
 
 ### Produkt-Roadmap nach dem Kerngate
 
