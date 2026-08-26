@@ -45,14 +45,10 @@ Ein Kalimba-Anfänger kann sein vorhandenes oder persönliches Farbsystem in Rub
 ## Verbindliche Navigation und Modusabsicht
 
 - Das RubiChroma-Logo führt auf allen Seiten zur Startseite. Die konkrete Umsetzung und Abnahme werden in [#12](https://github.com/RubinaKapahnke/rubichroma/issues/12) geführt; Editor und Player sind Verbraucher dieses Vertrags.
-- „Song bearbeiten“ öffnet nach bewusster Auswahl oder Neuanlage denselben Song unmittelbar im Bearbeiten-Modus. Die Editierabsicht ist Navigations-/UI-Zustand und verändert keine Songdaten.
-- Einstiege ohne ausdrückliche Editierabsicht öffnen den ruhigen Ansichtsmodus. „Song abspielen“ bleibt davon getrennt und aktiviert den Bearbeiten-Modus nicht.
-- Abbruch verändert weder aktiven Song noch Modus noch lokale Daten. Erfolgreiche Moduswechsel bleiben eindeutig und reversibel; Fokus, Undo/Redo, Autosave und Datenfidelity bleiben erhalten.
-
-Zwei Produktentscheidungen bleiben als Human Gates offen:
-
-1. Der konkrete Anzeigeweg ist noch nicht festgelegt: zusätzlicher „Song anzeigen“-Einstieg in den ruhigen Editor, gemeinsamer Anzeigen-/Abspielen-Einstieg in den ruhigen Editor mit Wiedergabe oder Player zugleich als reiner Anzeigeweg. Die bestätigten vorhandenen Pfade werden bis zur Entscheidung nicht umgedeutet.
-2. Bei einem Logo-Klick während einer noch unbestätigten Inline-Eingabe ist noch offen, ob die Eingabe verworfen, vorher bestätigt oder per Rückfrage behandelt wird. Bereits bestätigte oder automatisch gespeicherte Änderungen sind davon nicht betroffen.
+- Bibliothek, Startseite, Editor und Player sind getrennte Bereiche. Jede Aktion, deren Beschriftung oder Kontext eindeutig Bearbeiten, Ändern oder Neues Lied erstellen bedeutet, navigiert nach Auswahl beziehungsweise Neuanlage in den Editor und aktiviert dort unmittelbar den Bearbeiten-Modus; ein zweiter Klick entfällt.
+- Nicht-bearbeitende Aktionen aktivieren den Editor-Bearbeiten-Modus nicht. „Abspielen“ bleibt Player-/Wiedergabekontext. Der Modus wird über explizite Nutzerabsicht transportiert, nicht zufällig aus Route oder vorherigem Zustand abgeleitet.
+- Abbruch der Songauswahl verändert weder aktiven Song noch Modus noch lokale Daten. Erfolgreiche Moduswechsel bleiben eindeutig und reversibel; Fokus, Undo/Redo, Autosave und Datenfidelity bleiben erhalten.
+- Existiert beim Verlassen des Editors eine noch unbestätigte Inline-Eingabe, fragt RubiChroma „wirklich verlassen?“: „Verlassen“ verwirft ausschließlich diesen unbestätigten Entwurf und navigiert; bereits bestätigte oder automatisch gespeicherte Änderungen bleiben erhalten. „Hier bleiben“ schließt die Abfrage und setzt Eingabe und Fokus fort. Ohne unbestätigten Entwurf navigieren Logo und Zurück normal.
 
 ## MVP-Scope
 
